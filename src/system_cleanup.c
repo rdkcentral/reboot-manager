@@ -235,3 +235,38 @@ void cleanup_pidfile(void)
 {
     unlink(PID_FILE);
 }
+
+bool CheckRebootEnableFlag(){
+    bool ret=false;
+    RFC_ParamData_t param;
+    WDMP_STATUS wdmpStatus = getRFCParameter(NULL,RDK_REBOOTSTOP_ENABLE, &param);
+    if (wdmpStatus == WDMP_SUCCESS || wdmpStatus == WDMP_ERR_DEFAULT_VALUE){
+        if( param.type == WDMP_BOOLEAN ){
+            RDK_LOG(RDK_LOG_DEBUG,LOG.RDK.REBOOTINFO,"[%s:%d]:getRFCParameter() name=%s,type=%d,value=%s\n", __FUNCTION__, __LINE__, param.name, param.type, param.value);
+            if(strncasecmp(param.value,"true",4) == 0 ){
+                ret=true;
+            }
+        }
+    }
+    RDK_LOG(RDK_LOG_DEBUG,LOG.RDK.REBOOTINFO,"RebootStopEnable = %s, call value = %d\n",(ret == true)?"true":"false", wdmpStatus);
+    return ret;
+}
+
+bool isMmgbleNotifyEnabled(void)
+{
+    bool status = false;
+    int ret = -1;
+    RFC_ParamData_t param;
+
+    WDMP_STATUS wdmpStatus = getRFCParameter(NULL,X_RDK_RFC_MANGEBLENOTIFICATION_ENABLE, &param);
+    if (wdmpStatus == WDMP_SUCCESS || wdmpStatus == WDMP_ERR_DEFAULT_VALUE){
+        if( param.type == WDMP_BOOLEAN ){
+            RDK_LOG(RDK_LOG_DEBUG,LOG.RDK.REBOOTINFO,"[%s:%d]:getRFCParameter() name=%s,type=%d,value=%s\n", __FUNCTION__, __LINE__, param.name, param.type, param.value);
+            if(strncasecmp(param.value,"true",4) == 0 ){
+                ret=true;
+            }
+        }
+    }
+    RDK_LOG(RDK_LOG_DEBUG,LOG.RDK.REBOOTINFO,"ManageNotifyEnable = %s, call value = %d\n",(ret == true)?"true":"false", wdmpStatus);
+    return ret;
+}
