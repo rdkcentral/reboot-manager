@@ -8,6 +8,7 @@
 #include <signal.h>
 #include "rdk_debug.h"
 #include "rebootNow.h"
+#include "secure_wrapper.h"
 
 static int file_exists(const char *path)
 {
@@ -92,9 +93,9 @@ void perform_housekeeping(void)
 {
     /* Signal telemetry2_0 and parodus */
     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Signal telemetry2_0 to send out any pending messages before reboot\n");
-    (void)system("killall -s SIGUSR1 telemetry2_0");
+    v_secure_system("killall -s SIGUSR1 telemetry2_0");
     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Properly shutdown parodus by sending SIGUSR1 kill signal\n");
-    (void)system("killall -s SIGUSR1 parodus");
+    v_secure_system("killall -s SIGUSR1 parodus");
 
     /* Conditional RDM cleanup after image upgrade */
     if (file_exists("/etc/rdm/rdm-manifest.xml")) {
@@ -104,7 +105,7 @@ void perform_housekeeping(void)
             if (strstr(cdl, prev) == NULL) {
                 if (dir_exists("/media/apps")) {
                     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Removing the RDM Apps content from Secondary Storage before Reboot (After Image Upgrade)\n");
-                    (void)system("sh -c 'cd /media/apps && for d in */; do rm -rf \"$d\"; done'");
+                    v_secure_system("sh -c 'cd /media/apps && for d in */; do rm -rf \"$d\"; done'");
                 }
             }
         }
@@ -135,34 +136,6 @@ void perform_housekeeping(void)
             if (fs) fclose(fs);
             if (fd) fclose(fd);
         }
-    }
-
-    /* Device-specific maintenance */
-    const char *device_name = getenv("DEVICE_NAME");
-    if (device_name && (
-            strcmp(device_name, "XI6") == 0 ||
-            strcmp(device_name, "XiOne") == 0 ||
-            strcmp(device_name, "XiOne-SCB") == 0)) {
-        if (strcmp(device_name, "XI6") == 0) {
-            if (file_exists("/lib/rdk/emmc_health_diag.sh")) {
-                (void)system("sh /lib/rdk/emmc_health_diag.sh reboot");
-                RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Updated eMMC Health report\n");
-            }
-        }
-        if (file_exists("/lib/rdk/eMMC_Upgrade.sh")) {
-            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Upgrade eMMC FW if required\n");
-            (void)system("sh /lib/rdk/eMMC_Upgrade.sh");
-        }
-    }
-
-    if (file_exists("/lib/rdk/aps4_reset.sh")) {
-        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Executing /lib/rdk/aps4_reset.sh\n");
-        (void)system("sh /lib/rdk/aps4_reset.sh");
-    }
-
-    if (file_exists("/lib/rdk/update_www-backup.sh")) {
-        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Executing /lib/rdk/update_www-backup.sh\n");
-        (void)system("sh /lib/rdk/update_www-backup.sh");
     }
 
     /* Bluetooth services stop */
