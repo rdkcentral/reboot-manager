@@ -7,7 +7,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <unistd.h>
-#include "system_cleanup.h"
+#include "rebootNow.h"
 
 static const char *PREVIOUS_REBOOT_INFO_FILE = "/opt/secure/reboot/previousreboot.info";
 static const char *REBOOTNOW_FLAG = "/opt/secure/reboot/rebootNow";
@@ -167,7 +167,7 @@ int handle_cyclic_reboot(const char *source,
                             char en_buf[64] = {0};
                             (void)run_cmd_capture("tr181 -g Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RebootStop.Enable 2>&1 > /dev/null", en_buf, sizeof(en_buf));
                             rebootLogf("Publishing Reboot Stop Enable Event:%s", en_buf[0] ? en_buf : "true");
-                            (void)system("t2CountNotify \"SYST_ERR_Cyclic_reboot\"");
+                            t2CountNotify("SYST_ERR_Cyclic_reboot", 1);
                             (void)system("sh /lib/rdk/cronjobs_update.sh \"remove\" \"rebootmanager\"");
                             char cron[64];
                             compute_cron_time(stop_duration, cron, sizeof(cron));
