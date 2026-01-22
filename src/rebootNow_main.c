@@ -13,7 +13,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <dirent.h>
-#include "rebootnow.h"
+#include "rebootNow.h"
 
 #define PROGRAM_NAME "rebootnow"
 
