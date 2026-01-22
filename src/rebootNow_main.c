@@ -14,6 +14,7 @@
 #include <sys/wait.h>
 #include <dirent.h>
 #include "rebootNow.h"
+#include "secure_wrapper.h"
 
 #define PROGRAM_NAME "rebootnow"
 
@@ -71,6 +72,23 @@ static int checkstringvalue(const char *const *list, size_t n, const char *needl
     return 0;
 }
 
+/* Description: Use for sending telemetry Log
+ * @param marker: use for send marker details
+ * @return : void
+ * */
+void t2CountNotify(char *marker, int val) {
+#ifdef T2_EVENT_ENABLED
+    t2_event_d(marker, val);
+#endif
+}
+
+void t2ValNotify( char *marker, char *val )
+{
+#ifdef T2_EVENT_ENABLED
+    t2_event_s(marker, val);
+#endif
+}
+
 int main(int argc, char **argv)
 {
     const char *source = NULL;      // from -s or -c
@@ -84,6 +102,10 @@ int main(int argc, char **argv)
     }
 #endif
 
+#ifdef T2_EVENT_ENABLED
+    t2_init("reboot-manager");
+#endif
+	
     if (pidfile_write_and_guard() != 0) {
         return 1;
     }
@@ -246,7 +268,7 @@ int main(int argc, char **argv)
     // Parent: wait ~90 seconds
     sleep(90);
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","System still running after reboot command, Reboot Failed for %d...\n", (int)pid);
-    int rc = system("systemctl reboot");
+    int rc = v_secure_system("reboot");
     if (rc == 256 /* exit status 1 << 8 */ || (rc != 0 && rc != -1)) {
         RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Reboot failed due to systemctl hang or connection timeout\n");
     }
@@ -254,7 +276,7 @@ int main(int argc, char **argv)
         kill(pid, SIGTERM);
     }
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Triggering force Reboot after standard soft reboot failure\n");
-    (void)system("reboot -f");
+	v_secure_system("reboot -f");
     return 0;
 }
 
