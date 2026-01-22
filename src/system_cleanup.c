@@ -7,7 +7,7 @@
 #include <dirent.h>
 #include <signal.h>
 #include "rdk_debug.h"
-#include "system_cleanup.h"
+#include "rebootNow.h"
 
 static int file_exists(const char *path)
 {
