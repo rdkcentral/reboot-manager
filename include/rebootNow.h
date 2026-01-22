@@ -9,6 +9,10 @@ extern "C" {
 /* Shared PID file path */
 #define PID_FILE "/tmp/.rebootNow.pid"
 
+#ifdef T2_EVENT_ENABLED
+#include <telemetry_busmessage_sender.h>
+#endif
+
 /* Provided by main.c */
 void rebootLogf(const char *fmt, ...);
 
@@ -26,7 +30,8 @@ int handle_cyclic_reboot(const char *source,
 void timestamp_update(char *buf, size_t sz);
 int append_line_to_file(const char *path, const char *line);
 int run_cmd_capture(const char *cmd, char *out, size_t outsz);
-
+void t2CountNotify(char *marker, int val);
+void t2ValNotify(char *marker, char *val);
 #ifdef __cplusplus
 }
 #endif
