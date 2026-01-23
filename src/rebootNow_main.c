@@ -95,6 +95,7 @@ int main(int argc, char **argv)
     int is_crash = 0;               // whether -c was used
     const char *customReason = "Unknown";
     const char *otherReason = "Unknown";
+    bool Mng_Notify_Enable = false;
 
 #ifdef RDK_LOGGER_ENABLED
     if (0 == rdk_logger_init("/etc/debug.ini")) {
@@ -253,7 +254,13 @@ int main(int argc, char **argv)
         }
     }
 
-     // Housekeeping before reboot
+	if (rbus_get_bool_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ManageableNotification.Enable", &Mng_Notify_Enable))
+	{
+		RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Manageable Notification Enabled\n");
+		rbus_set(rrdRbusHandle,"Device.DeviceInfo.X_RDKCENTRAL-COM_xOpsDeviceMgmt.RPC.RebootPendingNotification", 10, NULL);
+	}
+
+    // Housekeeping before reboot
     perform_housekeeping();
     
     // Execute reboot sequence: reboot &, wait, fallback to systemctl reboot, then reboot -f
