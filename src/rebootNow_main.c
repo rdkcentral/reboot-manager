@@ -16,7 +16,6 @@
 #include "rebootNow.h"
 #include "secure_wrapper.h"
 #include "rbus_interface.h"
-#include <rbus.h>
 
 #define PROGRAM_NAME "rebootnow"
 
@@ -220,20 +219,20 @@ int main(int argc, char **argv)
     if (jsonf) {
         fprintf(jsonf, "{\n");
         fprintf(jsonf, "\"timestamp\":\"%s\",\n", ts);
-        fprintf(jsonf, "\"source\":\"%s\",\n", source_buf);
+		fprintf(jsonf, "\"source\":\"%s\",\n", source ? source : "");
         fprintf(jsonf, "\"reason\":\"%s\",\n", rebootReason);
         fprintf(jsonf, "\"customReason\":\"%s\",\n", customReason);
-        fprintf(jsonf, "\"otherReason\":\"%s\"\n", other_buf);
+		fprintf(jsonf, "\"otherReason\":\"%s\"\n", otherReason ? otherReason : "");
         fprintf(jsonf, "}\n");
         fclose(jsonf);
-        rebootLogf("Saving reboot info in %s file", REBOOT_INFO_FILE);
+       RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Saving reboot info in %s file\n", REBOOT_INFO_FILE);
         // Parodus info line
         char par_line[1024];
         snprintf(par_line, sizeof(par_line), "PreviousRebootInfo:%s,%s,%s,%s\n", ts, customReason, source_buf, rebootReason);
         append_line_to_file(PARODUS_REBOOT_INFO_FILE, par_line);
-	RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Updated Reboot Reason information in %s and %s\n", REBOOT_INFO_FILE, PARODUS_REBOOT_INFO_FILE);
+	    RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Updated Reboot Reason information in %s and %s\n", REBOOT_INFO_FILE, PARODUS_REBOOT_INFO_FILE);
     } else {
-	RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Failed to open %s for writing (errno=%d)\n", REBOOT_INFO_FILE, errno);
+	    RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Failed to open %s for writing (errno=%d)\n", REBOOT_INFO_FILE, errno);
     }
 
     // Touch rebootNow flag
@@ -260,7 +259,7 @@ int main(int argc, char **argv)
 	if (rbus_get_bool_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ManageableNotification.Enable", &Mng_Notify_Enable))
 	{
 		RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Manageable Notification Enabled\n");
-		rbus_set(rebootRbusHandle,"Device.DeviceInfo.X_RDKCENTRAL-COM_xOpsDeviceMgmt.RPC.RebootPendingNotification", 10, NULL);
+		rbus_set_int_param("Device.DeviceInfo.X_RDKCENTRAL-COM_xOpsDeviceMgmt.RPC.RebootPendingNotification", 10);
 	}
 
     // Housekeeping before reboot
@@ -278,7 +277,7 @@ int main(int argc, char **argv)
     // Parent: wait ~90 seconds
     sleep(90);
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","System still running after reboot command, Reboot Failed for %d...\n", (int)pid);
-    int rc = v_secure_system("reboot");
+    int rc = v_secure_system("systemctl reboot");
     if (rc == 256 /* exit status 1 << 8 */ || (rc != 0 && rc != -1)) {
         RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Reboot failed due to systemctl hang or connection timeout\n");
     }
