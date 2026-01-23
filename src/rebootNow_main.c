@@ -29,8 +29,6 @@ static const char *REBOOTNOW_FLAG = "/opt/secure/reboot/rebootNow";
 int g_rdk_logger_enabled = 0;
 #endif
 
-extern rbusHandle_t rebootRbusHandle;
-
 static const char *APP_TRIGGERED_REASONS[] = {
     "Servicemanager", "systemservice_legacy", "WarehouseReset", "WarehouseService",
     "HrvInitWHReset", "HrvColdInitReset", "HtmlDiagnostics", "InstallTDK", "StartTDK",
