@@ -133,6 +133,7 @@ int handle_cyclic_reboot(const char *source,
     
     int reboot_counter_reset = 0;
     if (file_exists(REBOOTNOW_FLAG) && detection_enabled) {
+        (void)unlink(REBOOTNOW_FLAG);
         RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Reboot Loop Detection enabled to check cyclic reboot scenarios:%s", detection_enabled ? "true" : "false");
         char p_src[128] = {0}, p_rsn[128] = {0}, p_cus[128] = {0}, p_oth[256] = {0}, p_ts[64] = {0};
         if (read_previous_reboot_info(p_src, sizeof(p_src), p_rsn, sizeof(p_rsn), p_cus, sizeof(p_cus), p_oth, sizeof(p_oth), p_ts, sizeof(p_ts)) == 0) {
@@ -173,12 +174,12 @@ int handle_cyclic_reboot(const char *source,
                                 RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","[%s:%d]:Publishing Reboot Stop Enable Event: %d\n",__FUNCTION__, __LINE__,reboot_stop_enable);
                             }
                             t2CountNotify("SYST_ERR_Cyclic_reboot", 1);
-                            v_secure_system("sh /lib/rdk/cronjobs_update.sh %s %s", "remove", "rebootmanager");
+                            v_secure_system("sh /lib/rdk/cronjobs_update.sh %s %s", "remove", "rebootnow");
                             char cron[64];
                             compute_cron_time(stop_duration, cron, sizeof(cron));
-                            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Scheduling Cron for rebootmanager as a part of Cyclic reboot operations: %s\n", cron);
+                            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Scheduling Cron for rebootnow as a part of Cyclic reboot operations: %s\n", cron);
                             v_secure_system(
-                                "sh /lib/rdk/cronjobs_update.sh \"add\" \"rebootmanager\" \"%s /usr/local/bin/rebootmanager -s \\\"CyclicReboot\\\" -o \\\"Rebooting device after expiry of Cyclic reboot pause window\\\"\"",
+                                "sh /lib/rdk/cronjobs_update.sh \"add\" \"rebootnow\" \"%s /usr/local/bin/rebootnow -s \\\"CyclicReboot\\\" -o \\\"Rebooting device after expiry of Cyclic reboot pause window\\\"\"",
                                 cron);
                             RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Device will reboot in %d mins after expiry of Cyclic reboot pause window!!!\n", stop_duration);
                             touch_file(REBOOTNOW_FLAG);
@@ -208,11 +209,11 @@ int handle_cyclic_reboot(const char *source,
             write_int_file(REBOOT_COUNTER_FILE, 0);
             (void)unlink(REBOOTSTOP_FLAG);
             /* Ensure any previously scheduled cyclic reboot cron job is removed */
-            v_secure_system("sh /lib/rdk/cronjobs_update.sh %s %s", "remove", "rebootmanager");
+            v_secure_system("sh /lib/rdk/cronjobs_update.sh %s %s", "remove", "rebootnow");
         }
     } else {
         if (!file_exists(REBOOTNOW_FLAG)) {
-            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Last reboot was not triggered by rebootmanager binary\n");
+            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Last reboot was not triggered by rebootnow binary\n");
         } else {
             RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Reboot Loop Detection disabled to check cyclic reboot scenarios:%s\n", detection_enabled ? "true" : "false");
         }
