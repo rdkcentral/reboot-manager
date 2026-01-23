@@ -16,6 +16,7 @@
 #include "rebootNow.h"
 #include "secure_wrapper.h"
 #include "rbus_interface.h"
+#include "rbus.h"
 
 #define PROGRAM_NAME "rebootnow"
 
@@ -24,11 +25,12 @@ static const char *REBOOT_INFO_DIR = "/opt/secure/reboot";
 static const char *REBOOT_INFO_FILE = "/opt/secure/reboot/reboot.info";
 static const char *PARODUS_REBOOT_INFO_FILE = "/opt/secure/reboot/parodusreboot.info";
 static const char *REBOOTNOW_FLAG = "/opt/secure/reboot/rebootNow";
-static const char *REBOOTREASON_LOG = "/opt/logs/rebootreason.log";
 
 #ifdef RDK_LOGGER_ENABLED
 int g_rdk_logger_enabled = 0;
 #endif
+
+extern rbusHandle_t rebootRbusHandle;
 
 static const char *APP_TRIGGERED_REASONS[] = {
     "Servicemanager", "systemservice_legacy", "WarehouseReset", "WarehouseService",
@@ -258,7 +260,7 @@ int main(int argc, char **argv)
 	if (rbus_get_bool_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ManageableNotification.Enable", &Mng_Notify_Enable))
 	{
 		RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Manageable Notification Enabled\n");
-		rbus_set(rrdRbusHandle,"Device.DeviceInfo.X_RDKCENTRAL-COM_xOpsDeviceMgmt.RPC.RebootPendingNotification", 10, NULL);
+		rbus_set(rebootRbusHandle,"Device.DeviceInfo.X_RDKCENTRAL-COM_xOpsDeviceMgmt.RPC.RebootPendingNotification", 10, NULL);
 	}
 
     // Housekeeping before reboot
