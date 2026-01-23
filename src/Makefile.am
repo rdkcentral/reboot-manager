@@ -10,7 +10,8 @@ AM_LDFLAGS = -lfwutils -lrdkloggers -lrbus
 rebootnow_SOURCES = rebootNow_main.c \
       system_cleanup.c \
       cyclic_reboot.c \
-      utils.c
+      utils.c \
+      rbus_interface.c
       $(NULL)
 
 if IS_TELEMETRY2_ENABLED
