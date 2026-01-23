@@ -31,8 +31,6 @@
 #include "rbus/rbus.h"
 #endif
 
-#define LOG_UPLOADSTB "LOG.RDK.UPLOADSTB"
-
 // Global RBUS handle - initialized once and reused
 static rbusHandle_t g_rbusHandle = NULL;
 static bool g_rbusInitialized = false;
@@ -168,4 +166,54 @@ bool rbus_get_int_param(const char* param_name, int* value)
     }
 
     return success;
+}
+
+bool rbus_set_bool_param(const char* param_name, bool value)
+{
+    if (!param_name) {
+        RDK_LOG(RDK_LOG_ERROR, LOG_REBOOTINFO, "[%s:%d] Invalid parameters\n", __FUNCTION__, __LINE__);
+        return false;
+    }
+    if (!g_rbusInitialized || g_rbusHandle == NULL) {
+        RDK_LOG(RDK_LOG_ERROR, LOG_REBOOTINFO, "[%s:%d] RBUS not initialized, call rbus_init() first\n",
+                __FUNCTION__, __LINE__);
+        return false;
+    }
+    rbusValue_t v = rbusValue_Init(NULL);
+    rbusValue_SetBoolean(v, value);
+    rbusError_t rc = rbus_set(g_rbusHandle, param_name, v, NULL);
+    rbusValue_Release(v);
+    if (rc != RBUS_ERROR_SUCCESS) {
+        RDK_LOG(RDK_LOG_WARN, LOG_REBOOTINFO, "[%s:%d] Failed to set %s (bool): %d\n",
+                __FUNCTION__, __LINE__, param_name, rc);
+        return false;
+    }
+    RDK_LOG(RDK_LOG_DEBUG, LOG_REBOOTINFO, "[%s:%d] Set %s=%s\n",
+            __FUNCTION__, __LINE__, param_name, value ? "true" : "false");
+    return true;
+}
+
+bool rbus_set_int_param(const char* param_name, int value)
+{
+    if (!param_name) {
+        RDK_LOG(RDK_LOG_ERROR, LOG_REBOOTINFO, "[%s:%d] Invalid parameters\n", __FUNCTION__, __LINE__);
+        return false;
+    }
+    if (!g_rbusInitialized || g_rbusHandle == NULL) {
+        RDK_LOG(RDK_LOG_ERROR, LOG_REBOOTINFO, "[%s:%d] RBUS not initialized, call rbus_init() first\n",
+                __FUNCTION__, __LINE__);
+        return false;
+    }
+    rbusValue_t v = rbusValue_Init(NULL);
+    rbusValue_SetInt32(v, value);
+    rbusError_t rc = rbus_set(g_rbusHandle, param_name, v, NULL);
+    rbusValue_Release(v);
+    if (rc != RBUS_ERROR_SUCCESS) {
+        RDK_LOG(RDK_LOG_WARN, LOG_REBOOTINFO, "[%s:%d] Failed to set %s (int): %d\n",
+                __FUNCTION__, __LINE__, param_name, rc);
+        return false;
+    }
+    RDK_LOG(RDK_LOG_DEBUG, LOG_REBOOTINFO, "[%s:%d] Set %s=%d\n",
+            __FUNCTION__, __LINE__, param_name, value);
+    return true;
 }
