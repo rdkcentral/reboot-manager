@@ -145,12 +145,9 @@ void perform_housekeeping(void)
         const char *services[] = {"sky-bluetoothrcu", "btmgr", "bluetooth", "bt-hciuart", "btmac-preset", "bt", "syslog-ng"};
         RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Shutting down the bluetooth and syslog-ng services gracefully");
         for (size_t i = 0; i < sizeof(services)/sizeof(services[0]); ++i) {
-            char cmd[256];
-            snprintf(cmd, sizeof(cmd), "systemctl --quiet is-active %s", services[i]);
-            int active = system(cmd);
+            int active = v_secure_system("systemctl --quiet is-active %s", services[i]);
             if (active == 0) {
-                snprintf(cmd, sizeof(cmd), "systemctl stop %s", services[i]);
-                int rc = system(cmd);
+                int rc = v_secure_system("systemctl stop %s", services[i]);
                 if (rc == 0) {
                   RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","%s service stopped successfully\n", services[i]);
                 }
