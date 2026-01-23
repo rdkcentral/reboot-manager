@@ -181,7 +181,7 @@ int pidfile_write_and_guard(void)
                         char cmd[256] = {0};
                         fread(cmd, 1, sizeof(cmd)-1, pc);
                         fclose(pc);
-                        if (strstr(cmd, "rebootmanager")) {
+                        if (strstr(cmd, "rebootnow")) {
                             RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","An instance of %s with pid %d is already running..\n", "rebootmanager", (int)pid);
                             RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Exiting Binary\n");
                             fclose(f);
