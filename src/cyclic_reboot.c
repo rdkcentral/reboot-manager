@@ -10,6 +10,8 @@
 #include "rebootNow.h"
 #include "secure_wrapper.h"
 #include "rbus_interface.h"
+#include "rbus.h"
+#include "rdk_debug.h"
 
 static const char *PREVIOUS_REBOOT_INFO_FILE = "/opt/secure/reboot/previousreboot.info";
 static const char *REBOOTNOW_FLAG = "/opt/secure/reboot/rebootNow";
@@ -126,10 +128,10 @@ int handle_cyclic_reboot(const char *source,
     rbusError_t rc = RBUS_ERROR_BUS_ERROR;
 
     if (rbus_get_int_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RebootStop.Detection", &detection_enabled)) {
-         RDK_LOG(RDK_LOG_DEBUG,LOG.RDK.REBOOTINFO,"[%s:%d]:"RebootStop Detection: %d\n",__FUNCTION__, __LINE__,detection_enabled);
+         RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","[%s:%d]:"RebootStop Detection: %d\n",__FUNCTION__, __LINE__,detection_enabled);
     }
     if (rbus_get_int_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RebootStop.Detection", &duration)) {
-         RDK_LOG(RDK_LOG_DEBUG,LOG.RDK.REBOOTINFO,"[%s:%d]:"RebootStop Duration: %d\n",__FUNCTION__, __LINE__,duration);
+         RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","[%s:%d]:"RebootStop Duration: %d\n",__FUNCTION__, __LINE__,duration);
          if (duration > 0 && duration < 24*60) {
              stop_duration = duration;
          }
@@ -140,15 +142,15 @@ int handle_cyclic_reboot(const char *source,
         RDK_LOG(RDK_LOG_DEBUG,LOG.RDK.REBOOTINFO,"Reboot Loop Detection enabled to check cyclic reboot scenarios:%s", detection_enabled ? "true" : "false");
         char p_src[128] = {0}, p_rsn[128] = {0}, p_cus[128] = {0}, p_oth[256] = {0}, p_ts[64] = {0};
         if (read_previous_reboot_info(p_src, sizeof(p_src), p_rsn, sizeof(p_rsn), p_cus, sizeof(p_cus), p_oth, sizeof(p_oth), p_ts, sizeof(p_ts)) == 0) {
-            RDK_LOG(RDK_LOG_DEBUG,LOG.RDK.REBOOTINFO,"Previous Reboot Information of the Device: Time:%s Source:%s Reason:%s customReason:%s otherReason:%s",
+            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Previous Reboot Information of the Device: Time:%s Source:%s Reason:%s customReason:%s otherReason:%s\n",
                  p_ts, p_src, p_rsn, p_cus, p_oth);
             int upsecs = read_proc_uptime_secs();
             if (upsecs >= 0) {
-                RDK_LOG(RDK_LOG_DEBUG,LOG.RDK.REBOOTINFO,"Device Uptime from last reboot: %d secs", upsecs);
+                RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Device Uptime from last reboot: %d secs\n", upsecs);
             }
             const int REBOOT_WINDOW_SECS = 10 * 60;
             if (upsecs >= 0 && upsecs <= REBOOT_WINDOW_SECS) {
-                RDK_LOG(RDK_LOG_DEBUG,LOG.RDK.REBOOTINFO,"Reboot requested before the %d mins, checking reboot reason", 10);
+                RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Reboot requested before the %d mins, checking reboot reason\n", 10);
                 int same = 0;
                 if (source && strcmp(source, p_src) == 0 &&
                     rebootReason && strcmp(rebootReason, p_rsn) == 0 &&
@@ -157,36 +159,34 @@ int handle_cyclic_reboot(const char *source,
                     same = 1;
                 }
                 if (same) {
-                    RDK_LOG(RDK_LOG_DEBUG,LOG.RDK.REBOOTINFO,"Reboot Reason for current and previous reboot is same");
+                    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Reboot Reason for current and previous reboot is same\n");
                     if (file_exists(REBOOTSTOP_FLAG)) {
-                        RDK_LOG(RDK_LOG_DEBUG,LOG.RDK.REBOOTINFO,"Reboot Operation Halted in the device to avoid continous reboots with same reason!!!");
+                        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Reboot Operation Halted in the device to avoid continous reboots with same reason!!!\n");
                         touch_file(REBOOTNOW_FLAG);
-                        RDK_LOG(RDK_LOG_DEBUG,LOG.RDK.REBOOTINFO,"Exiting without rebooting the device");
+                        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Exiting without rebooting the device\n");
                         return 0; /* defer reboot */
                     } else {
                         int count = 0;
                         (void)read_int_file(REBOOT_COUNTER_FILE, &count);
-                        RDK_LOG(RDK_LOG_DEBUG,LOG.RDK.REBOOTINFO,"Checking device is stuck in cyclic reboot loop with same reboot reason, Current Iteration:%d", count);
+                        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Checking device is stuck in cyclic reboot loop with same reboot reason, Current Iteration:%d\n", count);
                         const int REBOOT_CYCLE_THRESHOLD = 5;
                         if (count >= REBOOT_CYCLE_THRESHOLD) {
-                            RDK_LOG(RDK_LOG_DEBUG,LOG.RDK.REBOOTINFO,"Detected Reboot Loop in device, Halting reboot for next %d mins to perform operations!!!", stop_duration);
+                            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Detected Reboot Loop in device, Halting reboot for next %d mins to perform operations!!!\n", stop_duration);
                             touch_file(REBOOTSTOP_FLAG);
                             rc = rbus_set(rrdRbusHandle,"Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RebootStop.Enable", true, NULL);
                             bool reboot_stop_enable = false;
                             if (rbus_get_bool_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RebootStop.Enable", &reboot_stop_enable)) {
-                                RDK_LOG(RDK_LOG_DEBUG,LOG.RDK.REBOOTINFO,"[%s:%d]:"Publishing Reboot Stop Enable Event: %d\n",__FUNCTION__, __LINE__,reboot_stop_enable);
+                                RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","[%s:%d]:"Publishing Reboot Stop Enable Event: %d\n",__FUNCTION__, __LINE__,reboot_stop_enable);
                             }
                             t2CountNotify("SYST_ERR_Cyclic_reboot", 1);
-                            v_secure_system(""sh /lib/rdk/cronjobs_update.sh \"remove\" \"rebootmanager\"");
+                            v_secure_system("sh /lib/rdk/cronjobs_update.sh %s %s", "remove", "rebootmanager");
                             char cron[64];
                             compute_cron_time(stop_duration, cron, sizeof(cron));
-                            RDK_LOG(RDK_LOG_DEBUG,LOG.RDK.REBOOTINFO,"Scheduling Cron for rebootmanager as a part of Cyclic reboot operations: %s", cron);
-                            char cmd[512];
-                            snprintf(cmd, sizeof(cmd),
-                                     "sh /lib/rdk/cronjobs_update.sh \"add\" \"rebootmanager\" \"%s /usr/local/bin/rebootmanager -s \"CyclicReboot\" -o \"Rebooting device after expiry of Cyclic reboot pause window\"\"",
-                                     cron);
-                            (void)system(cmd);
-                            RDK_LOG(RDK_LOG_DEBUG,LOG.RDK.REBOOTINFO,"Device will reboot in %d mins after expiry of Cyclic reboot pause window!!!", stop_duration);
+                            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Scheduling Cron for rebootmanager as a part of Cyclic reboot operations: %s\n", cron);
+                            v_secure_system(
+                                "sh /lib/rdk/cronjobs_update.sh \"add\" \"rebootmanager\" \"%s /usr/local/bin/rebootmanager -s \\\"CyclicReboot\\\" -o \\\"Rebooting device after expiry of Cyclic reboot pause window\\\"\"",
+                                cron);
+                            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Device will reboot in %d mins after expiry of Cyclic reboot pause window!!!\n", stop_duration);
                             touch_file(REBOOTNOW_FLAG);
                             return 0; /* defer reboot */
                         } else {
@@ -195,32 +195,32 @@ int handle_cyclic_reboot(const char *source,
                         }
                     }
                 } else {
-                    RDK_LOG(RDK_LOG_DEBUG,LOG.RDK.REBOOTINFO,"Reboot requested before the %d mins reboot loop window with different reason", 10);
+                    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Reboot requested before the %d mins reboot loop window with different reason\n", 10);
                     reboot_counter_reset = 1;
                 }
             } else {
-                RDK_LOG(RDK_LOG_DEBUG,LOG.RDK.REBOOTINFO,"Reboot requested after the %d mins reboot loop window", 10);
+                RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Reboot requested after the %d mins reboot loop window\n", 10);
                 reboot_counter_reset = 1;
             }
         } else {
-            RDK_LOG(RDK_LOG_DEBUG,LOG.RDK.REBOOTINFO,"%s file not found, proceed without reboot reason check!!!", PREVIOUS_REBOOT_INFO_FILE);
+            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","%s file not found, proceed without reboot reason check!!!\n", PREVIOUS_REBOOT_INFO_FILE);
             reboot_counter_reset = 1;
         }
 
         if (reboot_counter_reset) {
-            RDK_LOG(RDK_LOG_DEBUG,LOG.RDK.REBOOTINFO,"Publishing Reboot Stop Disable Event");
+            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Publishing Reboot Stop Disable Event\n");
             rc = rbus_set(rrdRbusHandle,"Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RebootStop.Enable", false, NULL);
-            RDK_LOG(RDK_LOG_DEBUG,LOG.RDK.REBOOTINFO,"Reboot Loop Detection counter reset as device not in reboot loop");
+            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Reboot Loop Detection counter reset as device not in reboot loop\n");
             write_int_file(REBOOT_COUNTER_FILE, 0);
             (void)unlink(REBOOTSTOP_FLAG);
             /* Ensure any previously scheduled cyclic reboot cron job is removed */
-            v_secure_system("sh /lib/rdk/cronjobs_update.sh \"remove\" \"rebootmanager\"");
+            v_secure_system("sh /lib/rdk/cronjobs_update.sh %s %s", "remove", "rebootmanager");
         }
     } else {
         if (!file_exists(REBOOTNOW_FLAG)) {
-            RDK_LOG(RDK_LOG_DEBUG,LOG.RDK.REBOOTINFO,"Last reboot was not triggered by rebootmanager binary");
+            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Last reboot was not triggered by rebootmanager binary\n");
         } else {
-            RDK_LOG(RDK_LOG_DEBUG,LOG.RDK.REBOOTINFO,"Reboot Loop Detection disabled to check cyclic reboot scenarios:%s", detection_enabled ? "true" : "false");
+            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Reboot Loop Detection disabled to check cyclic reboot scenarios:%s\n", detection_enabled ? "true" : "false");
         }
         /* proceed with reboot */
     }
