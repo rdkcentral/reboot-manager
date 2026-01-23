@@ -9,6 +9,7 @@
 #include "rdk_debug.h"
 #include "rebootNow.h"
 #include "secure_wrapper.h"
+#include "rbus_interface.h"
 
 static int file_exists(const char *path)
 {
