@@ -64,4 +64,20 @@ bool rbus_get_bool_param(const char* param_name, bool* value);
  */
 bool rbus_get_int_param(const char* param_name, int* value);
 
+/**
+ * @brief Set TR-181 boolean parameter via RBUS
+ * @param param_name TR-181 parameter name
+ * @param value Boolean value to set
+ * @return true on success, false on failure
+ */
+bool rbus_set_bool_param(const char* param_name, bool value);
+
+/**
+ * @brief Set TR-181 integer parameter via RBUS
+ * @param param_name TR-181 parameter name
+ * @param value Integer value to set
+ * @return true on success, false on failure
+ */
+bool rbus_set_int_param(const char* param_name, int value);
+
 #endif /* RBUS_INTERFACE_H */
