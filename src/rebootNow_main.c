@@ -15,6 +15,7 @@
 #include <dirent.h>
 #include "rebootNow.h"
 #include "secure_wrapper.h"
+#include "rbus_interface.h"
 
 #define PROGRAM_NAME "rebootnow"
 
