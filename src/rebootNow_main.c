@@ -108,6 +108,9 @@ int main(int argc, char **argv)
 #ifdef T2_EVENT_ENABLED
     t2_init("reboot-manager");
 #endif
+
+/* Initialize RBUS before any get/set */
+    (void)rbus_init();
 	
     if (pidfile_write_and_guard() != 0) {
         return 1;
@@ -228,7 +231,7 @@ int main(int argc, char **argv)
        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Saving reboot info in %s file\n", REBOOT_INFO_FILE);
         // Parodus info line
         char par_line[1024];
-        snprintf(par_line, sizeof(par_line), "PreviousRebootInfo:%s,%s,%s,%s\n", ts, customReason, source_buf, rebootReason);
+		snprintf(par_line, sizeof(par_line), "PreviousRebootInfo:%s,%s,%s,%s\n", ts, customReason, source ? source : "", rebootReason);
         append_line_to_file(PARODUS_REBOOT_INFO_FILE, par_line);
 	    RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Updated Reboot Reason information in %s and %s\n", REBOOT_INFO_FILE, PARODUS_REBOOT_INFO_FILE);
     } else {
@@ -286,6 +289,7 @@ int main(int argc, char **argv)
     }
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Triggering force Reboot after standard soft reboot failure\n");
 	v_secure_system("reboot -f");
+	rbus_cleanup();
     return 0;
 }
 
