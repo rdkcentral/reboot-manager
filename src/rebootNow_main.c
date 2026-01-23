@@ -236,17 +236,6 @@ int main(int argc, char **argv)
 	    RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Failed to open %s for writing (errno=%d)\n", REBOOT_INFO_FILE, errno);
     }
 
-    // Touch rebootNow flag
-    {
-        FILE *rebootFlag = fopen(REBOOTNOW_FLAG, "a");
-        if (rebootFlag) {
-            fclose(rebootFlag);
-            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Creating %s as the reboot was triggred by RDK software", REBOOTNOW_FLAG);
-        } else {
-            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Failed to create %s (errno=%d)", REBOOTNOW_FLAG, errno);
-        }
-    }
-
     /* Delegate cyclic reboot detection and scheduling to module */
     {
         int proceed = 1;
@@ -265,7 +254,18 @@ int main(int argc, char **argv)
 
     // Housekeeping before reboot
     perform_housekeeping();
-    
+
+	  // Touch rebootNow flag
+    {
+        FILE *rebootFlag = fopen(REBOOTNOW_FLAG, "a");
+        if (rebootFlag) {
+            fclose(rebootFlag);
+            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Creating %s as the reboot was triggred by RDK software", REBOOTNOW_FLAG);
+        } else {
+            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Failed to create %s (errno=%d)", REBOOTNOW_FLAG, errno);
+        }
+    }
+	
     // Execute reboot sequence: reboot &, wait, fallback to systemctl reboot, then reboot -f
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Rebooting the Device Now\n");
     pid_t pid = fork();
