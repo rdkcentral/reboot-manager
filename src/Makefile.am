@@ -5,14 +5,21 @@ bin_PROGRAMS = rebootnow
 
 AM_CPPFLAGS = -I$(top_srcdir)/include
 AM_CFLAGS = -std=c99 -Wall -Wextra -Werror -O2 -I./include -DRDK_LOGGER_ENABLED
-AM_LDFLAGS = -lfwutils -lrdkloggers -lrbus -lsecure_wrapper
 
-rebootnow_SOURCES = rebootNow_main.c \
+# Library target
+lib_LTLIBRARIES = librebootnow.la
+librebootnow_la_SOURCES = \
       system_cleanup.c \
       cyclic_reboot.c \
       utils.c \
       rbus_interface.c
-      $(NULL)
+
+librebootnow_la_LIBADD = -lfwutils -lrdkloggers -lrbus -lsecure_wrapper
+
+# CLI wrapper binary
+bin_PROGRAMS = rebootnow
+rebootnow_SOURCES = rebootNow_main.c
+rebootnow_LDADD = librebootnow.la
 
 if IS_TELEMETRY2_ENABLED
    AM_CFLAGS +=  $(T2_EVENT_FLAG)
