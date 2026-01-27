@@ -57,9 +57,17 @@ static const char *MAINTENANCE_TRIGGERED_REASONS[] = {
 
 static void usage(FILE *out)
 {
-    fprintf(out,
-            "Usage: %s -s <source> | -c <crash> [-r <custom>] [-o <other>]\n",
-            PROGRAM_NAME);
+    fprintf(out, "Usage: %s [options]\n", PROGRAM_NAME);
+    fprintf(out, "\n");
+    fprintf(out, "Script-equivalent arguments for rebootNow.sh:\n");
+    fprintf(out, "  -s <source>        Source process triggering reboot (normal)\n");
+    fprintf(out, "  -c <source>        Source process triggering reboot (crash)\n");
+    fprintf(out, "  -r <custom>        Custom reason (e.g., MAINTENANCE_REBOOT)\n");
+    fprintf(out, "  -o <other>         Other descriptive reason text\n");
+    fprintf(out, "  -h                 Show this help and exit\n");
+    fprintf(out, "\nExamples:\n");
+    fprintf(out, "  %s -s HtmlDiagnostics -o \"User requested reboot\"\n", PROGRAM_NAME);
+    fprintf(out, "  %s -c dsMgrMain -r MAINTENANCE_REBOOT -o \"Crash detected\"\n", PROGRAM_NAME);
 }
 
 static int checkstringvalue(const char *const *list, size_t n, const char *needle)
