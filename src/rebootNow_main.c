@@ -92,7 +92,7 @@ void t2ValNotify( char *marker, char *val )
 static void adjust_hal_sys_reboot_source(const char **psource, const char **pother)
 {
     const char *source = *psource;
-    const char *other = *pother;
+
     if (!source || strcmp(source, "HAL_SYS_Reboot") != 0) return;
     FILE *f = fopen(REBOOTINFO_LOG, "r");
     if (!f) return;
@@ -226,12 +226,22 @@ int main(int argc, char **argv)
     char ts[64];
     timestamp_update(ts, sizeof(ts));
 
-    char line[1024];
-    if (strcmp(otherReason, "Unknown") == 0) {
-        snprintf(line, sizeof(line), "RebootReason: %s\n", rebootLogReason);
-    } else {
-        snprintf(line, sizeof(line), "RebootReason: %s %s\n", rebootLogReason, otherReason);
+	char line[1024];
+    size_t used = 0;
+    used = snprintf(line, sizeof(line), "RebootReason: ");
+    if (used >= sizeof(line)) {
+        used = sizeof(line) - 1;
     }
+    if (strcmp(otherReason, "Unknown") == 0) {
+        used += snprintf(line + used, sizeof(line) - used, "%s\n", rebootLogReason);
+    } else {
+        used += snprintf(line + used, sizeof(line) - used, "%s ", rebootLogReason);
+        used += snprintf(line + used, sizeof(line) - used, "%s\n", otherReason);
+    }
+    if (used >= sizeof(line)) {
+        line[sizeof(line) - 1] = '\0';
+    }
+    
     append_line_to_file(REBOOTINFO_LOG, line);
 
     snprintf(line, sizeof(line), "RebootInitiatedBy: %s\n", source);
