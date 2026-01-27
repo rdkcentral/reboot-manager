@@ -19,3 +19,5 @@
 
 AUTOMAKE_OPTIONS = foreign
 SUBDIRS = src
+
+include_HEADERS = include/rebootNow.h include/rbus_interface.h
