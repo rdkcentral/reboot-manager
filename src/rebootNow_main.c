@@ -89,6 +89,46 @@ void t2ValNotify( char *marker, char *val )
 #endif
 }
 
+static void adjust_hal_sys_reboot_source(const char **psource, const char **pother)
+{
+    const char *source = *psource;
+    const char *other = *pother;
+    if (!source || strcmp(source, "HAL_SYS_Reboot") != 0) return;
+    FILE *f = fopen(REBOOTINFO_LOG, "r");
+    if (!f) return;
+    char line[1024];
+    char last_line[1024] = {0};
+    while (fgets(line, sizeof(line), f)) {
+        if (strstr(line, "RebootReason:") && !strstr(line, "HAL_SYS_Reboot") && !strstr(line, "PreviousRebootReason")) {
+            strncpy(last_line, line, sizeof(last_line)-1);
+        }
+    }
+    fclose(f);
+    if (last_line[0] == '\0') return;
+    /* Expect format: RebootReason: Triggered from <src> <rest> */
+    char *p = strstr(last_line, "Triggered from ");
+    if (!p) return;
+    p += strlen("Triggered from ");
+    /* Extract source as next token */
+    char *space = strchr(p, ' ');
+    if (!space) return;
+    *space = '\0';
+    static char src_buf[128];
+    strncpy(src_buf, p, sizeof(src_buf)-1);
+    src_buf[sizeof(src_buf)-1] = '\0';
+    *space = ' ';
+    /* The remainder (after source) up to newline is otherReason (trim trailing newline) */
+    char *rest = space + 1;
+    size_t len = strlen(rest);
+    while (len > 0 && (rest[len-1] == '\n' || rest[len-1] == '\r')) { rest[--len] = '\0'; }
+    static char other_buf[512];
+    strncpy(other_buf, rest, sizeof(other_buf)-1);
+    other_buf[sizeof(other_buf)-1] = '\0';
+    /* Update pointers for caller */
+    *psource = src_buf;
+    *pother = other_buf;
+}
+
 int main(int argc, char **argv)
 {
     const char *source = NULL;      // from -s or -c
@@ -180,6 +220,8 @@ int main(int argc, char **argv)
         rebootReason = "FIRMWARE_FAILURE";
     }
 
+	adjust_hal_sys_reboot_source(&source, &otherReason);
+	
     // Log into rebootInfo.log in a similar format
     char ts[64];
     timestamp_update(ts, sizeof(ts));
