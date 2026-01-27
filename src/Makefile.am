@@ -1,7 +1,6 @@
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
 reboot_CFLAGS += -fPIC -pthread
-bin_PROGRAMS = rebootnow
 
 AM_CPPFLAGS = -I$(top_srcdir)/include
 AM_CFLAGS = -std=c99 -Wall -Wextra -Werror -O2 -I./include -DRDK_LOGGER_ENABLED
@@ -23,5 +22,6 @@ rebootnow_LDADD = librebootnow.la
 
 if IS_TELEMETRY2_ENABLED
    AM_CFLAGS +=  $(T2_EVENT_FLAG)
-   AM_LDFLAGS += -ltelemetry_msgsender -lt2utils
+   AM_LDFLAGS = -ltelemetry_msgsender 
+   AM_LDFLAGS += -lt2utils
 endif
