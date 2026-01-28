@@ -71,6 +71,18 @@ AC_SUBST([reboot_CFLAGS])
 AC_CONFIG_FILES([Makefile src/Makefile])
 AC_OUTPUT
 
+AC_ARG_ENABLE([cpc],
+    [AS_HELP_STRING([--enable-cpc], [Enable CPC support])],
+    [USE_CPC="$enableval"],
+    [USE_CPC=no])
+
+AM_CONDITIONAL([USE_CPC], [test "$USE_CPC" = "yes"])
+AC_SUBST(USE_CPC)
+
+if test "$USE_CPC" = "yes"; then
+    AC_DEFINE([USE_CPC], [1], [Define to enable CPC support])
+fi
+
 # Check for breakpad
 BREAKPAD_CFLAGS=" "
 BREAKPAD_LFLAGS=" "
