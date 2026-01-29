@@ -3,7 +3,7 @@ AUTOMAKE_OPTIONS = foreign subdir-objects
 reboot_CFLAGS += -fPIC -pthread
 
 AM_CPPFLAGS = -I$(top_srcdir)/include
-AM_CFLAGS = -std=c99 -Wall -Wextra -Werror -O2 -I./include $(srcdir)/src/rebootmanager-cpc/src/include -DRDK_LOGGER_ENABLED
+AM_CFLAGS = -std=c99 -Wall -Wextra -Werror -O2 -I./include $(srcdir)/src/rebootmanager-cpc/include -DRDK_LOGGER_ENABLED
 AM_LDFLAGS = -lfwutils -lrdkloggers
 
 # Library target
