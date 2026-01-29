@@ -22,12 +22,12 @@ rebootnow_SOURCES = rebootNow_main.c
 rebootnow_LDADD = librebootnow.la
 
 bin_PROGRAMS = update-prev-reboot-info
-update_prev_reboot_info_SOURCES = src/rebootmanager-cpc/main.c \
-      src/rebootmanager-cpc/platform_hal.c \
-      src/rebootmanager-cpc/reboot_reason_classify.c \
-      src/rebootmanager-cpc/log_parser.c \
-      src/rebootmanager-cpc/json.c \
-      src/rebootmanager-cpc/parodus_log_update.c \
+update_prev_reboot_info_SOURCES = src/rebootmanager-cpc/src/main.c \
+      src/rebootmanager-cpc/src/platform_hal.c \
+      src/rebootmanager-cpc/src/reboot_reason_classify.c \
+      src/rebootmanager-cpc/src/log_parser.c \
+      src/rebootmanager-cpc/src/json.c \
+      src/rebootmanager-cpc/src/parodus_log_update.c \
       $(NULL)
 
 if IS_TELEMETRY2_ENABLED
