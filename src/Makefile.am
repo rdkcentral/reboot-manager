@@ -3,7 +3,7 @@ AUTOMAKE_OPTIONS = foreign subdir-objects
 reboot_CFLAGS += -fPIC -pthread
 
 AM_CPPFLAGS = -I$(top_srcdir)/include
-AM_CFLAGS = -std=c99 -Wall -Wextra -Werror -O2 -I./include -DRDK_LOGGER_ENABLED
+AM_CFLAGS = -std=c99 -Wall -Wextra -Werror -O2 -I./include $(srcdir)/src/rebootmanager-cpc/src/include -DRDK_LOGGER_ENABLED
 AM_LDFLAGS = -lfwutils -lrdkloggers
 
 # Library target
@@ -21,14 +21,14 @@ bin_PROGRAMS = rebootnow
 rebootnow_SOURCES = rebootNow_main.c
 rebootnow_LDADD = librebootnow.la
 
-bin_PROGRAMS = update-prev-reboot-info
-update_prev_reboot_info_SOURCES = src/rebootmanager-cpc/src/main.c \
-      src/rebootmanager-cpc/src/platform_hal.c \
-      src/rebootmanager-cpc/src/reboot_reason_classify.c \
-      src/rebootmanager-cpc/src/log_parser.c \
-      src/rebootmanager-cpc/src/json.c \
-      src/rebootmanager-cpc/src/parodus_log_update.c \
-      $(NULL)
+bin_PROGRAMS += update-prev-reboot-info
+update_prev_reboot_info_SOURCES = \
+    $(srcdir)/rebootmanager-cpc/src/main.c \
+    $(srcdir)/rebootmanager-cpc/src/platform_hal.c \
+    $(srcdir)/rebootmanager-cpc/src/reboot_reason_classify.c \
+    $(srcdir)/rebootmanager-cpc/src/log_parser.c \
+    $(srcdir)/rebootmanager-cpc/src/json.c \
+    $(srcdir)/rebootmanager-cpc/src/parodus_log_update.c
 
 if IS_TELEMETRY2_ENABLED
    AM_CFLAGS +=  $(T2_EVENT_FLAG)
