@@ -43,7 +43,7 @@ bool rbus_init(void)
         return true;
     }
 
-    rbusError_t rc = rbus_open(&g_rbusHandle, "UploadSTBLogs");
+    rbusError_t rc = rbus_open(&g_rbusHandle, "RebootInfoLogs");
     if (rc != RBUS_ERROR_SUCCESS) {
         RDK_LOG(RDK_LOG_ERROR, "LOG.RDK.REBOOTINFO", "[%s:%d] Failed to open RBUS connection: %d\n", 
                 __FUNCTION__, __LINE__, rc);
