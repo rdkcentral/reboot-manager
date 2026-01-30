@@ -10,6 +10,7 @@
 #include "rebootNow.h"
 #include "secure_wrapper.h"
 #include "rbus_interface.h"
+#include "rdk_logger.h"
 
 static int file_exists(const char *path)
 {
