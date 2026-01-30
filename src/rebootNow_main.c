@@ -16,6 +16,7 @@
 #include "rebootNow.h"
 #include "secure_wrapper.h"
 #include "rbus_interface.h"
+#include "rdk_logger.h"
 
 #define PROGRAM_NAME "rebootnow"
 
@@ -145,11 +146,22 @@ int main(int argc, char **argv)
     const char *otherReason = "Unknown";
     bool Mng_Notify_Enable = false;
 
-#ifdef RDK_LOGGER_ENABLED
+	rdk_logger_ext_config_t config = {
+        .pModuleName = "LOG.RDK.REBOOTINFO",     /* Module name */
+        .loglevel = RDK_LOG_INFO,                 /* Default log level */
+        .output = RDKLOG_OUTPUT_CONSOLE,          /* Output to console (stdout/stderr) */
+        .format = RDKLOG_FORMAT_WITH_TS,          /* Timestamped format */
+        .pFilePolicy = NULL                       /* Not using file output, so NULL */
+    };
+    
+    if (rdk_logger_ext_init(&config) != RDK_SUCCESS) {
+        printf("REBOOTINFO : ERROR - Extended logger init failed\n");
+    }
+
     if (0 == rdk_logger_init("/etc/debug.ini")) {
         g_rdk_logger_enabled = 1;
+	    RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "[%s:%d] RDK Logger initialized\n", __FUNCTION__, __LINE__);
     }
-#endif
 
 #ifdef T2_EVENT_ENABLED
     t2_init("reboot-manager");
