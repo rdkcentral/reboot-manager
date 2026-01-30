@@ -11,6 +11,7 @@
 #include "secure_wrapper.h"
 #include "rbus_interface.h"
 #include "rdk_debug.h"
+#include "rdk_logger.h"
 
 static const char *PREVIOUS_REBOOT_INFO_FILE = "/opt/secure/reboot/previousreboot.info";
 static const char *REBOOTNOW_FLAG = "/opt/secure/reboot/rebootNow";
