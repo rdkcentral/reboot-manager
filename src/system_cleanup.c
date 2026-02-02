@@ -41,6 +41,90 @@ static int read_file_to_buf(const char *path, char *buf, size_t sz)
     return 0;
 }
 
+/* Send a signal to all processes whose /proc/<pid>/comm matches name */
+static int send_signalCleanup(const char *name, int sig)
+{
+    if (!name || !*name) return 0;
+    DIR *proc = opendir("/proc");
+    if (!proc) return 0;
+    int count = 0;
+    struct dirent *de;
+    while ((de = readdir(proc)) != NULL) {
+        if (de->d_type != DT_DIR) continue;
+        const char *dname = de->d_name;
+        if (dname[0] < '0' || dname[0] > '9') continue; /* pid dirs start with digit */
+        char commpath[64];
+        snprintf(commpath, sizeof(commpath), "/proc/%s/comm", dname);
+        FILE *cf = fopen(commpath, "r");
+        if (!cf) continue;
+        char comm[256] = {0};
+        if (fgets(comm, sizeof(comm), cf)) {
+            size_t len = strlen(comm);
+            if (len > 0 && (comm[len-1] == '\n' || comm[len-1] == '\r')) comm[--len] = '\0';
+            if (strcmp(comm, name) == 0) {
+                pid_t pid = (pid_t)atoi(dname);
+                if (pid > 1) {
+                    if (kill(pid, sig) == 0) count++;
+                }
+            }
+        }
+        fclose(cf);
+    }
+    closedir(proc);
+    return count;
+}
+
+/* Recursively remove a directory tree */
+static int remove_dir(const char *path)
+{
+    if (!path) return -1;
+    struct stat st;
+    if (lstat(path, &st) != 0) return -1;
+    if (S_ISDIR(st.st_mode)) {
+        DIR *d = opendir(path);
+        if (!d) return -1;
+        struct dirent *de;
+        while ((de = readdir(d)) != NULL) {
+            if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0) continue;
+            char child[1024];
+            snprintf(child, sizeof(child), "%s/%s", path, de->d_name);
+            struct stat cst;
+            if (lstat(child, &cst) != 0) continue;
+            if (S_ISDIR(cst.st_mode)) {
+                (void)remove_dir(child);
+            } else {
+                (void)unlink(child);
+            }
+        }
+        closedir(d);
+        return rmdir(path);
+    } else {
+        return unlink(path);
+    }
+}
+
+/* Remove only immediate subdirectories of root (mimics: for d in */; rm -rf "$d") */
+static int clear_Subdirectory(const char *root)
+{
+    if (!root) return -1;
+    DIR *d = opendir(root);
+    if (!d) return -1;
+    int rc = 0;
+    struct dirent *de;
+    while ((de = readdir(d)) != NULL) {
+        if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0) continue;
+        char child[1024];
+        snprintf(child, sizeof(child), "%s/%s", root, de->d_name);
+        struct stat st;
+        if (lstat(child, &st) != 0) continue;
+        if (S_ISDIR(st.st_mode)) {
+            if (remove_dir(child) != 0) rc = -1;
+        }
+    }
+    closedir(d);
+    return rc;
+}
+
 static void sync_logs_from_temp(const char *temp_path, const char *log_path)
 {
     if (!dir_exists(temp_path)) {
@@ -95,9 +179,9 @@ void perform_housekeeping(void)
 {
     /* Signal telemetry2_0 and parodus */
     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Signal telemetry2_0 to send out any pending messages before reboot\n");
-    v_secure_system("killall -s SIGUSR1 telemetry2_0");
+    send_signalCleanup("telemetry2_0", SIGUSR1);
     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Properly shutdown parodus by sending SIGUSR1 kill signal\n");
-    v_secure_system("killall -s SIGUSR1 parodus");
+    send_signalCleanup("parodus", SIGUSR1);
 
     /* Conditional RDM cleanup after image upgrade */
     if (file_exists("/etc/rdm/rdm-manifest.xml")) {
@@ -107,7 +191,9 @@ void perform_housekeeping(void)
             if (strstr(cdl, prev) == NULL) {
                 if (dir_exists("/media/apps")) {
                     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Removing the RDM Apps content from Secondary Storage before Reboot (After Image Upgrade)\n");
-                    v_secure_system("sh -c 'cd /media/apps && for d in */; do rm -rf \"$d\"; done'");
+		    if (clear_Subdirectory("/media/apps") != 0) {
+                        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Failed to remove some entries under /media/apps\n");
+                    }
                 }
             }
         }
