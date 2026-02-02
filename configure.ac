@@ -68,28 +68,13 @@ AC_SUBST([reboot_CFLAGS])
 
 # Checks for typedefs, structures, and compiler characteristics.
 
-AC_CONFIG_FILES([Makefile src/Makefile])
-AC_OUTPUT
-
-AC_ARG_ENABLE([cpc],
-    [AS_HELP_STRING([--enable-cpc], [Enable CPC support])],
-    [USE_CPC="$enableval"],
-    [USE_CPC=no])
-
-AM_CONDITIONAL([USE_CPC], [test "$USE_CPC" = "yes"])
-AC_SUBST(USE_CPC)
-
-if test "$USE_CPC" = "yes"; then
-    AC_DEFINE([USE_CPC], [1], [Define to enable CPC support])
-fi
-
-# Check for breakpad
+# Check for breakpad (must be before AC_OUTPUT)
 BREAKPAD_CFLAGS=" "
 BREAKPAD_LFLAGS=" "
 AC_ARG_ENABLE([breakpad],
-		AS_HELP_STRING([--enable-breakpad],[enable breakpad support (default is no)]),
-		[
-			case "${enableval}" in
+                AS_HELP_STRING([--enable-breakpad],[enable breakpad support (default is no)]),
+                [
+                        case "${enableval}" in
         	 yes) BREAKPAD_CFLAGS="-DINCLUDE_BREAKPAD"
                     BREAKPAD_LFLAGS="-lbreakpadwrapper";;
         	 no) AC_MSG_ERROR([breakpad is disabled]) ;;
@@ -97,3 +82,19 @@ AC_ARG_ENABLE([breakpad],
         	 esac
         	 ],
     	    [echo "breakpad is disabled"])
+
+AC_ARG_ENABLE([cpc],
+        [AS_HELP_STRING([--enable-cpc], [Enable CPC support])],
+        [USE_CPC="$enableval"],
+        [USE_CPC=no])
+
+AM_CONDITIONAL([USE_CPC], [test "$USE_CPC" = "yes"])
+AC_SUBST(USE_CPC)
+
+if test "$USE_CPC" = "yes"; then
+        AC_DEFINE([USE_CPC], [1], [Define to enable CPC support])
+fi
+
+AC_CONFIG_FILES([Makefile src/Makefile])
+
+AC_OUTPUT

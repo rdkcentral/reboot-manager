@@ -106,26 +106,28 @@ static void emit_t2_for_source(const char *source, int is_crash)
     if (!is_crash) {
         if (strstr(source, "runPodRecovery")) {
             marker = "SYST_ERR_RunPod_reboot";
-	} else if (strstr(source, "CardNotResponding")) {
-            marker = "SYST_ERR_CCNotRepsonding_reboot";
+        } else if (strstr(source, "CardNotResponding")) {
+            marker = "SYST_ERR_CCNotResponding_reboot";
 	} else {
-            static char buf[256];
+            char buf[256];
             snprintf(buf, sizeof(buf), "SYST_ERR_%s", source);
-            marker = buf;
+	    t2CountNotify(buf, 1);
+            return;
         }
     } else {
         if (strstr(source, "dsMgrMain")) {
             marker = "SYST_ERR_DSMGR_reboot";
-	} else if (strstr(source, "IARMDaemonMain")) {
+        } else if (strstr(source, "IARMDaemonMain")) {
             marker = "SYST_ERR_IARMDEMON_reboot";
-	} else if (strstr(source, "rmfStreamer")) {
+        } else if (strstr(source, "rmfStreamer")) {
             marker = "SYST_ERR_Rmfstreamer_reboot";
-	} else if (strstr(source, "runPod")) {
+        } else if (strstr(source, "runPod")) {
             marker = "SYST_ERR_RunPod_reboot";
 	} else {
-            static char buf[256];
+            char buf[256];
             snprintf(buf, sizeof(buf), "SYST_ERR_%s_reboot", source);
-            marker = buf;
+            t2CountNotify(buf, 1);
+            return;
         }
     }
     if (marker) {
@@ -133,44 +135,69 @@ static void emit_t2_for_source(const char *source, int is_crash)
     }
 }
 
-static void adjust_hal_sys_reboot_source(const char **psource, const char **pother)
+static int adjust_hal_sys_reboot_source(const char *cur_source, char **out_source, char **out_other)
 {
-    const char *source = *psource;
-
-    if (!source || strcmp(source, "HAL_SYS_Reboot") != 0) return;
-    FILE *f = fopen(REBOOTINFO_LOG, "r");
-    if (!f) return;
     char line[1024];
     char last_line[1024] = {0};
+    char *p = NULL;
+    char *space = NULL;
+    char src_tmp[128];
+    char *rest = NULL;
+    size_t len;
+    char other_tmp[512];
+
+    if (!cur_source || strcmp(cur_source, "HAL_SYS_Reboot") != 0) {
+        return 0;
+    }
+
+    FILE *f = fopen(REBOOTINFO_LOG, "r");
+    if (!f) {
+        return 0;
+    }
+
     while (fgets(line, sizeof(line), f)) {
         if (strstr(line, "RebootReason:") && !strstr(line, "HAL_SYS_Reboot") && !strstr(line, "PreviousRebootReason")) {
             strncpy(last_line, line, sizeof(last_line)-1);
         }
     }
     fclose(f);
-    if (last_line[0] == '\0') return;
-    /* Expect format: RebootReason: Triggered from <src> <rest> */
-    char *p = strstr(last_line, "Triggered from ");
-    if (!p) return;
+
+    if (last_line[0] == '\0') {
+        return 0;
+    }
+
+    p = strstr(last_line, "Triggered from ");
+    if (!p) {
+        return 0;
+    }
+
     p += strlen("Triggered from ");
-    /* Extract source as next token */
-    char *space = strchr(p, ' ');
-    if (!space) return;
+    space = strchr(p, ' ');
+    if (!space) {
+        return 0;
+    }
     *space = '\0';
-    static char src_buf[128];
-    strncpy(src_buf, p, sizeof(src_buf)-1);
-    src_buf[sizeof(src_buf)-1] = '\0';
+
+    strncpy(src_tmp, p, sizeof(src_tmp)-1);
+    src_tmp[sizeof(src_tmp)-1] = '\0';
     *space = ' ';
-    /* The remainder (after source) up to newline is otherReason (trim trailing newline) */
-    char *rest = space + 1;
-    size_t len = strlen(rest);
-    while (len > 0 && (rest[len-1] == '\n' || rest[len-1] == '\r')) { rest[--len] = '\0'; }
-    static char other_buf[512];
-    strncpy(other_buf, rest, sizeof(other_buf)-1);
-    other_buf[sizeof(other_buf)-1] = '\0';
-    /* Update pointers for caller */
-    *psource = src_buf;
-    *pother = other_buf;
+    rest = space + 1;
+    len = strlen(rest);
+    while (len > 0 && (rest[len-1] == '\n' || rest[len-1] == '\r')) { 
+        rest[--len] = '\0'; 
+    }
+    strncpy(other_tmp, rest, sizeof(other_tmp)-1);
+    other_tmp[sizeof(other_tmp)-1] = '\0';
+    /* Allocate copies for the caller; caller must free */
+    *out_source = strdup(src_tmp);
+    *out_other = strdup(other_tmp);
+    return (*out_source && *out_other) ? 1 : 0;
+}
+
+static void signal_cleanup_handler(int signum)
+{
+    (void)signum;
+    cleanup_pidfile();
 }
 
 int main(int argc, char **argv)
@@ -180,8 +207,10 @@ int main(int argc, char **argv)
     const char *customReason = "Unknown";
     const char *otherReason = "Unknown";
     bool Mng_Notify_Enable = false;
+    char *adj_source = NULL;
+    char *adj_other = NULL;
 
-	rdk_logger_ext_config_t config = {
+    rdk_logger_ext_config_t config = {
         .pModuleName = "LOG.RDK.REBOOTINFO",     /* Module name */
         .loglevel = RDK_LOG_INFO,                 /* Default log level */
         .output = RDKLOG_OUTPUT_FILE,             /* Output to file */
@@ -210,8 +239,8 @@ int main(int argc, char **argv)
     }
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Start of rebootNow Binary\n");
     atexit(cleanup_pidfile);
-    signal(SIGINT, (void (*)(int))cleanup_pidfile);
-    signal(SIGTERM, (void (*)(int))cleanup_pidfile);
+    signal(SIGINT, signal_cleanup_handler);
+    signal(SIGTERM, signal_cleanup_handler);
     
     int opt;
     while ((opt = getopt(argc, argv, "s:c:r:o:h")) != -1) {
@@ -276,28 +305,54 @@ int main(int argc, char **argv)
         rebootReason = "FIRMWARE_FAILURE";
     }
 
-	adjust_hal_sys_reboot_source(&source, &otherReason);
+    if (adjust_hal_sys_reboot_source(source, &adj_source, &adj_other)) {
+        if (adj_source) source = adj_source;
+        if (adj_other) otherReason = adj_other;
+    }
 	
     // Log into rebootInfo.log in a similar format
     char ts[64];
     timestamp_update(ts, sizeof(ts));
-
-	char line[1024];
+    
+    char line[1024];
     size_t used = 0;
-    used = snprintf(line, sizeof(line), "RebootReason: ");
-    if (used >= sizeof(line)) {
+
+    int n = snprintf(line, sizeof(line), "RebootReason: ");
+    if (n < 0) n = 0;
+    if ((size_t)n >= sizeof(line)) {
         used = sizeof(line) - 1;
+    } else {
+        used = (size_t)n;
     }
     if (strcmp(otherReason, "Unknown") == 0) {
-        used += snprintf(line + used, sizeof(line) - used, "%s\n", rebootLogReason);
+        size_t rem = (used < sizeof(line)) ? (sizeof(line) - used) : 0;
+        if (rem > 0) {
+            n = snprintf(line + used, rem, "%s\n", rebootLogReason);
+            if (n < 0) n = 0;
+            if ((size_t)n >= rem) used = sizeof(line) - 1; else used += (size_t)n;
+        } else {
+            used = sizeof(line) - 1;
+        }
     } else {
-        used += snprintf(line + used, sizeof(line) - used, "%s ", rebootLogReason);
-        used += snprintf(line + used, sizeof(line) - used, "%s\n", otherReason);
+        size_t rem = (used < sizeof(line)) ? (sizeof(line) - used) : 0;
+        if (rem > 0) {
+            n = snprintf(line + used, rem, "%s ", rebootLogReason);
+            if (n < 0) n = 0;
+            if ((size_t)n >= rem) used = sizeof(line) - 1; else used += (size_t)n;
+        } else {
+            used = sizeof(line) - 1;
+        }
+        rem = (used < sizeof(line)) ? (sizeof(line) - used) : 0;
+        if (rem > 0) {
+            n = snprintf(line + used, rem, "%s\n", otherReason);
+            if (n < 0) n = 0;
+            if ((size_t)n >= rem) used = sizeof(line) - 1; else used += (size_t)n;
+        } else {
+            used = sizeof(line) - 1;
+        }
     }
-    if (used >= sizeof(line)) {
-        line[sizeof(line) - 1] = '\0';
-    }
-    
+    line[sizeof(line) - 1] = '\0';
+
     append_line_to_file(REBOOTINFO_LOG, line);
 
     snprintf(line, sizeof(line), "RebootInitiatedBy: %s\n", source);
@@ -346,36 +401,31 @@ int main(int argc, char **argv)
     }
 
     /* Delegate cyclic reboot detection and scheduling to module */
+    int proceed = 1;
+    /* Module returns 0 to defer reboot, 1 to proceed */
+    proceed = handle_cyclic_reboot(source, rebootReason, customReason, otherReason);
+    if (proceed == 0) {
+        return 0; /* exit without performing immediate reboot */
+    }
+
+    if (rbus_get_bool_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ManageableNotification.Enable", &Mng_Notify_Enable))
     {
-        int proceed = 1;
-        /* Module returns 0 to defer reboot, 1 to proceed */
-        proceed = handle_cyclic_reboot(source, rebootReason, customReason, otherReason);
-        if (proceed == 0) {
-            return 0; /* exit without performing immediate reboot */
+        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Value of Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ManageableNotification.Enable: %s\n", 
+			                             Mng_Notify_Enable ? "true" : "false");
+        if (Mng_Notify_Enable) {
+            rbus_set_int_param("Device.DeviceInfo.X_RDKCENTRAL-COM_xOpsDeviceMgmt.RPC.RebootPendingNotification", 10);
         }
     }
 
-	if (rbus_get_bool_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ManageableNotification.Enable", &Mng_Notify_Enable))
-	{
-            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Value of Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ManageableNotification.Enable: %s", 
-			                             Mng_Notify_Enable ? "true" : "false");
-            if (Mng_Notify_Enable) {
-                rbus_set_int_param("Device.DeviceInfo.X_RDKCENTRAL-COM_xOpsDeviceMgmt.RPC.RebootPendingNotification", 10);
-            }
-	}
-
     // Housekeeping before reboot
     perform_housekeeping();
-
-	  // Touch rebootNow flag
-    {
-        FILE *rebootFlag = fopen(REBOOTNOW_FLAG, "a");
-        if (rebootFlag) {
-            fclose(rebootFlag);
-            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Creating %s as the reboot was triggred by RDK software", REBOOTNOW_FLAG);
-        } else {
-            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Failed to create %s (errno=%d)", REBOOTNOW_FLAG, errno);
-        }
+    
+    FILE *rebootFlag = fopen(REBOOTNOW_FLAG, "a");
+    if (rebootFlag) {
+        fclose(rebootFlag);
+        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Creating %s as the reboot was triggered by RDK software\n", REBOOTNOW_FLAG);
+    } else {
+        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Failed to create %s (errno=%d)\n", REBOOTNOW_FLAG, errno);
     }
 	
     // Execute reboot sequence: reboot &, wait, fallback to systemctl reboot, then reboot -f
@@ -398,8 +448,10 @@ int main(int argc, char **argv)
         kill(pid, SIGTERM);
     }
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Triggering force Reboot after standard soft reboot failure\n");
-	v_secure_system("reboot -f");
-	rbus_cleanup();
+    v_secure_system("reboot -f");
+    rbus_cleanup();
+    if (adj_source) free(adj_source);
+    if (adj_other) free(adj_other);
     return 0;
 }
 

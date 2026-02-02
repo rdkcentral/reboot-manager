@@ -105,12 +105,15 @@ static void compute_cron_time(int add_minutes, char *out, size_t outsz)
     int mn = tm_local.tm_min;
     mn += 1; /* alignment fudge */
     mn += add_minutes;
-    while (mn > 60) {
+    while (mn >= 60) {
         mn -= 60;
         hr += 1;
         if (hr > 23) hr = 0;
     }
-    snprintf(out, outsz, "*/%d %d * * *", (mn <= 0 ? 1 : mn), hr);
+    if (mn < 0) {
+         mn = 0;
+    }
+    snprintf(out, outsz, "%d %d * * *", mn, hr);
 }
 
 int handle_cyclic_reboot(const char *source,
@@ -160,7 +163,7 @@ int handle_cyclic_reboot(const char *source,
                 if (same) {
                     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Reboot Reason for current and previous reboot is same\n");
                     if (file_exists(REBOOTSTOP_FLAG)) {
-                        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Reboot Operation Halted in the device to avoid continous reboots with same reason!!!\n");
+                        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Reboot Operation Halted in the device to avoid continuous reboots with same reason!!!\n");
                         touch_file(REBOOTNOW_FLAG);
                         RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Exiting without rebooting the device\n");
                         return 0; /* defer reboot */

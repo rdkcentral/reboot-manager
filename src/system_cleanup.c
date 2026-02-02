@@ -127,6 +127,12 @@ static int clear_Subdirectory(const char *root)
 
 static void sync_logs_from_temp(const char *temp_path, const char *log_path)
 {
+    int copy_ok = 1;
+    char src[512], dst[512];
+    char buf[4096];
+    size_t n;
+    struct dirent *de;
+
     if (!dir_exists(temp_path)) {
         RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","sync_logs: %s not found!!!\n", temp_path ? temp_path : "<null>");
         return;
@@ -142,12 +148,10 @@ static void sync_logs_from_temp(const char *temp_path, const char *log_path)
         return;
     }
     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Find and move the logs from %s to %s\n", temp_path, log_path ? log_path : "<null>");
-    struct dirent *de;
     while ((de = readdir(d)) != NULL) {
         if (de->d_type == DT_REG) {
             const char *name = de->d_name;
             if (!(ends_with(name, ".txt") || ends_with(name, ".log"))) continue;
-            char src[512], dst[512];
             snprintf(src, sizeof(src), "%s/%s", temp_path, name);
             snprintf(dst, sizeof(dst), "%s/%s", log_path, name);
 
@@ -159,14 +163,19 @@ static void sync_logs_from_temp(const char *temp_path, const char *log_path)
                 RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","sync_logs: failed to open src/dst for %s\n", name);
                 continue;
             }
-            char buf[4096];
-            size_t n;
             while ((n = fread(buf, 1, sizeof(buf), fs)) > 0) {
-                if (fwrite(buf, 1, n, fd) != n) break;
+                if (fwrite(buf, 1, n, fd) != n) {
+                    copy_ok = 0;
+                    break;
+                }
             }
             fclose(fs);
             fclose(fd);
 
+	    if (!copy_ok) {
+                RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","sync_logs: write failed for %s, skipping truncate\n", name);
+                continue;
+            }
             /* truncate src */
             FILE *ft = fopen(src, "w");
             if (ft) fclose(ft);
@@ -227,21 +236,31 @@ void perform_housekeeping(void)
         if (temp_log_path && log_path) {
             sync_logs_from_temp(temp_log_path, log_path);
         }
-        char systime_src[512];
-        snprintf(systime_src, sizeof(systime_src), "%s/.systime", temp_log_path ? temp_log_path : "");
-        if (file_exists(systime_src)) {
-            char systime_dst[512];
-            snprintf(systime_dst, sizeof(systime_dst), "%s/.systime", persistent_path);
-            FILE *fs = fopen(systime_src, "rb");
-            FILE *fd = fopen(systime_dst, "wb");
-            if (fs && fd) {
-                char buf[4096]; size_t n;
-                while ((n = fread(buf, 1, sizeof(buf), fs)) > 0) {
-                    if (fwrite(buf, 1, n, fd) != n) break;
+
+	if (temp_log_path) {
+            char systime_src[512];
+            snprintf(systime_src, sizeof(systime_src), "%s/.systime", temp_log_path);
+            if (file_exists(systime_src)) {
+                char systime_dst[512];
+                snprintf(systime_dst, sizeof(systime_dst), "%s/.systime", persistent_path);
+                FILE *fs = fopen(systime_src, "rb");
+                FILE *fd = fopen(systime_dst, "wb");
+                if (!fs || !fd) {
+                    if (fs) fclose(fs);
+                    if (fd) fclose(fd);
+                    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","systime copy: failed to open src/dst (%s -> %s)\n", systime_src, systime_dst);
+                } else {
+                    char buf[4096]; size_t n; int copy_ok = 1;
+                    while ((n = fread(buf, 1, sizeof(buf), fs)) > 0) {
+                        if (fwrite(buf, 1, n, fd) != n) { copy_ok = 0; break; }
+                    }
+                    fclose(fs);
+                    fclose(fd);
+                    if (!copy_ok) {
+                        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","systime copy: write failed (%s -> %s)\n", systime_src, systime_dst);
+                    }
                 }
             }
-            if (fs) fclose(fs);
-            if (fd) fclose(fd);
         }
     }
 
@@ -267,45 +286,73 @@ void perform_housekeeping(void)
     }
     RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Start the sync");
     (void)sync();
+    usleep(200000);
     RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","End of the sync");
 }
 
 int pidfile_write_and_guard(void)
 {
-    /* If pid file exists, check running instance */
-    if (file_exists(PID_FILE)) {
-        FILE *f = fopen(PID_FILE, "r");
-        if (f) {
-            char buf[32] = {0};
-            if (fgets(buf, sizeof(buf), f)) {
-                pid_t pid = (pid_t)atoi(buf);
-                char procpath[64];
-                snprintf(procpath, sizeof(procpath), "/proc/%d/cmdline", (int)pid);
-                if (file_exists(procpath)) {
-                    FILE *pc = fopen(procpath, "r");
-                    if (pc) {
-                        char cmd[256] = {0};
-                        fread(cmd, 1, sizeof(cmd)-1, pc);
-                        fclose(pc);
-                        if (strstr(cmd, "rebootnow")) {
-                            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","An instance of %s with pid %d is already running..\n", "rebootnow", (int)pid);
-                            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Exiting Binary\n");
-                            fclose(f);
-                            return -1;
-                        }
-                    }
+    /* Create PID file atomically to avoid races */
+    int fd = open(PID_FILE, O_WRONLY | O_CREAT | O_EXCL, 0644);
+    if (fd >= 0) {
+        char out[32];
+        int len = snprintf(out, sizeof(out), "%d", (int)getpid());
+        if (len > 0) {
+            (void)write(fd, out, (size_t)len);
+        }
+        close(fd);
+        return 0;
+    }
+    if (errno == EEXIST) {
+        /* PID file exists: acquire exclusive advisory lock, re-check, then overwrite safely */
+        int lfd = open(PID_FILE, O_RDWR);
+        if (lfd < 0) {
+            return -1;
+        }
+        struct flock lock;
+        memset(&lock, 0, sizeof(lock));
+        lock.l_type = F_WRLCK;
+        lock.l_whence = SEEK_SET;
+        lock.l_start = 0;
+        lock.l_len = 0; /* whole file */
+        if (fcntl(lfd, F_SETLK, &lock) == -1) {
+            close(lfd);
+            return -1; /* another instance holds the lock */
+        }
+        FILE *f = fdopen(lfd, "r+");
+        if (!f) {
+            close(lfd);
+            return -1;
+        }
+        char buf[32] = {0};
+        if (fgets(buf, sizeof(buf), f)) {
+            pid_t pid = (pid_t)atoi(buf);
+            char procpath[64];
+            snprintf(procpath, sizeof(procpath), "/proc/%d/cmdline", (int)pid);
+            FILE *pc = fopen(procpath, "r");
+            if (pc) {
+                char cmd[256] = {0};
+                size_t nread = fread(cmd, 1, sizeof(cmd)-1, pc);
+                if (nread < sizeof(cmd)) cmd[nread] = '\0'; else cmd[sizeof(cmd)-1] = '\0';
+                fclose(pc);
+                if (strstr(cmd, "rebootnow")) {
+                    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","An instance of %s with pid %d is already running..\n", "rebootnow", (int)pid);
+                    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Exiting Binary\n");
+                    fclose(f); /* releases lock via close(lfd) */
+                    return -1;
                 }
             }
-            fclose(f);
         }
+        /* Not running or unable to read cmdline: take over by overwriting under lock */
+        (void)ftruncate(lfd, 0);
+        rewind(f);
+        fprintf(f, "%d", (int)getpid());
+        fflush(f);
+        fclose(f); /* also closes lfd and releases lock */
+        return 0;
     }
-    /* write our pid */
-    FILE *wf = fopen(PID_FILE, "w");
-    if (wf) {
-        fprintf(wf, "%d", (int)getpid());
-        fclose(wf);
-    }
-    return 0;
+    /* Unexpected error creating PID file */
+    return -1;
 }
 
 void cleanup_pidfile(void)

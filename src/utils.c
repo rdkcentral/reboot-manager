@@ -7,6 +7,13 @@
 void timestamp_update(char *buf, size_t sz)
 {
     time_t now = time(NULL);
+    if (now == (time_t)-1) {
+        if (buf && sz > 0) {
+            buf[0] = '\0';
+        }
+	return;
+    }
+
     struct tm tm_utc;
 #if defined(_WIN32)
     gmtime_s(&tm_utc, &now);
@@ -40,6 +47,6 @@ int run_cmd_capture(const char *cmd, char *out, size_t outsz)
         n = fread(out, 1, outsz - 1, p);
         out[n] = '\0';
     }
-    (void)pclose(p);
-    return 0;
+    int status = pclose(p);
+    return status;
 }
