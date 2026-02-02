@@ -113,6 +113,25 @@ void perform_housekeeping(void)
         }
     }
 
+    /* Device-specific maintenance scripts */
+    const char *device_name = getenv("DEVICE_NAME");
+    if (device_name && (
+            strcmp(device_name, "XiOne") == 0 ||
+            strcmp(device_name, "XiOne-SCB") == 0)) {
+        if (file_exists("/lib/rdk/eMMC_Upgrade.sh")) {
+            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Upgrade eMMC FW if required");
+            v_secure_system("sh /lib/rdk/eMMC_Upgrade.sh");
+        }
+    }
+    if (file_exists("/lib/rdk/aps4_reset.sh")) {
+        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Executing /lib/rdk/aps4_reset.sh");
+        v_secure_system("sh /lib/rdk/aps4_reset.sh");
+    }
+    if (file_exists("/lib/rdk/update_www-backup.sh")) {
+        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Executing /lib/rdk/update_www-backup.sh");
+        v_secure_system("sh /lib/rdk/update_www-backup.sh");
+    }
+
     /* Sync transient logs */
     const char *persistent_path = getenv("PERSISTENT_PATH");
     const char *temp_log_path = getenv("TEMP_LOG_PATH");
@@ -160,9 +179,9 @@ void perform_housekeeping(void)
             }
         }
     }
-    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Start the sync");
+    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Start the sync");
     (void)sync();
-    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","End of the sync");
+    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","End of the sync");
 }
 
 int pidfile_write_and_guard(void)

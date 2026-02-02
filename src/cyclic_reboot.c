@@ -124,9 +124,9 @@ int handle_cyclic_reboot(const char *source,
     int stop_duration = 30; /* minutes */
 
     rbus_get_bool_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RebootStop.Detection", &detection_enabled);
-    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","[%s:%d] RebootStop Detection: %s\n",__FUNCTION__, __LINE__, detection_enabled ? "true" : "false");
+    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Reboot Loop Detection enabled to check cyclic reboot scenarios:%s\n", detection_enabled ? "true" : "false");
     if (rbus_get_int_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RebootStop.Duration", &duration)) {
-        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","[%s:%d] RebootStop Duration: %d\n",__FUNCTION__, __LINE__, duration);
+        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","RebootStop Duration: %d\n", duration);
         if (duration > 0 && duration < 24*60) {
             stop_duration = duration;
         }
@@ -135,11 +135,14 @@ int handle_cyclic_reboot(const char *source,
     int reboot_counter_reset = 0;
     if (file_exists(REBOOTNOW_FLAG) && detection_enabled) {
         (void)unlink(REBOOTNOW_FLAG);
-        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Reboot Loop Detection enabled to check cyclic reboot scenarios:%s", detection_enabled ? "true" : "false");
         char p_src[128] = {0}, p_rsn[128] = {0}, p_cus[128] = {0}, p_oth[256] = {0}, p_ts[64] = {0};
         if (read_previous_reboot_info(p_src, sizeof(p_src), p_rsn, sizeof(p_rsn), p_cus, sizeof(p_cus), p_oth, sizeof(p_oth), p_ts, sizeof(p_ts)) == 0) {
-            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Previous Reboot Information of the Device: Time:%s Source:%s Reason:%s customReason:%s otherReason:%s\n",
-                 p_ts, p_src, p_rsn, p_cus, p_oth);
+            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Previous Reboot Information of the Device:\n");
+            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Time:%s\n", p_ts);
+            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Source:%s\n", p_src);
+            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Reason:%s\n", p_rsn);
+            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","customReason:%s\n", p_cus);
+            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","otherReason:%s\n", p_oth);
             int upsecs = read_proc_uptime_secs();
             if (upsecs >= 0) {
                 RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Device Uptime from last reboot: %d secs\n", upsecs);

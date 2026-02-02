@@ -21,6 +21,7 @@ static const char *REBOOT_INFO_DIR = "/opt/secure/reboot";
 static const char *REBOOT_INFO_FILE = "/opt/secure/reboot/reboot.info";
 static const char *PARODUS_REBOOT_INFO_FILE = "/opt/secure/reboot/parodusreboot.info";
 static const char *REBOOTNOW_FLAG = "/opt/secure/reboot/rebootNow";
+static const char *REBOOT_REASON_LOGFILE = "/opt/logs/rebootreason.log";
 
 #ifdef RDK_LOGGER_ENABLED
 int g_rdk_logger_enabled = 0;
@@ -94,6 +95,44 @@ void t2ValNotify( char *marker, char *val )
 #endif
 }
 
+static void emit_t2_for_source(const char *source, int is_crash)
+{
+    if (!source || !*source) {
+        return;
+    }
+
+    /* Map a few special cases to match script behavior */
+    const char *marker = NULL;
+    if (!is_crash) {
+        if (strstr(source, "runPodRecovery")) {
+            marker = "SYST_ERR_RunPod_reboot";
+	} else if (strstr(source, "CardNotResponding")) {
+            marker = "SYST_ERR_CCNotRepsonding_reboot";
+	} else {
+            static char buf[256];
+            snprintf(buf, sizeof(buf), "SYST_ERR_%s", source);
+            marker = buf;
+        }
+    } else {
+        if (strstr(source, "dsMgrMain")) {
+            marker = "SYST_ERR_DSMGR_reboot";
+	} else if (strstr(source, "IARMDaemonMain")) {
+            marker = "SYST_ERR_IARMDEMON_reboot";
+	} else if (strstr(source, "rmfStreamer")) {
+            marker = "SYST_ERR_Rmfstreamer_reboot";
+	} else if (strstr(source, "runPod")) {
+            marker = "SYST_ERR_RunPod_reboot";
+	} else {
+            static char buf[256];
+            snprintf(buf, sizeof(buf), "SYST_ERR_%s_reboot", source);
+            marker = buf;
+        }
+    }
+    if (marker) {
+        t2CountNotify((char*)marker, 1);
+    }
+}
+
 static void adjust_hal_sys_reboot_source(const char **psource, const char **pother)
 {
     const char *source = *psource;
@@ -145,9 +184,9 @@ int main(int argc, char **argv)
 	rdk_logger_ext_config_t config = {
         .pModuleName = "LOG.RDK.REBOOTINFO",     /* Module name */
         .loglevel = RDK_LOG_INFO,                 /* Default log level */
-        .output = RDKLOG_OUTPUT_CONSOLE,          /* Output to console (stdout/stderr) */
+        .output = RDKLOG_OUTPUT_FILE,             /* Output to file */
         .format = RDKLOG_FORMAT_WITH_TS,          /* Timestamped format */
-        .pFilePolicy = NULL                       /* Not using file output, so NULL */
+	.pFilePolicy = REBOOT_REASON_LOGFILE      /* Log to rebootreason.log */
     };
     
     if (rdk_logger_ext_init(&config) != RDK_SUCCESS) {
@@ -169,6 +208,7 @@ int main(int argc, char **argv)
     if (pidfile_write_and_guard() != 0) {
         return 1;
     }
+    RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Start of rebootNow Binary\n");
     atexit(cleanup_pidfile);
     signal(SIGINT, (void (*)(int))cleanup_pidfile);
     signal(SIGTERM, (void (*)(int))cleanup_pidfile);
@@ -284,6 +324,7 @@ int main(int argc, char **argv)
         }
     }
 
+    RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Invoke setPreviousRebootInfo to save reboot information under %s folder\n", REBOOT_INFO_DIR);
     FILE *jsonf = fopen(REBOOT_INFO_FILE, "w");
     if (jsonf) {
         fprintf(jsonf, "{\n");
@@ -316,8 +357,11 @@ int main(int argc, char **argv)
 
 	if (rbus_get_bool_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ManageableNotification.Enable", &Mng_Notify_Enable))
 	{
-		RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Manageable Notification Enabled\n");
-		rbus_set_int_param("Device.DeviceInfo.X_RDKCENTRAL-COM_xOpsDeviceMgmt.RPC.RebootPendingNotification", 10);
+            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Value of Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ManageableNotification.Enable: %s", 
+			                             Mng_Notify_Enable ? "true" : "false");
+            if (Mng_Notify_Enable) {
+                rbus_set_int_param("Device.DeviceInfo.X_RDKCENTRAL-COM_xOpsDeviceMgmt.RPC.RebootPendingNotification", 10);
+            }
 	}
 
     // Housekeeping before reboot
