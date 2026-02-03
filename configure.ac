@@ -82,6 +82,8 @@ AC_ARG_ENABLE([breakpad],
         	 esac
         	 ],
     	    [echo "breakpad is disabled"])
+AC_SUBST(BREAKPAD_CFLAGS)
+AC_SUBST(BREAKPAD_LFLAGS)
 
 AC_ARG_ENABLE([cpc],
         [AS_HELP_STRING([--enable-cpc], [Enable CPC support])],
