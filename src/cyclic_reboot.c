@@ -105,13 +105,15 @@ static void compute_cron_time(int add_minutes, char *out, size_t outsz)
     int mn = tm_local.tm_min;
     mn += 1; /* alignment fudge */
     mn += add_minutes;
+    while (mn < 0) {
+        mn += 60;
+        hr -= 1;
+        if (hr < 0) hr = 23;
+    }
     while (mn >= 60) {
         mn -= 60;
         hr += 1;
         if (hr > 23) hr = 0;
-    }
-    if (mn < 0) {
-         mn = 0;
     }
     snprintf(out, outsz, "%d %d * * *", mn, hr);
 }
