@@ -11,6 +11,8 @@
 #include "secure_wrapper.h"
 #include "rbus_interface.h"
 #include "rdk_logger.h"
+#include <fcntl.h>
+#include <errno.h>
 
 static int file_exists(const char *path)
 {
@@ -103,7 +105,6 @@ static int remove_dir(const char *path)
     }
 }
 
-/* Remove only immediate subdirectories of root (mimics: for d in */; rm -rf "$d") */
 static int clear_Subdirectory(const char *root)
 {
     if (!root) return -1;
@@ -200,7 +201,7 @@ void perform_housekeeping(void)
             if (strstr(cdl, prev) == NULL) {
                 if (dir_exists("/media/apps")) {
                     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Removing the RDM Apps content from Secondary Storage before Reboot (After Image Upgrade)\n");
-		    if (clear_Subdirectory("/media/apps") != 0) {
+                    if (clear_Subdirectory("/media/apps") != 0) {
                         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Failed to remove some entries under /media/apps\n");
                     }
                 }
@@ -307,6 +308,18 @@ int pidfile_write_and_guard(void)
         /* PID file exists: acquire exclusive advisory lock, re-check, then overwrite safely */
         int lfd = open(PID_FILE, O_RDWR);
         if (lfd < 0) {
+            if (errno == ENOENT) {
+                int cfd = open(PID_FILE, O_WRONLY | O_CREAT | O_EXCL, 0644);
+                if (cfd >= 0) {
+                    char out2[32];
+                    int len2 = snprintf(out2, sizeof(out2), "%d", (int)getpid());
+                    if (len2 > 0) {
+                        (void)write(cfd, out2, (size_t)len2);
+                    }
+                    close(cfd);
+                    return 0;
+                }
+            }
             return -1;
         }
         struct flock lock;

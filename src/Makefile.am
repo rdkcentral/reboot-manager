@@ -4,7 +4,6 @@ reboot_CFLAGS += -fPIC -pthread
 
 AM_CPPFLAGS = -I$(top_srcdir)/include
 AM_CFLAGS = -std=c99 -Wall -Wextra -Werror -O2 -I./include -I$(srcdir)/rebootmanager-cpc/include -DRDK_LOGGER_ENABLED
-AM_LDFLAGS = -lfwutils -lrdkloggers
 
 # Library target
 lib_LTLIBRARIES = librebootnow.la

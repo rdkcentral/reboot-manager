@@ -13,6 +13,7 @@
 #include "secure_wrapper.h"
 #include "rbus_interface.h"
 #include "rdk_logger.h"
+#include <sys/wait.h>
 
 #define PROGRAM_NAME "rebootnow"
 
@@ -108,10 +109,10 @@ static void emit_t2_for_source(const char *source, int is_crash)
             marker = "SYST_ERR_RunPod_reboot";
         } else if (strstr(source, "CardNotResponding")) {
             marker = "SYST_ERR_CCNotResponding_reboot";
-	} else {
+        } else {
             char buf[256];
             snprintf(buf, sizeof(buf), "SYST_ERR_%s", source);
-	    t2CountNotify(buf, 1);
+            t2CountNotify(buf, 1);
             return;
         }
     } else {
@@ -123,7 +124,7 @@ static void emit_t2_for_source(const char *source, int is_crash)
             marker = "SYST_ERR_Rmfstreamer_reboot";
         } else if (strstr(source, "runPod")) {
             marker = "SYST_ERR_RunPod_reboot";
-	} else {
+        } else {
             char buf[256];
             snprintf(buf, sizeof(buf), "SYST_ERR_%s_reboot", source);
             t2CountNotify(buf, 1);
@@ -137,57 +138,57 @@ static void emit_t2_for_source(const char *source, int is_crash)
 
 static int adjust_hal_sys_reboot_source(const char *cur_source, char **out_source, char **out_other)
 {
+    FILE *f = NULL;
     char line[1024];
     char last_line[1024] = {0};
     char *p = NULL;
-    char *space = NULL;
+    size_t src_len = 0;
     char src_tmp[128];
-    char *rest = NULL;
-    size_t len;
     char other_tmp[512];
 
     if (!cur_source || strcmp(cur_source, "HAL_SYS_Reboot") != 0) {
         return 0;
     }
-
-    FILE *f = fopen(REBOOTINFO_LOG, "r");
+    f = fopen(REBOOTINFO_LOG, "r");
     if (!f) {
         return 0;
     }
-
     while (fgets(line, sizeof(line), f)) {
         if (strstr(line, "RebootReason:") && !strstr(line, "HAL_SYS_Reboot") && !strstr(line, "PreviousRebootReason")) {
             strncpy(last_line, line, sizeof(last_line)-1);
         }
     }
     fclose(f);
-
     if (last_line[0] == '\0') {
         return 0;
     }
-
     p = strstr(last_line, "Triggered from ");
     if (!p) {
         return 0;
     }
-
     p += strlen("Triggered from ");
-    space = strchr(p, ' ');
-    if (!space) {
+    char *q = strchr(p, ' ');
+    if (!q) {
         return 0;
     }
-    *space = '\0';
+    src_len = (size_t)(q - p);
 
-    strncpy(src_tmp, p, sizeof(src_tmp)-1);
-    src_tmp[sizeof(src_tmp)-1] = '\0';
-    *space = ' ';
-    rest = space + 1;
-    len = strlen(rest);
-    while (len > 0 && (rest[len-1] == '\n' || rest[len-1] == '\r')) { 
-        rest[--len] = '\0'; 
+    if (src_len >= sizeof(src_tmp)) {
+        src_len = sizeof(src_tmp) - 1;
     }
-    strncpy(other_tmp, rest, sizeof(other_tmp)-1);
-    other_tmp[sizeof(other_tmp)-1] = '\0';
+    memcpy(src_tmp, p, src_len);
+    src_tmp[src_len] = '\0';
+    const char *rest = q + 1;
+    size_t rest_len = strlen(rest);
+    while (rest_len > 0 && (rest[rest_len-1] == '\n' || rest[rest_len-1] == '\r')) { 
+        rest_len--; 
+    }
+
+    if (rest_len >= sizeof(other_tmp)) {
+        rest_len = sizeof(other_tmp) - 1;
+    }
+    memcpy(other_tmp, rest, rest_len);
+    other_tmp[rest_len] = '\0';
     /* Allocate copies for the caller; caller must free */
     char *src_dup = strdup(src_tmp);
     char *other_dup = strdup(other_tmp);
@@ -212,6 +213,34 @@ static void signal_cleanup_handler(int signum)
     cleanup_pidfile();
 }
 
+static size_t UpdateRebootLog(char *buffer, size_t buffer_size, size_t bytes_used, const char *format, ...)
+{
+    size_t remaining;
+    va_list args;
+    int n;
+
+    if (!buffer || buffer_size == 0) {
+        return 0;
+    }
+    if (bytes_used >= buffer_size - 1) {
+        buffer[buffer_size - 1] = '\0';
+        return buffer_size - 1;
+    }
+    remaining = buffer_size - bytes_used;
+    va_start(args, format);
+    n = vsnprintf(buffer + bytes_used, remaining, format, args);
+    va_end(args);
+    if (n < 0) {
+        buffer[buffer_size - 1] = '\0';
+        return bytes_used;
+    }
+    if ((size_t)n >= remaining) {
+        /* Truncated: buffer end is already null-terminated by vsnprintf */
+        return buffer_size - 1;
+    }
+    return bytes_used + (size_t)n;
+}
+
 int main(int argc, char **argv)
 {
     const char *source = NULL;      // from -s or -c
@@ -221,7 +250,11 @@ int main(int argc, char **argv)
     bool Mng_Notify_Enable = false;
     char *adj_source = NULL;
     char *adj_other = NULL;
-
+    char par_line[1024];
+    char line[1024];
+    size_t bytes_used = 0;
+    int opt;
+  
     rdk_logger_ext_config_t config = {
         .pModuleName = "LOG.RDK.REBOOTINFO",     /* Module name */
         .loglevel = RDK_LOG_INFO,                 /* Default log level */
@@ -254,7 +287,6 @@ int main(int argc, char **argv)
     signal(SIGINT, signal_cleanup_handler);
     signal(SIGTERM, signal_cleanup_handler);
     
-    int opt;
     while ((opt = getopt(argc, argv, "s:c:r:o:h")) != -1) {
         switch (opt) {
             case 's':
@@ -326,42 +358,12 @@ int main(int argc, char **argv)
     char ts[64];
     timestamp_update(ts, sizeof(ts));
     
-    char line[1024];
-    size_t used = 0;
-
-    int n = snprintf(line, sizeof(line), "RebootReason: ");
-    if (n < 0) n = 0;
-    if ((size_t)n >= sizeof(line)) {
-        used = sizeof(line) - 1;
-    } else {
-        used = (size_t)n;
-    }
+    bytes_used = UpdateRebootLog(line, sizeof(line), bytes_used, "RebootReason: ");
     if (strcmp(otherReason, "Unknown") == 0) {
-        size_t rem = (used < sizeof(line)) ? (sizeof(line) - used) : 0;
-        if (rem > 0) {
-            n = snprintf(line + used, rem, "%s\n", rebootLogReason);
-            if (n < 0) n = 0;
-            if ((size_t)n >= rem) used = sizeof(line) - 1; else used += (size_t)n;
-        } else {
-            used = sizeof(line) - 1;
-        }
+        bytes_used = UpdateRebootLog(line, sizeof(line), bytes_used, "%s\n", rebootLogReason);
     } else {
-        size_t rem = (used < sizeof(line)) ? (sizeof(line) - used) : 0;
-        if (rem > 0) {
-            n = snprintf(line + used, rem, "%s ", rebootLogReason);
-            if (n < 0) n = 0;
-            if ((size_t)n >= rem) used = sizeof(line) - 1; else used += (size_t)n;
-        } else {
-            used = sizeof(line) - 1;
-        }
-        rem = (used < sizeof(line)) ? (sizeof(line) - used) : 0;
-        if (rem > 0) {
-            n = snprintf(line + used, rem, "%s\n", otherReason);
-            if (n < 0) n = 0;
-            if ((size_t)n >= rem) used = sizeof(line) - 1; else used += (size_t)n;
-        } else {
-            used = sizeof(line) - 1;
-        }
+        bytes_used = UpdateRebootLog(line, sizeof(line), bytes_used, "%s ", rebootLogReason);
+        bytes_used = UpdateRebootLog(line, sizeof(line), bytes_used, "%s\n", otherReason);
     }
     line[sizeof(line) - 1] = '\0';
 
@@ -396,20 +398,19 @@ int main(int argc, char **argv)
     if (jsonf) {
         fprintf(jsonf, "{\n");
         fprintf(jsonf, "\"timestamp\":\"%s\",\n", ts);
-		fprintf(jsonf, "\"source\":\"%s\",\n", source ? source : "");
+        fprintf(jsonf, "\"source\":\"%s\",\n", source ? source : "");
         fprintf(jsonf, "\"reason\":\"%s\",\n", rebootReason);
         fprintf(jsonf, "\"customReason\":\"%s\",\n", customReason);
-		fprintf(jsonf, "\"otherReason\":\"%s\"\n", otherReason ? otherReason : "");
+        fprintf(jsonf, "\"otherReason\":\"%s\"\n", otherReason ? otherReason : "");
         fprintf(jsonf, "}\n");
         fclose(jsonf);
-       RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Saving reboot info in %s file\n", REBOOT_INFO_FILE);
-        // Parodus info line
-        char par_line[1024];
-		snprintf(par_line, sizeof(par_line), "PreviousRebootInfo:%s,%s,%s,%s\n", ts, customReason, source ? source : "", rebootReason);
+
+        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Saving reboot info in %s file\n", REBOOT_INFO_FILE);
+        snprintf(par_line, sizeof(par_line), "PreviousRebootInfo:%s,%s,%s,%s\n", ts, customReason, source ? source : "", rebootReason);
         append_line_to_file(PARODUS_REBOOT_INFO_FILE, par_line);
-	    RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Updated Reboot Reason information in %s and %s\n", REBOOT_INFO_FILE, PARODUS_REBOOT_INFO_FILE);
+        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Updated Reboot Reason information in %s and %s\n", REBOOT_INFO_FILE, PARODUS_REBOOT_INFO_FILE);
     } else {
-	    RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Failed to open %s for writing (errno=%d)\n", REBOOT_INFO_FILE, errno);
+        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Failed to open %s for writing (errno=%d)\n", REBOOT_INFO_FILE, errno);
     }
 
     /* Delegate cyclic reboot detection and scheduling to module */
@@ -439,18 +440,28 @@ int main(int argc, char **argv)
     } else {
         RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Failed to create %s (errno=%d)\n", REBOOTNOW_FLAG, errno);
     }
-	
+
+    rbus_cleanup();
+    if (adj_source) {
+        free(adj_source);
+    }
+    if (adj_other) {
+        free(adj_other);
+    }
+    
     // Execute reboot sequence: reboot &, wait, fallback to systemctl reboot, then reboot -f
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Rebooting the Device Now\n");
     pid_t pid = fork();
     if (pid == 0) {
-        // Child: exec reboot
         execlp("reboot", "reboot", (char *)NULL);
-        // If execlp fails
         _exit(127);
     }
-    // Parent: wait ~90 seconds
     sleep(90);
+
+    if (pid > 0) {
+        pid_status = 0;
+        (void)waitpid(pid, &pid_status, WNOHANG);
+    }
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","System still running after reboot command, Reboot Failed for %d...\n", (int)pid);
     int rc = v_secure_system("systemctl reboot");
     if (rc == 256 /* exit status 1 << 8 */ || (rc != 0 && rc != -1)) {
@@ -458,12 +469,11 @@ int main(int argc, char **argv)
     }
     if (pid > 0) {
         kill(pid, SIGTERM);
+        pid_status = 0;
+        (void)waitpid(pid, &status, WNOHANG);
     }
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Triggering force Reboot after standard soft reboot failure\n");
     v_secure_system("reboot -f");
-    rbus_cleanup();
-    if (adj_source) free(adj_source);
-    if (adj_other) free(adj_other);
     return 0;
 }
 

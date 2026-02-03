@@ -22,11 +22,23 @@ void timestamp_update(char *buf, size_t sz)
 
     struct tm tm_utc;
 #if defined(_WIN32)
-    gmtime_s(&tm_utc, &now);
+    if (gmtime_s(&tm_utc, &now) != 0) {
+        if (buf && sz > 0) {
+            buf[0] = '\0';
+        }
+        return;
+    }
 #else
-    gmtime_r(&now, &tm_utc);
+    if (gmtime_r(&now, &tm_utc) == NULL) {
+        if (buf && sz > 0) {
+            buf[0] = '\0';
+        }
+        return;
+    }
 #endif
-    strftime(buf, sz, "%Y-%m-%dT%H:%M:%SZ", &tm_utc);
+    if (buf && sz > 0) {
+        strftime(buf, sz, "%Y-%m-%dT%H:%M:%SZ", &tm_utc);
+    }
 }
 
 int append_line_to_file(const char *path, const char *line)
