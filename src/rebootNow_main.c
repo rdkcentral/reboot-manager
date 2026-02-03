@@ -101,13 +101,13 @@ static int checkstringvalue(const char *const *list, size_t n, const char *needl
  * @param marker: use for send marker details
  * @return : void
  * */
-void t2CountNotify(char *marker, int val) {
+void t2CountNotify(const char *marker, int val) {
 #ifdef T2_EVENT_ENABLED
     t2_event_d(marker, val);
 #endif
 }
 
-void t2ValNotify( char *marker, char *val )
+void t2ValNotify(const char *marker, const char *val)
 {
 #ifdef T2_EVENT_ENABLED
     t2_event_s(marker, val);
@@ -150,7 +150,7 @@ static void emit_t2_for_source(const char *source, int is_crash)
         }
     }
     if (marker) {
-        t2CountNotify((char*)marker, 1);
+        t2CountNotify(marker, 1);
     }
 }
 
@@ -231,6 +231,21 @@ static void signal_cleanup_handler(int signum)
     cleanup_pidfile();
 }
 
+static volatile sig_atomic_t reboot_child_exited = 0;
+static pid_t reboot_child_pid = -1;
+static void signal_child_handler(int signum)
+{
+    (void)signum;
+    int status = 0;
+    pid_t wpid;
+    /* Reap all exited children */
+    while ((wpid = waitpid(-1, &status, WNOHANG)) > 0) {
+        if (wpid == reboot_child_pid) {
+            reboot_child_exited = 1;
+        }
+    }
+}
+
 static size_t UpdateRebootLog(char *buffer, size_t buffer_size, size_t bytes_used, const char *format, ...)
 {
     size_t remaining;
@@ -272,13 +287,14 @@ int main(int argc, char **argv)
     char line[1024];
     size_t bytes_used = 0;
     int opt;
-  
+    int pid_status = 0;
+
     rdk_logger_ext_config_t config = {
-        .pModuleName = "LOG.RDK.REBOOTINFO",     /* Module name */
+       .pModuleName = "LOG.RDK.REBOOTINFO",     /* Module name */
         .loglevel = RDK_LOG_INFO,                 /* Default log level */
         .output = RDKLOG_OUTPUT_FILE,             /* Output to file */
         .format = RDKLOG_FORMAT_WITH_TS,          /* Timestamped format */
-	.pFilePolicy = REBOOT_REASON_LOGFILE      /* Log to rebootreason.log */
+        .pFilePolicy = REBOOT_REASON_LOGFILE      /* Log to rebootreason.log */
     };
     
     if (rdk_logger_ext_init(&config) != RDK_SUCCESS) {
@@ -287,7 +303,7 @@ int main(int argc, char **argv)
 
     if (0 == rdk_logger_init("/etc/debug.ini")) {
         g_rdk_logger_enabled = 1;
-	    RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "[%s:%d] RDK Logger initialized\n", __FUNCTION__, __LINE__);
+        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "[%s:%d] RDK Logger initialized\n", __FUNCTION__, __LINE__);
     }
 
 #ifdef T2_EVENT_ENABLED
@@ -316,7 +332,7 @@ int main(int argc, char **argv)
                 is_crash = 0;
                 break;
             case 'c':
-                if (source) {
+                if (is_crash || source) {
                     usage(stderr);
                     return 1;
                 }
@@ -343,13 +359,31 @@ int main(int argc, char **argv)
     }
 
     // Build rebootLogReason similar to the shell script
-    char rebootLogReason[512];
+    char *rebootLogReason = NULL;
+    size_t rebootLogReasonLen = 0;
     if (is_crash) {
-        snprintf(rebootLogReason, sizeof(rebootLogReason), "Triggered from %s process failure or crash..!", source);
+        /* First determine required length for the formatted string */
+        rebootLogReasonLen = (size_t)snprintf(NULL, 0,
+                                            "Triggered from %s process failure or crash..!",
+                                            source);
+        rebootLogReason = (char *)malloc(rebootLogReasonLen + 1);
+        if (rebootLogReason != NULL) {
+            (void)snprintf(rebootLogReason, rebootLogReasonLen + 1,
+                           "Triggered from %s process failure or crash..!",
+                           source);
+        }
     } else {
-        snprintf(rebootLogReason, sizeof(rebootLogReason), "Triggered from %s process", source);
+        /* First determine required length for the formatted string */
+        rebootLogReasonLen = (size_t)snprintf(NULL, 0,
+                                            "Triggered from %s process",
+                                            source);
+        rebootLogReason = (char *)malloc(rebootLogReasonLen + 1);
+        if (rebootLogReason != NULL) {
+            (void)snprintf(rebootLogReason, rebootLogReasonLen + 1,
+                           "Triggered from %s process",
+                           source);
+        }
     }
-
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Reboot requested on the device from Source:%s Reason:%s\n", source, otherReason);
 
     // Categorization
@@ -475,20 +509,14 @@ int main(int argc, char **argv)
         _exit(127);
     }
     sleep(90);
-
-    if (pid > 0) {
-        pid_status = 0;
-        (void)waitpid(pid, &pid_status, WNOHANG);
-    }
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","System still running after reboot command, Reboot Failed for %d...\n", (int)pid);
     int rc = v_secure_system("systemctl reboot");
     if (rc == 256 /* exit status 1 << 8 */ || (rc != 0 && rc != -1)) {
         RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Reboot failed due to systemctl hang or connection timeout\n");
     }
-    if (pid > 0) {
+    if (pid > 0 && !reboot_child_exited) {
         kill(pid, SIGTERM);
-        pid_status = 0;
-        (void)waitpid(pid, &status, WNOHANG);
+        (void)waitpid(pid, &pid_status, WNOHANG);
     }
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Triggering force Reboot after standard soft reboot failure\n");
     v_secure_system("reboot -f");

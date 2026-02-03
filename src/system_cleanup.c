@@ -62,7 +62,7 @@ static int read_file_to_buf(const char *path, char *buf, size_t sz)
 }
 
 /* Send a signal to all processes whose /proc/<pid>/comm matches name */
-static int send_signalCleanup(const char *name, int sig)
+static int send_signalcleanup(const char *name, int sig)
 {
     if (!name || !*name) return 0;
     DIR *proc = opendir("/proc");
@@ -97,19 +97,34 @@ static int send_signalCleanup(const char *name, int sig)
 /* Recursively remove a directory tree */
 static int remove_dir(const char *path)
 {
-    if (!path) return -1;
-    struct stat st;
-    if (lstat(path, &st) != 0) return -1;
+    char child[1024];
+    int wn;
+    struct stat cst, st;
+    struct dirent *de;
+
+    if (!path) {
+        return -1;
+    }
+    if (lstat(path, &st) != 0) {
+        return -1;
+    }
     if (S_ISDIR(st.st_mode)) {
         DIR *d = opendir(path);
-        if (!d) return -1;
-        struct dirent *de;
+        if (!d) {
+            return -1;
+        }
         while ((de = readdir(d)) != NULL) {
-            if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0) continue;
-            char child[1024];
-            snprintf(child, sizeof(child), "%s/%s", path, de->d_name);
-            struct stat cst;
-            if (lstat(child, &cst) != 0) continue;
+            if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0) {
+                continue;
+            }
+            wn = snprintf(child, sizeof(child), "%s/%s", path, de->d_name);
+            if (wn < 0 || (size_t)wn >= sizeof(child)) {
+                RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","remove_tree: path truncated for %s/%s\n", path, de->d_name);
+		continue;
+            }
+            if (lstat(child, &cst) != 0) {
+                continue;
+            }
             if (S_ISDIR(cst.st_mode)) {
                 (void)remove_dir(child);
             } else {
@@ -123,21 +138,35 @@ static int remove_dir(const char *path)
     }
 }
 
-static int clear_Subdirectory(const char *root)
+static int clear_subdirectory(const char *root)
 {
-    if (!root) return -1;
-    DIR *d = opendir(root);
-    if (!d) return -1;
-    int rc = 0;
     struct dirent *de;
+    int rc = 0;
+    char child[1024];
+    struct stat st;
+    int wn; 
+
+    if (!root) {
+        return -1;
+    }
+    DIR *d = opendir(root);
+    if (!d) {
+        return -1;
+    }
     while ((de = readdir(d)) != NULL) {
         if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0) continue;
-        char child[1024];
-        snprintf(child, sizeof(child), "%s/%s", root, de->d_name);
-        struct stat st;
-        if (lstat(child, &st) != 0) continue;
+        wn = snprintf(child, sizeof(child), "%s/%s", root, de->d_name);
+        if (wn < 0 || (size_t)wn >= sizeof(child)) {
+            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","clear_dir_children: path truncated for %s/%s\n", root, de->d_name);
+	    continue;
+        }
+        if (lstat(child, &st) != 0) {
+            continue;
+        }
         if (S_ISDIR(st.st_mode)) {
-            if (remove_dir(child) != 0) rc = -1;
+            if (remove_dir(child) != 0) {
+                rc = -1;
+            }
         }
     }
     closedir(d);
@@ -151,7 +180,9 @@ static void sync_logs_from_temp(const char *temp_path, const char *log_path)
     char buf[4096];
     size_t n;
     struct dirent *de;
-
+    int wn_src;
+    int wn_dst;
+ 
     if (!dir_exists(temp_path)) {
         RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","sync_logs: %s not found!!!\n", temp_path ? temp_path : "<null>");
         return;
@@ -171,8 +202,12 @@ static void sync_logs_from_temp(const char *temp_path, const char *log_path)
         if (de->d_type == DT_REG) {
             const char *name = de->d_name;
             if (!(ends_with(name, ".txt") || ends_with(name, ".log"))) continue;
-            snprintf(src, sizeof(src), "%s/%s", temp_path, name);
-            snprintf(dst, sizeof(dst), "%s/%s", log_path, name);
+            wn_src = snprintf(src, sizeof(src), "%s/%s", temp_path, name);
+            wn_dst = snprintf(dst, sizeof(dst), "%s/%s", log_path, name);
+            if (wn_src < 0 || (size_t)wn_src >= sizeof(src) || wn_dst < 0 || (size_t)wn_dst >= sizeof(dst)) {
+                RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","sync_logs: path truncated for %s or %s\n", name, log_path ? log_path : "<null>");
+                continue;
+            }
 
             FILE *fs = fopen(src, "r");
             FILE *fd = fopen(dst, "a");
@@ -233,16 +268,16 @@ void perform_housekeeping(void)
             strcmp(device_name, "XiOne") == 0 ||
             strcmp(device_name, "XiOne-SCB") == 0)) {
         if (file_exists("/lib/rdk/eMMC_Upgrade.sh")) {
-            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Upgrade eMMC FW if required");
+            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Upgrade eMMC FW if required\n");
             v_secure_system("sh /lib/rdk/eMMC_Upgrade.sh");
         }
     }
     if (file_exists("/lib/rdk/aps4_reset.sh")) {
-        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Executing /lib/rdk/aps4_reset.sh");
+        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Executing /lib/rdk/aps4_reset.sh\n");
         v_secure_system("sh /lib/rdk/aps4_reset.sh");
     }
     if (file_exists("/lib/rdk/update_www-backup.sh")) {
-        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Executing /lib/rdk/update_www-backup.sh");
+        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Executing /lib/rdk/update_www-backup.sh\n");
         v_secure_system("sh /lib/rdk/update_www-backup.sh");
     }
 
@@ -256,12 +291,17 @@ void perform_housekeeping(void)
             sync_logs_from_temp(temp_log_path, log_path);
         }
 
-	if (temp_log_path) {
+        if (temp_log_path) {
             char systime_src[512];
-            snprintf(systime_src, sizeof(systime_src), "%s/.systime", temp_log_path);
-            if (file_exists(systime_src)) {
+            int wn_ssrc = snprintf(systime_src, sizeof(systime_src), "%s/.systime", temp_log_path);
+            if (wn_ssrc < 0 || (size_t)wn_ssrc >= sizeof(systime_src)) {
+                RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","systime copy: source path truncated for %s\n", temp_log_path);
+            } else if (file_exists(systime_src)) {
                 char systime_dst[512];
-                snprintf(systime_dst, sizeof(systime_dst), "%s/.systime", persistent_path);
+                int wn_sdst = snprintf(systime_dst, sizeof(systime_dst), "%s/.systime", persistent_path);
+                if (wn_sdst < 0 || (size_t)wn_sdst >= sizeof(systime_dst)) {
+                    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","systime copy: dest path truncated for %s\n", persistent_path);
+                } else {
                 FILE *fs = fopen(systime_src, "rb");
                 FILE *fd = fopen(systime_dst, "wb");
                 if (!fs || !fd) {
@@ -269,20 +309,17 @@ void perform_housekeeping(void)
                     if (fd) fclose(fd);
                     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","systime copy: failed to open src/dst (%s -> %s)\n", systime_src, systime_dst);
                 } else {
-                    char buf[4096]; size_t n; int copy_ok = 1;
+                    char buf[4096]; size_t n;
                     while ((n = fread(buf, 1, sizeof(buf), fs)) > 0) {
-                        if (fwrite(buf, 1, n, fd) != n) { copy_ok = 0; break; }
+                        if (fwrite(buf, 1, n, fd) != n) break;
                     }
                     fclose(fs);
                     fclose(fd);
-                    if (!copy_ok) {
-                        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","systime copy: write failed (%s -> %s)\n", systime_src, systime_dst);
-                    }
+                }
                 }
             }
         }
     }
-
     /* Bluetooth services stop */
     const char *bt_enabled = getenv("BLUETOOTH_ENABLED");
     if (bt_enabled && strcmp(bt_enabled, "true") == 0) {
@@ -303,10 +340,10 @@ void perform_housekeeping(void)
             }
         }
     }
-    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Start the sync");
+    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Start the sync\n");
     (void)sync();
     usleep(200000);
-    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","End of the sync");
+    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","End of the sync\n");
 }
 
 int pidfile_write_and_guard(void)

@@ -1,4 +1,4 @@
-# Copyright 2023 Comcast Cable Communications Management, LLC
+# Copyright 2026 Comcast Cable Communications Management, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -77,7 +77,7 @@ AC_ARG_ENABLE([breakpad],
                         case "${enableval}" in
         	 yes) BREAKPAD_CFLAGS="-DINCLUDE_BREAKPAD"
                     BREAKPAD_LFLAGS="-lbreakpadwrapper";;
-        	 no) AC_MSG_ERROR([breakpad is disabled]) ;;
+        	 no) echo "breakpad is disabled" ;;
         	 *) AC_MSG_ERROR([bad value ${enableval} for --enable-breakpad]) ;;
         	 esac
         	 ],
