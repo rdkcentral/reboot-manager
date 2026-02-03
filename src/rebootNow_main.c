@@ -189,9 +189,21 @@ static int adjust_hal_sys_reboot_source(const char *cur_source, char **out_sourc
     strncpy(other_tmp, rest, sizeof(other_tmp)-1);
     other_tmp[sizeof(other_tmp)-1] = '\0';
     /* Allocate copies for the caller; caller must free */
-    *out_source = strdup(src_tmp);
-    *out_other = strdup(other_tmp);
-    return (*out_source && *out_other) ? 1 : 0;
+    char *src_dup = strdup(src_tmp);
+    char *other_dup = strdup(other_tmp);
+
+    if (!src_dup || !other_dup) {
+        /* Avoid leaking memory if one of the allocations fails */
+        free(src_dup);
+        free(other_dup);
+        *out_source = NULL;
+        *out_other = NULL;
+        return 0;
+    }
+
+    *out_source = src_dup;
+    *out_other = other_dup;
+    return 1;
 }
 
 static void signal_cleanup_handler(int signum)
