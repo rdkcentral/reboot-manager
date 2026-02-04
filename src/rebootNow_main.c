@@ -390,11 +390,6 @@ int main(int argc, char **argv)
         rebootReason = "FIRMWARE_FAILURE";
     }
 
-    if (adjust_hal_sys_reboot_source(source, &adj_source, &adj_other)) {
-        if (adj_source) source = adj_source;
-        if (adj_other) otherReason = adj_other;
-    }
-	
     // Log into rebootInfo.log in a similar format
     char ts[64];
     timestamp_update(ts, sizeof(ts));
@@ -424,7 +419,12 @@ int main(int argc, char **argv)
 
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Categorized reboot as %s (source=%s, custom=%s, other=%s)\n",
             rebootReason, source, customReason, otherReason);
-    
+   
+    if (adjust_hal_sys_reboot_source(source, &adj_source, &adj_other)) {
+        if (adj_source) source = adj_source;
+        if (adj_other) otherReason = adj_other;
+    }
+  
     struct stat st;
     if (stat(REBOOT_INFO_DIR, &st) != 0) {
         if (mkdir(REBOOT_INFO_DIR, 0755) != 0) {
