@@ -231,9 +231,6 @@ static void signal_cleanup_handler(int signum)
     cleanup_pidfile();
 }
 
-static volatile sig_atomic_t reboot_child_exited = 0;
-static pid_t reboot_child_pid = -1;
-
 static size_t UpdateRebootLog(char *buffer, size_t buffer_size, size_t bytes_used, const char *format, ...)
 {
     size_t remaining;
@@ -278,11 +275,11 @@ int main(int argc, char **argv)
     int pid_status = 0;
 
     rdk_logger_ext_config_t config = {
-       .pModuleName = "LOG.RDK.REBOOTINFO",     /* Module name */
+        .pModuleName = "LOG.RDK.UPLOADSTB",     /* Module name */
         .loglevel = RDK_LOG_INFO,                 /* Default log level */
-        .output = RDKLOG_OUTPUT_FILE,             /* Output to file */
+        .output = RDKLOG_OUTPUT_CONSOLE,          /* Output to console (stdout/stderr) */
         .format = RDKLOG_FORMAT_WITH_TS,          /* Timestamped format */
-        .pFilePolicy = REBOOT_REASON_LOGFILE      /* Log to rebootreason.log */
+        .pFilePolicy = NULL                       /* Not using file output, so NULL */
     };
     
     if (rdk_logger_ext_init(&config) != RDK_SUCCESS) {

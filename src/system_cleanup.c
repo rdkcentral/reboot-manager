@@ -73,7 +73,7 @@ static int send_signalcleanup(const char *name, int sig)
         if (de->d_type != DT_DIR) continue;
         const char *dname = de->d_name;
         if (dname[0] < '0' || dname[0] > '9') continue; /* pid dirs start with digit */
-        char commpath[64];
+        char commpath[512];
         snprintf(commpath, sizeof(commpath), "/proc/%s/comm", dname);
         FILE *cf = fopen(commpath, "r");
         if (!cf) continue;
@@ -226,7 +226,7 @@ static void sync_logs_from_temp(const char *temp_path, const char *log_path)
             fclose(fs);
             fclose(fd);
 
-	    if (!copy_ok) {
+            if (!copy_ok) {
                 RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","sync_logs: write failed for %s, skipping truncate\n", name);
                 continue;
             }
@@ -324,7 +324,7 @@ void perform_housekeeping(void)
     const char *bt_enabled = getenv("BLUETOOTH_ENABLED");
     if (bt_enabled && strcmp(bt_enabled, "true") == 0) {
         const char *services[] = {"sky-bluetoothrcu", "btmgr", "bluetooth", "bt-hciuart", "btmac-preset", "bt", "syslog-ng"};
-        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Shutting down the bluetooth and syslog-ng services gracefully");
+        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Shutting down the bluetooth and syslog-ng services gracefully\n");
         for (size_t i = 0; i < sizeof(services)/sizeof(services[0]); ++i) {
             int active = v_secure_system("systemctl --quiet is-active %s", services[i]);
             if (active == 0) {
