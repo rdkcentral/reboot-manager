@@ -31,5 +31,5 @@ update_prev_reboot_info_SOURCES = \
 
 if IS_TELEMETRY2_ENABLED
    AM_CFLAGS +=  $(T2_EVENT_FLAG)
-   AM_LDFLAGS += -ltelemetry_msgsender -lt2utils
+   AM_LDFLAGS = -ltelemetry_msgsender -lt2utils
 endif
