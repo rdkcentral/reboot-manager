@@ -233,18 +233,6 @@ static void signal_cleanup_handler(int signum)
 
 static volatile sig_atomic_t reboot_child_exited = 0;
 static pid_t reboot_child_pid = -1;
-static void signal_child_handler(int signum)
-{
-    (void)signum;
-    int status = 0;
-    pid_t wpid;
-    /* Reap all exited children */
-    while ((wpid = waitpid(-1, &status, WNOHANG)) > 0) {
-        if (wpid == reboot_child_pid) {
-            reboot_child_exited = 1;
-        }
-    }
-}
 
 static size_t UpdateRebootLog(char *buffer, size_t buffer_size, size_t bytes_used, const char *format, ...)
 {
@@ -385,7 +373,12 @@ int main(int argc, char **argv)
         }
     }
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Reboot requested on the device from Source:%s Reason:%s\n", source, otherReason);
+    emit_t2_for_source(source, is_crash);
 
+    if (rebootLogReason != NULL) {
+        free(rebootLogReason);
+        rebootLogReason = NULL;
+    }
     // Categorization
     const char *rebootReason = "FIRMWARE_FAILURE";
     if (checkstringvalue(APP_TRIGGERED_REASONS, sizeof(APP_TRIGGERED_REASONS)/sizeof(APP_TRIGGERED_REASONS[0]), source)) {

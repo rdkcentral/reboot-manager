@@ -31,12 +31,6 @@ void timestamp_update(char *buf, size_t sz)
         }
         return;
     }
-    if (now == (time_t)-1) {
-        if (buf && sz > 0) {
-            buf[0] = '\0';
-        }
-	return;
-    }
 
     struct tm tm_utc;
 #if defined(_WIN32)

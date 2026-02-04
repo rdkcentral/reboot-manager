@@ -158,7 +158,7 @@ static int clear_subdirectory(const char *root)
         wn = snprintf(child, sizeof(child), "%s/%s", root, de->d_name);
         if (wn < 0 || (size_t)wn >= sizeof(child)) {
             RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","clear_dir_children: path truncated for %s/%s\n", root, de->d_name);
-	    continue;
+            continue;
         }
         if (lstat(child, &st) != 0) {
             continue;
@@ -242,9 +242,9 @@ void perform_housekeeping(void)
 {
     /* Signal telemetry2_0 and parodus */
     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Signal telemetry2_0 to send out any pending messages before reboot\n");
-    send_signalCleanup("telemetry2_0", SIGUSR1);
+    send_signalcleanup("telemetry2_0", SIGUSR1);
     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Properly shutdown parodus by sending SIGUSR1 kill signal\n");
-    send_signalCleanup("parodus", SIGUSR1);
+    send_signalcleanup("parodus", SIGUSR1);
 
     /* Conditional RDM cleanup after image upgrade */
     if (file_exists("/etc/rdm/rdm-manifest.xml")) {
@@ -254,7 +254,7 @@ void perform_housekeeping(void)
             if (strstr(cdl, prev) == NULL) {
                 if (dir_exists("/media/apps")) {
                     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Removing the RDM Apps content from Secondary Storage before Reboot (After Image Upgrade)\n");
-                    if (clear_Subdirectory("/media/apps") != 0) {
+                    if (clear_subdirectory("/media/apps") != 0) {
                         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Failed to remove some entries under /media/apps\n");
                     }
                 }
