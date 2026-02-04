@@ -20,6 +20,7 @@ bin_PROGRAMS = rebootnow
 rebootnow_SOURCES = rebootNow_main.c
 rebootnow_LDADD = librebootnow.la
 
+AM_LDFLAGS = -lrdkloggers -lfwutils -lrdkloggers -lrbus -lsecure_wrapper
 bin_PROGRAMS += update-prev-reboot-info
 update_prev_reboot_info_SOURCES = \
     $(srcdir)/rebootmanager-cpc/src/main.c \
@@ -31,5 +32,5 @@ update_prev_reboot_info_SOURCES = \
 
 if IS_TELEMETRY2_ENABLED
    AM_CFLAGS +=  $(T2_EVENT_FLAG)
-   AM_LDFLAGS = -ltelemetry_msgsender -lt2utils
+   AM_LDFLAGS += -ltelemetry_msgsender -lt2utils
 endif
