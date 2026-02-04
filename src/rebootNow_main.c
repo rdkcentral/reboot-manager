@@ -40,7 +40,6 @@ static const char *REBOOT_INFO_DIR = "/opt/secure/reboot";
 static const char *REBOOT_INFO_FILE = "/opt/secure/reboot/reboot.info";
 static const char *PARODUS_REBOOT_INFO_FILE = "/opt/secure/reboot/parodusreboot.info";
 static const char *REBOOTNOW_FLAG = "/opt/secure/reboot/rebootNow";
-static const char *REBOOT_REASON_LOGFILE = "/opt/logs/rebootreason.log";
 
 #ifdef RDK_LOGGER_ENABLED
 int g_rdk_logger_enabled = 0;
@@ -504,7 +503,7 @@ int main(int argc, char **argv)
     if (rc == 256 /* exit status 1 << 8 */ || (rc != 0 && rc != -1)) {
         RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Reboot failed due to systemctl hang or connection timeout\n");
     }
-    if (pid > 0 && !reboot_child_exited) {
+    if (pid > 0) {
         kill(pid, SIGTERM);
         (void)waitpid(pid, &pid_status, WNOHANG);
     }
