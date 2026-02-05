@@ -194,8 +194,6 @@ int main(int argc, char **argv)
     const char *customReason = "Unknown";
     const char *otherReason = "Unknown";
     bool Mng_Notify_Enable = false;
-    char *adj_source = NULL;
-    char *adj_other = NULL;
     char par_line[1024];
     char line[1024];
     size_t bytes_used = 0;
