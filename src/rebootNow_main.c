@@ -153,77 +153,6 @@ static void emit_t2_for_source(const char *source, int is_crash)
     }
 }
 
-static int adjust_hal_sys_reboot_source(const char *cur_source, char **out_source, char **out_other)
-{
-    FILE *f = NULL;
-    char line[1024];
-    char last_line[1024] = {0};
-    char *p = NULL;
-    size_t src_len = 0;
-    char src_tmp[128];
-    char other_tmp[512];
-
-    if (!cur_source || strcmp(cur_source, "HAL_SYS_Reboot") != 0) {
-        return 0;
-    }
-    f = fopen(REBOOTINFO_LOG, "r");
-    if (!f) {
-        return 0;
-    }
-    while (fgets(line, sizeof(line), f)) {
-        if (strstr(line, "RebootReason:") && !strstr(line, "HAL_SYS_Reboot") && !strstr(line, "PreviousRebootReason")) {
-            strncpy(last_line, line, sizeof(last_line)-1);
-        }
-    }
-    fclose(f);
-    if (last_line[0] == '\0') {
-        return 0;
-    }
-    p = strstr(last_line, "Triggered from ");
-    if (!p) {
-        return 0;
-    }
-    p += strlen("Triggered from ");
-    char *q = strchr(p, ' ');
-    if (!q) {
-        return 0;
-    }
-    src_len = (size_t)(q - p);
-
-    if (src_len >= sizeof(src_tmp)) {
-        src_len = sizeof(src_tmp) - 1;
-    }
-    memcpy(src_tmp, p, src_len);
-    src_tmp[src_len] = '\0';
-    const char *rest = q + 1;
-    size_t rest_len = strlen(rest);
-    while (rest_len > 0 && (rest[rest_len-1] == '\n' || rest[rest_len-1] == '\r')) { 
-        rest_len--; 
-    }
-
-    if (rest_len >= sizeof(other_tmp)) {
-        rest_len = sizeof(other_tmp) - 1;
-    }
-    memcpy(other_tmp, rest, rest_len);
-    other_tmp[rest_len] = '\0';
-    /* Allocate copies for the caller; caller must free */
-    char *src_dup = strdup(src_tmp);
-    char *other_dup = strdup(other_tmp);
-
-    if (!src_dup || !other_dup) {
-        /* Avoid leaking memory if one of the allocations fails */
-        free(src_dup);
-        free(other_dup);
-        *out_source = NULL;
-        *out_other = NULL;
-        return 0;
-    }
-
-    *out_source = src_dup;
-    *out_other = other_dup;
-    return 1;
-}
-
 static void signal_cleanup_handler(int signum)
 {
     (void)signum;
@@ -420,10 +349,10 @@ int main(int argc, char **argv)
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Categorized reboot as %s (source=%s, custom=%s, other=%s)\n",
             rebootReason, source, customReason, otherReason);
    
-    if (adjust_hal_sys_reboot_source(source, &adj_source, &adj_other)) {
+   /* if (adjust_hal_sys_reboot_source(source, &adj_source, &adj_other)) {
         if (adj_source) source = adj_source;
         if (adj_other) otherReason = adj_other;
-    }
+    } */
   
     struct stat st;
     if (stat(REBOOT_INFO_DIR, &st) != 0) {
@@ -483,12 +412,12 @@ int main(int argc, char **argv)
     }
 
     rbus_cleanup();
-    if (adj_source) {
+   /* if (adj_source) {
         free(adj_source);
     }
     if (adj_other) {
         free(adj_other);
-    }
+    } */
     
     // Execute reboot sequence: reboot &, wait, fallback to systemctl reboot, then reboot -f
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Rebooting the Device Now\n");
