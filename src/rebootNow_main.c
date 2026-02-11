@@ -583,7 +583,7 @@ int main(int argc, char **argv)
     if (rbus_get_bool_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ManageableNotification.Enable", &Mng_Notify_Enable))
     {
         RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Value of Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ManageableNotification.Enable: %s\n", 
-			                             Mng_Notify_Enable ? "true" : "false");
+                                     Mng_Notify_Enable ? "true" : "false");
         if (Mng_Notify_Enable) {
             rbus_set_int_param("Device.DeviceInfo.X_RDKCENTRAL-COM_xOpsDeviceMgmt.RPC.RebootPendingNotification", 10);
         }
