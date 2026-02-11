@@ -364,12 +364,203 @@ int main(int argc, char **argv)
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Invoke setPreviousRebootInfo to save reboot information under %s folder\n", REBOOT_INFO_DIR);
     FILE *jsonf = fopen(REBOOT_INFO_FILE, "w");
     if (jsonf) {
+        const char *p;
         fprintf(jsonf, "{\n");
-        fprintf(jsonf, "\"timestamp\":\"%s\",\n", ts);
-        fprintf(jsonf, "\"source\":\"%s\",\n", source ? source : "");
-        fprintf(jsonf, "\"reason\":\"%s\",\n", rebootReason);
-        fprintf(jsonf, "\"customReason\":\"%s\",\n", customReason);
-        fprintf(jsonf, "\"otherReason\":\"%s\"\n", otherReason ? otherReason : "");
+
+        /* "timestamp" field with JSON escaping */
+        fprintf(jsonf, "\"timestamp\":\"");
+        if (ts) {
+            for (p = ts; *p; ++p) {
+                unsigned char c = (unsigned char)*p;
+                switch (c) {
+                    case '\\':
+                        fputs("\\\\", jsonf);
+                        break;
+                    case '\"':
+                        fputs("\\\"", jsonf);
+                        break;
+                    case '\b':
+                        fputs("\\b", jsonf);
+                        break;
+                    case '\f':
+                        fputs("\\f", jsonf);
+                        break;
+                    case '\n':
+                        fputs("\\n", jsonf);
+                        break;
+                    case '\r':
+                        fputs("\\r", jsonf);
+                        break;
+                    case '\t':
+                        fputs("\\t", jsonf);
+                        break;
+                    default:
+                        if (c < 0x20) {
+                            fprintf(jsonf, "\\u%04x", c);
+                        } else {
+                            fputc(c, jsonf);
+                        }
+                        break;
+                }
+            }
+        }
+        fprintf(jsonf, "\",\n");
+
+        /* "source" field with JSON escaping */
+        fprintf(jsonf, "\"source\":\"");
+        if (source) {
+            for (p = source; *p; ++p) {
+                unsigned char c = (unsigned char)*p;
+                switch (c) {
+                    case '\\':
+                        fputs("\\\\", jsonf);
+                        break;
+                    case '\"':
+                        fputs("\\\"", jsonf);
+                        break;
+                    case '\b':
+                        fputs("\\b", jsonf);
+                        break;
+                    case '\f':
+                        fputs("\\f", jsonf);
+                        break;
+                    case '\n':
+                        fputs("\\n", jsonf);
+                        break;
+                    case '\r':
+                        fputs("\\r", jsonf);
+                        break;
+                    case '\t':
+                        fputs("\\t", jsonf);
+                        break;
+                    default:
+                        if (c < 0x20) {
+                            fprintf(jsonf, "\\u%04x", c);
+                        } else {
+                            fputc(c, jsonf);
+                        }
+                        break;
+                }
+            }
+        }
+        fprintf(jsonf, "\",\n");
+
+        /* "reason" field with JSON escaping */
+        fprintf(jsonf, "\"reason\":\"");
+        if (rebootReason) {
+            for (p = rebootReason; *p; ++p) {
+                unsigned char c = (unsigned char)*p;
+                switch (c) {
+                    case '\\':
+                        fputs("\\\\", jsonf);
+                        break;
+                    case '\"':
+                        fputs("\\\"", jsonf);
+                        break;
+                    case '\b':
+                        fputs("\\b", jsonf);
+                        break;
+                    case '\f':
+                        fputs("\\f", jsonf);
+                        break;
+                    case '\n':
+                        fputs("\\n", jsonf);
+                        break;
+                    case '\r':
+                        fputs("\\r", jsonf);
+                        break;
+                    case '\t':
+                        fputs("\\t", jsonf);
+                        break;
+                    default:
+                        if (c < 0x20) {
+                            fprintf(jsonf, "\\u%04x", c);
+                        } else {
+                            fputc(c, jsonf);
+                        }
+                        break;
+                }
+            }
+        }
+        fprintf(jsonf, "\",\n");
+
+        /* "customReason" field with JSON escaping */
+        fprintf(jsonf, "\"customReason\":\"");
+        if (customReason) {
+            for (p = customReason; *p; ++p) {
+                unsigned char c = (unsigned char)*p;
+                switch (c) {
+                    case '\\':
+                        fputs("\\\\", jsonf);
+                        break;
+                    case '\"':
+                        fputs("\\\"", jsonf);
+                        break;
+                    case '\b':
+                        fputs("\\b", jsonf);
+                        break;
+                    case '\f':
+                        fputs("\\f", jsonf);
+                        break;
+                    case '\n':
+                        fputs("\\n", jsonf);
+                        break;
+                    case '\r':
+                        fputs("\\r", jsonf);
+                        break;
+                    case '\t':
+                        fputs("\\t", jsonf);
+                        break;
+                    default:
+                        if (c < 0x20) {
+                            fprintf(jsonf, "\\u%04x", c);
+                        } else {
+                            fputc(c, jsonf);
+                        }
+                        break;
+                }
+            }
+        }
+        fprintf(jsonf, "\",\n");
+
+        /* "otherReason" field with JSON escaping */
+        fprintf(jsonf, "\"otherReason\":\"");
+        if (otherReason) {
+            for (p = otherReason; *p; ++p) {
+                unsigned char c = (unsigned char)*p;
+                switch (c) {
+                    case '\\':
+                        fputs("\\\\", jsonf);
+                        break;
+                    case '\"':
+                        fputs("\\\"", jsonf);
+                        break;
+                    case '\b':
+                        fputs("\\b", jsonf);
+                        break;
+                    case '\f':
+                        fputs("\\f", jsonf);
+                        break;
+                    case '\n':
+                        fputs("\\n", jsonf);
+                        break;
+                    case '\r':
+                        fputs("\\r", jsonf);
+                        break;
+                    case '\t':
+                        fputs("\\t", jsonf);
+                        break;
+                    default:
+                        if (c < 0x20) {
+                            fprintf(jsonf, "\\u%04x", c);
+                        } else {
+                            fputc(c, jsonf);
+                        }
+                        break;
+                }
+            }
+        }
+        fprintf(jsonf, "\"\n");
         fprintf(jsonf, "}\n");
         fclose(jsonf);
 
