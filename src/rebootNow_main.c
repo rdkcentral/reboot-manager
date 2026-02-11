@@ -298,10 +298,6 @@ int main(int argc, char **argv)
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Reboot requested on the device from Source:%s Reason:%s\n", source, otherReason);
     emit_t2_for_source(source, is_crash);
 
-    if (rebootLogReason != NULL) {
-        free(rebootLogReason);
-        rebootLogReason = NULL;
-    }
     // Categorization
     const char *rebootReason = "FIRMWARE_FAILURE";
     if (checkstringvalue(APP_TRIGGERED_REASONS, sizeof(APP_TRIGGERED_REASONS)/sizeof(APP_TRIGGERED_REASONS[0]), source)) {
