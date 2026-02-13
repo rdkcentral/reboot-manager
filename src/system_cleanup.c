@@ -24,7 +24,6 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <signal.h>
-#include "rdk_debug.h"
 #include "rebootNow.h"
 #include "secure_wrapper.h"
 #include "rbus_interface.h"

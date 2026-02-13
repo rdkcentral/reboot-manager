@@ -26,7 +26,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "rbus_interface.h"
-#include "rdk_debug.h"
 #include "rdk_logger.h"
 #ifndef GTEST_ENABLE
 #include "rbus/rbus.h"
