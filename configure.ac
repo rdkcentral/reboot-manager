@@ -19,7 +19,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_INIT(REBOOT, 1.0, saranya_elango@comcast.com)
-AC_CONFIG_SRCDIR([src/rebootNow_main.c])
+AC_CONFIG_SRCDIR([rebootnow/src/main.c])
 AC_CONFIG_HEADER([config.h])
 AM_INIT_AUTOMAKE(REBOOT, REBOOT)
 
@@ -97,6 +97,6 @@ if test "$USE_CPC" = "yes"; then
         AC_DEFINE([USE_CPC], [1], [Define to enable CPC support])
 fi
 
-AC_CONFIG_FILES([Makefile src/Makefile])
+AC_CONFIG_FILES([Makefile rebootnow/src/Makefile])
 
 AC_OUTPUT
