@@ -49,7 +49,10 @@ void timestamp_update(char *buf, size_t sz)
     }
 #endif
     if (buf && sz > 0) {
-        strftime(buf, sz, "%Y-%m-%dT%H:%M:%SZ", &tm_utc);
+        size_t n = strftime(buf, sz, "%Y-%m-%dT%H:%M:%SZ", &tm_utc);
+        if (n == 0) {
+            buf[0] = '\0';
+        }
     }
 }
 
