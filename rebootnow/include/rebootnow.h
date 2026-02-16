@@ -26,7 +26,7 @@ int handle_cyclic_reboot(const char *source,
                          const char *customReason,
                          const char *otherReason);
 void timestamp_update(char *buf, size_t sz);
-int append_line_to_file(const char *path, const char *line);
+int write_rebootinfo_log(const char *path, const char *line);
 void t2CountNotify(const char *marker, int val);
 void t2ValNotify(const char *marker, const char *val);
 #ifdef __cplusplus

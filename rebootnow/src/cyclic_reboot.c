@@ -25,7 +25,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <unistd.h>
-#include "rebootNow.h"
+#include "rebootnow.h"
 #include "secure_wrapper.h"
 #include "rbus_interface.h"
 #include "rdk_logger.h"
@@ -145,7 +145,6 @@ int handle_cyclic_reboot(const char *source,
     int stop_duration = 30; /* minutes */
     char p_src[128] = {0}, p_rsn[128] = {0}, p_cus[128] = {0}, p_oth[256] = {0}, p_ts[64] = {0};
     int upsecs = 0;
-    const int REBOOT_WINDOW_SECS = 0;
 
     rbus_get_bool_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RebootStop.Detection", &detection_enabled);
     RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Reboot Loop Detection enabled to check cyclic reboot scenarios:%s\n", detection_enabled ? "true" : "false");
@@ -172,7 +171,7 @@ int handle_cyclic_reboot(const char *source,
                 RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Device Uptime from last reboot: %d secs\n", upsecs);
             }
 
-            REBOOT_WINDOW_SECS = 10 * 60;
+            const int REBOOT_WINDOW_SECS = 10 * 60;
 
             if (upsecs >= 0 && upsecs <= REBOOT_WINDOW_SECS) {
                 RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Reboot requested before the %d mins, checking reboot reason\n", 10);

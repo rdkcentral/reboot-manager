@@ -21,7 +21,7 @@
 #include <stdio.h>
 #include <time.h>
 #include "rdk_logger.h"
-#include "rebootNow.h"
+#include "rebootnow.h"
 
 void timestamp_update(char *buf, size_t sz)
 {

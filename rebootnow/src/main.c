@@ -26,7 +26,7 @@
 #include <sys/stat.h>
 #include <signal.h>
 #include <sys/types.h>
-#include "rebootNow.h"
+#include "rebootnow.h"
 #include "secure_wrapper.h"
 #include "rbus_interface.h"
 #include "rdk_logger.h"
@@ -351,7 +351,7 @@ int main(int argc, char **argv)
             RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Failed to open %s for writing (errno=%d)\n", PREVIOUS_REBOOT_INFO_FILE, errno);
         }
 
-        snprintf(reason_str, sizeof(reason_str, "PreviousRebootInfo:%s,%s,%s,%s\n", ts, customReason, source ? source : "", rebootReason);
+        snprintf(reason_str, sizeof(reason_str), "PreviousRebootInfo:%s,%s,%s,%s\n", ts, customReason, source ? source : "", rebootReason);
         write_rebootinfo_log(PARODUS_REBOOT_INFO_FILE, reason_str);
         RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Updated Reboot Reason information in %s and %s\n", REBOOT_INFO_FILE, PARODUS_REBOOT_INFO_FILE);
     } else {
