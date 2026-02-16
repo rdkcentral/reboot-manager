@@ -17,7 +17,7 @@ librebootnow_la_LIBADD = -lfwutils -lrdkloggers -lrbus -lsecure_wrapper
 
 # CLI wrapper binary
 bin_PROGRAMS = rebootnow
-rebootnow_SOURCES = rebootNow_main.c
+rebootnow_SOURCES = main.c
 rebootnow_LDADD = librebootnow.la
 
 AM_LDFLAGS = -lrdkloggers -lfwutils -lrdkloggers -lrbus -lsecure_wrapper

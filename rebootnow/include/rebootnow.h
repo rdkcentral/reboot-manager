@@ -27,7 +27,6 @@ int handle_cyclic_reboot(const char *source,
                          const char *otherReason);
 void timestamp_update(char *buf, size_t sz);
 int append_line_to_file(const char *path, const char *line);
-int run_cmd_capture(const char *cmd, char *out, size_t outsz);
 void t2CountNotify(const char *marker, int val);
 void t2ValNotify(const char *marker, const char *val);
 #ifdef __cplusplus

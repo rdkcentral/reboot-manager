@@ -241,7 +241,7 @@ static void sync_logs_from_temp(const char *temp_path, const char *log_path)
     closedir(d);
 }
 
-void perform_housekeeping(void)
+void cleanup_services(void)
 {
     /* Signal telemetry2_0 and parodus */
     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Signal telemetry2_0 to send out any pending messages before reboot\n");

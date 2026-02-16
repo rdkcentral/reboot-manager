@@ -26,38 +26,13 @@
 void timestamp_update(char *buf, size_t sz)
 {
     time_t now = time(NULL);
-    if (now == (time_t)-1) {
-        if (buf && sz > 0) {
-            buf[0] = '\0';
-        }
-        return;
-    }
-
-    struct tm tm_utc;
-#if defined(_WIN32)
-    if (gmtime_s(&tm_utc, &now) != 0) {
-        if (buf && sz > 0) {
-            buf[0] = '\0';
-        }
-        return;
-    }
-#else
-    if (gmtime_r(&now, &tm_utc) == NULL) {
-        if (buf && sz > 0) {
-            buf[0] = '\0';
-        }
-        return;
-    }
-#endif
-    if (buf && sz > 0) {
-        size_t n = strftime(buf, sz, "%Y-%m-%dT%H:%M:%SZ", &tm_utc);
-        if (n == 0) {
-            buf[0] = '\0';
-        }
+    struct tm *tm_info = gmtime(&now);
+    if (strftime(buf, sz, "%a %b %d %H:%M:%S UTC %Y", tm_info) == 0) {
+        buf[0] = '\0';
     }
 }
 
-int append_line_to_file(const char *path, const char *line)
+int write_rebootinfo_log(const char *path, const char *line)
 {
     FILE *f = fopen(path, "a");
     if (!f) {
@@ -69,20 +44,6 @@ int append_line_to_file(const char *path, const char *line)
     }
     fclose(f);
     return 0;
-}
-
-int run_cmd_capture(const char *cmd, char *out, size_t outsz)
-{
-    if (!cmd) return -1;
-    FILE *p = popen(cmd, "r");
-    if (!p) return -1;
-    size_t n = 0;
-    if (out && outsz) {
-        n = fread(out, 1, outsz - 1, p);
-        out[n] = '\0';
-    }
-    int status = pclose(p);
-    return status;
 }
 
 void t2CountNotify(const char *marker, int val)
