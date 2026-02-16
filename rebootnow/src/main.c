@@ -196,8 +196,12 @@ int main(int argc, char **argv)
     rdk_logger_ext_config_t config = {
         .pModuleName = "LOG.RDK.REBOOTINFO",     /* Module name */
         .loglevel = RDK_LOG_INFO,                 /* Default log level */
-        .output = RDKLOG_OUTPUT_CONSOLE,          /* Output to console (stdout/stderr) */
+        .output = RDKLOG_OUTPUT_FILE,          /* Output to console (stdout/stderr) */
         .format = RDKLOG_FORMAT_WITH_TS,          /* Timestamped format */
+	.fileName = "rebootreason.log",
+	.logdir = "/opt/logs/",
+	.maxSize = 10240,
+	.maxCount = 3,
         .pFilePolicy = NULL                       /* Not using file output, so NULL */
     };
     
@@ -242,10 +246,10 @@ int main(int argc, char **argv)
                 is_crash = 1;
                 break;
             case 'r':
-                customReason = optarg;
+                custom_reason = optarg;
                 break;
             case 'o':
-                otherReason = optarg;
+                other_reason = optarg;
                 break;
             case 'h':
             default:
@@ -260,22 +264,22 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Reboot requested on the device from Source:%s Reason:%s\n", source, otherReason);
+    RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Reboot requested on the device from Source:%s Reason:%s\n", source, other_reason);
     emit_t2_for_source(source, is_crash);
 
     // Categorization
-    const char *rebootReason = "FIRMWARE_FAILURE";
+    const char *reboot_reason = "FIRMWARE_FAILURE";
     if (check_string_value(APP_TRIGGERED_REASONS, sizeof(APP_TRIGGERED_REASONS)/sizeof(APP_TRIGGERED_REASONS[0]), source)) {
-        rebootReason = "APP_TRIGGERED";
-        if (customReason && strcmp(customReason, "MAINTENANCE_REBOOT") == 0) {
-            rebootReason = "MAINTENANCE_REBOOT";
+        reboot_reason = "APP_TRIGGERED";
+        if (custom_reason && strcmp(custom_reason, "MAINTENANCE_REBOOT") == 0) {
+            reboot_reason = "MAINTENANCE_REBOOT";
         }
     } else if (check_string_value(OPS_TRIGGERED_REASONS, sizeof(OPS_TRIGGERED_REASONS)/sizeof(OPS_TRIGGERED_REASONS[0]), source)) {
-        rebootReason = "OPS_TRIGGERED";
+        reboot_reason = "OPS_TRIGGERED";
     } else if (check_string_value(MAINTENANCE_TRIGGERED_REASONS, sizeof(MAINTENANCE_TRIGGERED_REASONS)/sizeof(MAINTENANCE_TRIGGERED_REASONS[0]), source)) {
-        rebootReason = "MAINTENANCE_REBOOT";
+        reboot_reason = "MAINTENANCE_REBOOT";
     } else {
-        rebootReason = "FIRMWARE_FAILURE";
+        reboot_reason = "FIRMWARE_FAILURE";
     }
 
     // Log into rebootInfo.log in a similar format
@@ -284,10 +288,10 @@ int main(int argc, char **argv)
     bytes_used = update_reboot_log(reason_str, sizeof(reason_str), bytes_used, "RebootReason: ");
     bytes_used = update_reboot_log(reason_str, sizeof(reason_str), bytes_used,
         is_crash ? "Triggered from %s process failure or crash..!" : "Triggered from %s process", source);
-    if (strcmp(otherReason, "Unknown") == 0) {
+    if (strcmp(other_reason, "Unknown") == 0) {
         bytes_used = update_reboot_log(reason_str, sizeof(reason_str), bytes_used, "\n");
     } else {
-        bytes_used = update_reboot_log(reason_str, sizeof(reason_str), bytes_used, " %s\n", otherReason);
+        bytes_used = update_reboot_log(reason_str, sizeof(reason_str), bytes_used, " %s\n", other_reason);
     }
     
     reason_str[sizeof(reason_str) - 1] = '\0';
@@ -300,14 +304,14 @@ int main(int argc, char **argv)
     snprintf(reason_str, sizeof(reason_str), "RebootTime: %s\n", ts);
     write_rebootinfo_log(REBOOTINFO_LOG, reason_str);
 
-    snprintf(reason_str, sizeof(reason_str), "CustomReason: %s\n", customReason);
+    snprintf(reason_str, sizeof(reason_str), "CustomReason: %s\n", custom_reason);
     write_rebootinfo_log(REBOOTINFO_LOG, reason_str);
 
-    snprintf(reason_str, sizeof(reason_str), "OtherReason: %s\n", otherReason);
+    snprintf(reason_str, sizeof(reason_str), "OtherReason: %s\n", other_reason);
     write_rebootinfo_log(REBOOTINFO_LOG, reason_str);
 
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Categorized reboot as %s (source=%s, custom=%s, other=%s)\n",
-            rebootReason, source, customReason, otherReason);
+            reboot_reason, source, custom_reason, other_reason);
    
     if (stat(REBOOT_INFO_DIR, &st) != 0) {
         if (mkdir(REBOOT_INFO_DIR, 0755) != 0) {
@@ -327,9 +331,9 @@ int main(int argc, char **argv)
             fprintf(rebootinfo_json, "{\n");
             fprintf(rebootinfo_json, "\"timestamp\":\"%s\",\n", ts);
             fprintf(rebootinfo_json, "\"source\":\"%s\",\n", source ? source : "");
-            fprintf(rebootinfo_json, "\"reason\":\"%s\",\n", rebootReason);
-            fprintf(rebootinfo_json, "\"customReason\":\"%s\",\n", customReason);
-            fprintf(rebootinfo_json, "\"otherReason\":\"%s\"\n", otherReason ? otherReason : "");
+            fprintf(rebootinfo_json, "\"reason\":\"%s\",\n", reboot_reason);
+            fprintf(rebootinfo_json, "\"customReason\":\"%s\",\n", custom_reason);
+            fprintf(rebootinfo_json, "\"otherReason\":\"%s\"\n", other_reason ? other_reason : "");
             fprintf(rebootinfo_json, "}\n");
             fclose(rebootinfo_json);
             RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Saving reboot info in %s file\n", REBOOT_INFO_FILE);
@@ -341,9 +345,9 @@ int main(int argc, char **argv)
             fprintf(prev_rebootinfo_json, "{\n");
             fprintf(prev_rebootinfo_json, "\"timestamp\":\"%s\",\n", ts);
             fprintf(prev_rebootinfo_json, "\"source\":\"%s\",\n", source ? source : "");
-            fprintf(prev_rebootinfo_json, "\"reason\":\"%s\",\n", rebootReason);
-            fprintf(prev_rebootinfo_json, "\"customReason\":\"%s\",\n", customReason);
-            fprintf(prev_rebootinfo_json, "\"otherReason\":\"%s\"\n", otherReason ? otherReason : "");
+            fprintf(prev_rebootinfo_json, "\"reason\":\"%s\",\n", reboot_reason);
+            fprintf(prev_rebootinfo_json, "\"customReason\":\"%s\",\n", custom_reason);
+            fprintf(prev_rebootinfo_json, "\"otherReason\":\"%s\"\n", other_reason ? other_reason : "");
             fprintf(prev_rebootinfo_json, "}\n");
             fclose(prev_rebootinfo_json);
             RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Saving reboot info in %s file (for cyclic handler)\n", PREVIOUS_REBOOT_INFO_FILE);
@@ -351,7 +355,7 @@ int main(int argc, char **argv)
             RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Failed to open %s for writing (errno=%d)\n", PREVIOUS_REBOOT_INFO_FILE, errno);
         }
 
-        snprintf(reason_str, sizeof(reason_str), "PreviousRebootInfo:%s,%s,%s,%s\n", ts, customReason, source ? source : "", rebootReason);
+        snprintf(reason_str, sizeof(reason_str), "PreviousRebootInfo:%s,%s,%s,%s\n", ts, custom_reason, source ? source : "", reboot_reason);
         write_rebootinfo_log(PARODUS_REBOOT_INFO_FILE, reason_str);
         RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Updated Reboot Reason information in %s and %s\n", REBOOT_INFO_FILE, PARODUS_REBOOT_INFO_FILE);
     } else {
@@ -359,16 +363,16 @@ int main(int argc, char **argv)
     }
 
     /* Module returns 0 to defer reboot, 1 to proceed */
-    reboot_count = handle_cyclic_reboot(source, rebootReason, customReason, otherReason);
+    reboot_count = handle_cyclic_reboot(source, reboot_reason, custom_reason, other_reason);
     if (reboot_count == 0) {
         return 0; /* exit without performing immediate reboot */
     }
 
-    if (rbus_get_bool_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ManageableNotification.Enable", &Mng_Notify_Enable))
+    if (rbus_get_bool_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ManageableNotification.Enable", &mng_notify_enable))
     {
         RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Value of Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ManageableNotification.Enable: %s\n", 
-                                     Mng_Notify_Enable ? "true" : "false");
-        if (Mng_Notify_Enable) {
+                                     mng_notify_enable ? "true" : "false");
+        if (mng_notify_enable) {
             rbus_set_int_param("Device.DeviceInfo.X_RDKCENTRAL-COM_xOpsDeviceMgmt.RPC.RebootPendingNotification", 10);
         }
     }
@@ -377,7 +381,7 @@ int main(int argc, char **argv)
     cleanup_services();
     
     reboot_flag = fopen(REBOOTNOW_FLAG, "a");
-    if (reboot_lag) {
+    if (reboot_flag) {
         fclose(reboot_flag);
         RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Creating %s as the reboot was triggered by RDK software\n", REBOOTNOW_FLAG);
     } else {

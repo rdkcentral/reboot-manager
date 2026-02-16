@@ -15,7 +15,7 @@ extern "C" {
 
 
 /* Housekeeping operations prior to reboot */
-void perform_housekeeping(void);
+void cleanup_services(void);
 
 /* Single-instance guard via PID file */
 int pidfile_write_and_guard(void);
