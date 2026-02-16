@@ -79,7 +79,9 @@ static int send_signalcleanup(const char *name, int sig)
         char comm[256] = {0};
         if (fgets(comm, sizeof(comm), cf)) {
             size_t len = strlen(comm);
-            if (len > 0 && (comm[len-1] == '\n' || comm[len-1] == '\r')) comm[--len] = '\0';
+            while (len > 0 && (comm[len-1] == '\n' || comm[len-1] == '\r')) {
+                comm[--len] = '\0';
+            }
             if (strcmp(comm, name) == 0) {
                 pid_t pid = (pid_t)atoi(dname);
                 if (pid > 1) {
