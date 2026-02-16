@@ -176,7 +176,7 @@ static int clear_subdirectory(const char *root)
 
 static void sync_logs_from_temp(const char *temp_path, const char *log_path)
 {
-    int copy_ok = 1;
+    int copy_ok = 0;
     char src[512], dst[512];
     char buf[4096];
     size_t n;
@@ -209,6 +209,8 @@ static void sync_logs_from_temp(const char *temp_path, const char *log_path)
                 RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","sync_logs: path truncated for %s or %s\n", name, log_path ? log_path : "<null>");
                 continue;
             }
+
+	    copy_ok = 1;
 
             FILE *fs = fopen(src, "r");
             FILE *fd = fopen(dst, "a");

@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <time.h>
 #include "rdk_logger.h"
+#include "rebootNow.h"
 
 void timestamp_update(char *buf, size_t sz)
 {
@@ -82,4 +83,26 @@ int run_cmd_capture(const char *cmd, char *out, size_t outsz)
     }
     int status = pclose(p);
     return status;
+}
+
+void t2CountNotify(const char *marker, int val)
+{
+#ifdef T2_EVENT_ENABLED
+    if (marker && *marker) {
+        t2_event_d(marker, val);
+    }
+#else
+    (void)marker; (void)val;
+#endif
+}
+
+void t2ValNotify(const char *marker, const char *val)
+{
+#ifdef T2_EVENT_ENABLED
+    if (marker && *marker && val) {
+        t2_event_s(marker, val);
+    }
+#else
+    (void)marker; (void)val;
+#endif
 }

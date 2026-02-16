@@ -39,6 +39,7 @@ static const char *REBOOT_INFO_DIR = "/opt/secure/reboot";
 static const char *REBOOT_INFO_FILE = "/opt/secure/reboot/reboot.info";
 static const char *PARODUS_REBOOT_INFO_FILE = "/opt/secure/reboot/parodusreboot.info";
 static const char *REBOOTNOW_FLAG = "/opt/secure/reboot/rebootNow";
+static const char *PREVIOUS_REBOOT_INFO_FILE = "/opt/secure/reboot/previousreboot.info";
 
 #ifdef RDK_LOGGER_ENABLED
 int g_rdk_logger_enabled = 0;
@@ -93,23 +94,6 @@ static int checkstringvalue(const char *const *list, size_t n, const char *needl
         }
     }
     return 0;
-}
-
-/* Description: Use for sending telemetry Log
- * @param marker: use for send marker details
- * @return : void
- * */
-void t2CountNotify(const char *marker, int val) {
-#ifdef T2_EVENT_ENABLED
-    t2_event_d(marker, val);
-#endif
-}
-
-void t2ValNotify(const char *marker, const char *val)
-{
-#ifdef T2_EVENT_ENABLED
-    t2_event_s(marker, val);
-#endif
 }
 
 static void emit_t2_for_source(const char *source, int is_crash)
@@ -264,39 +248,9 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    // Build rebootLogReason similar to the shell script
-    char *rebootLogReason = NULL;
-    size_t rebootLogReasonLen = 0;
-    if (is_crash) {
-        /* First determine required length for the formatted string */
-        rebootLogReasonLen = (size_t)snprintf(NULL, 0,
-                                            "Triggered from %s process failure or crash..!",
-                                            source);
-        rebootLogReason = (char *)malloc(rebootLogReasonLen + 1);
-        if (rebootLogReason != NULL) {
-            (void)snprintf(rebootLogReason, rebootLogReasonLen + 1,
-                           "Triggered from %s process failure or crash..!",
-                           source);
-        }
-    } else {
-        /* First determine required length for the formatted string */
-        rebootLogReasonLen = (size_t)snprintf(NULL, 0,
-                                            "Triggered from %s process",
-                                            source);
-        rebootLogReason = (char *)malloc(rebootLogReasonLen + 1);
-        if (rebootLogReason != NULL) {
-            (void)snprintf(rebootLogReason, rebootLogReasonLen + 1,
-                           "Triggered from %s process",
-                           source);
-        }
-    }
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Reboot requested on the device from Source:%s Reason:%s\n", source, otherReason);
     emit_t2_for_source(source, is_crash);
 
-    if (rebootLogReason != NULL) {
-        free(rebootLogReason);
-        rebootLogReason = NULL;
-    }
     // Categorization
     const char *rebootReason = "FIRMWARE_FAILURE";
     if (checkstringvalue(APP_TRIGGERED_REASONS, sizeof(APP_TRIGGERED_REASONS)/sizeof(APP_TRIGGERED_REASONS[0]), source)) {
@@ -316,16 +270,17 @@ int main(int argc, char **argv)
     char ts[64];
     timestamp_update(ts, sizeof(ts));
 
-    /* Use a safe string for logging: fall back to rebootReason if rebootLogReason is NULL */
-    const char *logReasonStr = rebootLogReason ? rebootLogReason : rebootReason;
-
     bytes_used = UpdateRebootLog(line, sizeof(line), bytes_used, "RebootReason: ");
+    bytes_used = UpdateRebootLog(line, sizeof(line), bytes_used,
+        is_crash ? "Triggered from %s process failure or crash..!" : "Triggered from %s process",
+        source
+    );
     if (strcmp(otherReason, "Unknown") == 0) {
-        bytes_used = UpdateRebootLog(line, sizeof(line), bytes_used, "%s\n", logReasonStr);
+        bytes_used = UpdateRebootLog(line, sizeof(line), bytes_used, "\n");
     } else {
-        bytes_used = UpdateRebootLog(line, sizeof(line), bytes_used, "%s ", logReasonStr);
-        bytes_used = UpdateRebootLog(line, sizeof(line), bytes_used, "%s\n", otherReason);
+        bytes_used = UpdateRebootLog(line, sizeof(line), bytes_used, " %s\n", otherReason);
     }
+    
     line[sizeof(line) - 1] = '\0';
 
     append_line_to_file(REBOOTINFO_LOG, line);
@@ -345,11 +300,6 @@ int main(int argc, char **argv)
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Categorized reboot as %s (source=%s, custom=%s, other=%s)\n",
             rebootReason, source, customReason, otherReason);
    
-   /* if (adjust_hal_sys_reboot_source(source, &adj_source, &adj_other)) {
-        if (adj_source) source = adj_source;
-        if (adj_other) otherReason = adj_other;
-    } */
-  
     struct stat st;
     if (stat(REBOOT_INFO_DIR, &st) != 0) {
         if (mkdir(REBOOT_INFO_DIR, 0755) != 0) {
@@ -361,22 +311,42 @@ int main(int argc, char **argv)
 
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Invoke setPreviousRebootInfo to save reboot information under %s folder\n", REBOOT_INFO_DIR);
     FILE *jsonf = fopen(REBOOT_INFO_FILE, "w");
-    if (jsonf) {
-        fprintf(jsonf, "{\n");
-        fprintf(jsonf, "\"timestamp\":\"%s\",\n", ts);
-        fprintf(jsonf, "\"source\":\"%s\",\n", source ? source : "");
-        fprintf(jsonf, "\"reason\":\"%s\",\n", rebootReason);
-        fprintf(jsonf, "\"customReason\":\"%s\",\n", customReason);
-        fprintf(jsonf, "\"otherReason\":\"%s\"\n", otherReason ? otherReason : "");
-        fprintf(jsonf, "}\n");
-        fclose(jsonf);
+    FILE *jsonf_prev = fopen(PREVIOUS_REBOOT_INFO_FILE, "w");
 
-        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Saving reboot info in %s file\n", REBOOT_INFO_FILE);
+    if (jsonf || jsonf_prev) {
+        if (jsonf) {
+            fprintf(jsonf, "{\n");
+            fprintf(jsonf, "\"timestamp\":\"%s\",\n", ts);
+            fprintf(jsonf, "\"source\":\"%s\",\n", source ? source : "");
+            fprintf(jsonf, "\"reason\":\"%s\",\n", rebootReason);
+            fprintf(jsonf, "\"customReason\":\"%s\",\n", customReason);
+            fprintf(jsonf, "\"otherReason\":\"%s\"\n", otherReason ? otherReason : "");
+            fprintf(jsonf, "}\n");
+            fclose(jsonf);
+            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Saving reboot info in %s file\n", REBOOT_INFO_FILE);
+        } else {
+            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Failed to open %s for writing (errno=%d)\n", REBOOT_INFO_FILE, errno);
+        }
+
+        if (jsonf_prev) {
+            fprintf(jsonf_prev, "{\n");
+            fprintf(jsonf_prev, "\"timestamp\":\"%s\",\n", ts);
+            fprintf(jsonf_prev, "\"source\":\"%s\",\n", source ? source : "");
+            fprintf(jsonf_prev, "\"reason\":\"%s\",\n", rebootReason);
+            fprintf(jsonf_prev, "\"customReason\":\"%s\",\n", customReason);
+            fprintf(jsonf_prev, "\"otherReason\":\"%s\"\n", otherReason ? otherReason : "");
+            fprintf(jsonf_prev, "}\n");
+            fclose(jsonf_prev);
+            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Saving reboot info in %s file (for cyclic handler)\n", PREVIOUS_REBOOT_INFO_FILE);
+        } else {
+            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Failed to open %s for writing (errno=%d)\n", PREVIOUS_REBOOT_INFO_FILE, errno);
+        }
+
         snprintf(par_line, sizeof(par_line), "PreviousRebootInfo:%s,%s,%s,%s\n", ts, customReason, source ? source : "", rebootReason);
         append_line_to_file(PARODUS_REBOOT_INFO_FILE, par_line);
         RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Updated Reboot Reason information in %s and %s\n", REBOOT_INFO_FILE, PARODUS_REBOOT_INFO_FILE);
     } else {
-        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Failed to open %s for writing (errno=%d)\n", REBOOT_INFO_FILE, errno);
+        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Failed to open both %s and %s for writing (errno=%d)\n", REBOOT_INFO_FILE, PREVIOUS_REBOOT_INFO_FILE, errno);
     }
 
     /* Delegate cyclic reboot detection and scheduling to module */
@@ -408,12 +378,6 @@ int main(int argc, char **argv)
     }
 
     rbus_cleanup();
-   /* if (adj_source) {
-        free(adj_source);
-    }
-    if (adj_other) {
-        free(adj_other);
-    } */
     
     // Execute reboot sequence: reboot &, wait, fallback to systemctl reboot, then reboot -f
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Rebooting the Device Now\n");
