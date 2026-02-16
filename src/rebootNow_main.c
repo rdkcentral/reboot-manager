@@ -234,10 +234,6 @@ int main(int argc, char **argv)
     while ((opt = getopt(argc, argv, "s:c:r:o:h")) != -1) {
         switch (opt) {
             case 's':
-                if (is_crash || source) {
-                    usage(stderr);
-                    return 1;
-                }
                 source = optarg;
                 is_crash = 0;
                 break;
