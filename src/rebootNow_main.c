@@ -315,12 +315,15 @@ int main(int argc, char **argv)
     // Log into rebootInfo.log in a similar format
     char ts[64];
     timestamp_update(ts, sizeof(ts));
-    
+
+    /* Use a safe string for logging: fall back to rebootReason if rebootLogReason is NULL */
+    const char *logReasonStr = rebootLogReason ? rebootLogReason : rebootReason;
+
     bytes_used = UpdateRebootLog(line, sizeof(line), bytes_used, "RebootReason: ");
     if (strcmp(otherReason, "Unknown") == 0) {
-        bytes_used = UpdateRebootLog(line, sizeof(line), bytes_used, "%s\n", rebootLogReason);
+        bytes_used = UpdateRebootLog(line, sizeof(line), bytes_used, "%s\n", logReasonStr);
     } else {
-        bytes_used = UpdateRebootLog(line, sizeof(line), bytes_used, "%s ", rebootLogReason);
+        bytes_used = UpdateRebootLog(line, sizeof(line), bytes_used, "%s ", logReasonStr);
         bytes_used = UpdateRebootLog(line, sizeof(line), bytes_used, "%s\n", otherReason);
     }
     line[sizeof(line) - 1] = '\0';
