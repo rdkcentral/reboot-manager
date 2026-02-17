@@ -193,16 +193,21 @@ int main(int argc, char **argv)
     int reboot_count = 1;
     FILE *reboot_flag = NULL;
 
+    //RDK Logger Initialisation
+    rdk_LogOutput_File filelog;
+    strncpy(filelog.fileName, "rebootreason.log", sizeof(filelog.fileName)-1);
+    filelog.fileName[sizeof(filelog.fileName) - 1] = '\0';
+    strncpy(filelog.fileLocation, "/opt/logs/", sizeof(filelog.fileLocation)-1);
+    filelog.fileLocation[sizeof(filelog.fileLocation) - 1] = '\0';
+    filelog.fileSizeMax = 10240;
+    filelog.fileCountMax = 3;
+
     rdk_logger_ext_config_t config = {
-        .pModuleName = "LOG.RDK.REBOOTINFO",     /* Module name */
+        .pModuleName = "LOG.RDK.REBOOTINFO",      /* Module name */
         .loglevel = RDK_LOG_INFO,                 /* Default log level */
-        .output = RDKLOG_OUTPUT_FILE,          /* Output to console (stdout/stderr) */
+        .output = RDKLOG_OUTPUT_FILE,             /* Output to FILE*/
         .format = RDKLOG_FORMAT_WITH_TS,          /* Timestamped format */
-	.fileName = "rebootreason.log",
-	.logdir = "/opt/logs/",
-	.maxSize = 10240,
-	.maxCount = 3,
-        .pFilePolicy = NULL                       /* Not using file output, so NULL */
+        .pFilePolicy = &filelog                   /* using file output*/
     };
     
     if (rdk_logger_ext_init(&config) != RDK_SUCCESS) {
