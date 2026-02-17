@@ -23,12 +23,12 @@ rebootnow_LDADD = librebootnow.la
 AM_LDFLAGS = -lrdkloggers -lfwutils -lrdkloggers -lrbus -lsecure_wrapper
 bin_PROGRAMS += update-prev-reboot-info
 update_prev_reboot_info_SOURCES = \
-    $(srcdir)/rebootmanager-cpc/src/main.c \
-    $(srcdir)/rebootmanager-cpc/src/platform_hal.c \
-    $(srcdir)/rebootmanager-cpc/src/reboot_reason_classify.c \
-    $(srcdir)/rebootmanager-cpc/src/log_parser.c \
-    $(srcdir)/rebootmanager-cpc/src/json.c \
-    $(srcdir)/rebootmanager-cpc/src/parodus_log_update.c
+    $(srcdir)/rebootnow/rebootmanager-cpc/src/main.c \
+    $(srcdir)/rebootnow/rebootmanager-cpc/src/platform_hal.c \
+    $(srcdir)/rebootnow/rebootmanager-cpc/src/reboot_reason_classify.c \
+    $(srcdir)/rebootnow/rebootmanager-cpc/src/log_parser.c \
+    $(srcdir)/rebootnow/rebootmanager-cpc/src/json.c \
+    $(srcdir)/rebootnow/rebootmanager-cpc/src/parodus_log_update.c
 
 if IS_TELEMETRY2_ENABLED
    AM_CFLAGS +=  $(T2_EVENT_FLAG)
