@@ -43,7 +43,7 @@ static int dir_exists(const char *path)
     return (path && stat(path, &st) == 0 && S_ISDIR(st.st_mode));
 }
 
-static int ends_with(const char *s, const char *suffix)
+static int is_supported_log_file(const char *s, const char *suffix)
 {
     if (!s || !suffix) return 0;
     size_t ls = strlen(s), lsuf = strlen(suffix);
@@ -202,7 +202,7 @@ static void sync_logs_from_temp(const char *temp_path, const char *log_path)
     while ((de = readdir(d)) != NULL) {
         if (de->d_type == DT_REG) {
             const char *name = de->d_name;
-            if (!(ends_with(name, ".txt") || ends_with(name, ".log"))) continue;
+            if (!(is_supported_log_file(name, ".txt") || is_supported_log_file(name, ".log"))) continue;
             wn_src = snprintf(src, sizeof(src), "%s/%s", temp_path, name);
             wn_dst = snprintf(dst, sizeof(dst), "%s/%s", log_path, name);
             if (wn_src < 0 || (size_t)wn_src >= sizeof(src) || wn_dst < 0 || (size_t)wn_dst >= sizeof(dst)) {

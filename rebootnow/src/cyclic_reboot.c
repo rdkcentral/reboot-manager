@@ -40,7 +40,7 @@ static int file_exists(const char *path)
     struct stat st;
     return (path && stat(path, &st) == 0);
 }
-static int read_int_file(const char *path, int *out)
+static int read_rebootcounter(const char *path, int *out)
 {
     if (!path || !out) return -1;
     FILE *f = fopen(path, "r");
@@ -51,7 +51,7 @@ static int read_int_file(const char *path, int *out)
     *out = (int)v;
     return 0;
 }
-static void write_int_file(const char *path, int v)
+static void write_rebootcounter(const char *path, int v)
 {
     if (!path) return;
     FILE *f = fopen(path, "w");
@@ -191,7 +191,7 @@ int handle_cyclic_reboot(const char *source,
                         return 0; /* defer reboot */
                     } else {
                         int count = 0;
-                        (void)read_int_file(REBOOT_COUNTER_FILE, &count);
+                        (void)read_rebootcounter(REBOOT_COUNTER_FILE, &count);
                         RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Checking device is stuck in cyclic reboot loop with same reboot reason, Current Iteration:%d\n", count);
                         const int REBOOT_CYCLE_THRESHOLD = 5;
                         if (count >= REBOOT_CYCLE_THRESHOLD) {
@@ -215,7 +215,7 @@ int handle_cyclic_reboot(const char *source,
                             return 0; /* defer reboot */
                         } else {
                             count += 1;
-                            write_int_file(REBOOT_COUNTER_FILE, count);
+                            write_rebootcounter(REBOOT_COUNTER_FILE, count);
                         }
                     }
                 } else {
@@ -235,7 +235,7 @@ int handle_cyclic_reboot(const char *source,
             RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Publishing Reboot Stop Disable Event\n");
             rbus_set_bool_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RebootStop.Enable", false);
             RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Reboot Loop Detection counter reset as device not in reboot loop\n");
-            write_int_file(REBOOT_COUNTER_FILE, 0);
+            write_rebootcounter(REBOOT_COUNTER_FILE, 0);
             (void)unlink(REBOOTSTOP_FLAG);
             /* Ensure any previously scheduled cyclic reboot cron job is removed */
             v_secure_system("sh /lib/rdk/cronjobs_update.sh %s %s", "remove", "rebootnow");
