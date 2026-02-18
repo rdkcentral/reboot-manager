@@ -159,7 +159,7 @@ static int clear_subdirectory(const char *root)
         if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0) continue;
         wn = snprintf(child, sizeof(child), "%s/%s", root, de->d_name);
         if (wn < 0 || (size_t)wn >= sizeof(child)) {
-            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","clear_dir_children: path truncated for %s/%s\n", root, de->d_name);
+            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","clear_dir_children: path truncated for %s/%s\n", root, de->d_name);
             continue;
         }
         if (lstat(child, &st) != 0) {
@@ -186,20 +186,20 @@ static void sync_logs_from_temp(const char *temp_path, const char *log_path)
     int wn_dst;
  
     if (!dir_exists(temp_path)) {
-        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","sync_logs: %s not found!!!\n", temp_path ? temp_path : "<null>");
+        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","sync_logs: %s not found!!!\n", temp_path ? temp_path : "<null>");
         return;
     }
     if (log_path && temp_path && strcmp(temp_path, log_path) == 0) {
-        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","sync_logs: Sync Not needed, Same log folder\n");
+        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","sync_logs: Sync Not needed, Same log folder\n");
         return;
     }
 
     DIR *d = opendir(temp_path);
     if (!d) {
-        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","sync_logs: failed to open %s\n", temp_path);
+        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","sync_logs: failed to open %s\n", temp_path);
         return;
     }
-    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Find and move the logs from %s to %s\n", temp_path, log_path ? log_path : "<null>");
+    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Find and move the logs from %s to %s\n", temp_path, log_path ? log_path : "<null>");
     while ((de = readdir(d)) != NULL) {
         if (de->d_type == DT_REG) {
             const char *name = de->d_name;
@@ -207,7 +207,7 @@ static void sync_logs_from_temp(const char *temp_path, const char *log_path)
             wn_src = snprintf(src, sizeof(src), "%s/%s", temp_path, name);
             wn_dst = snprintf(dst, sizeof(dst), "%s/%s", log_path, name);
             if (wn_src < 0 || (size_t)wn_src >= sizeof(src) || wn_dst < 0 || (size_t)wn_dst >= sizeof(dst)) {
-                RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","sync_logs: path truncated for %s or %s\n", name, log_path ? log_path : "<null>");
+                RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","sync_logs: path truncated for %s or %s\n", name, log_path ? log_path : "<null>");
                 continue;
             }
 
@@ -218,7 +218,7 @@ static void sync_logs_from_temp(const char *temp_path, const char *log_path)
             if (!fs || !fd) {
                 if (fs) fclose(fs);
                 if (fd) fclose(fd);
-                RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","sync_logs: failed to open src/dst for %s\n", name);
+                RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","sync_logs: failed to open src/dst for %s\n", name);
                 continue;
             }
             while ((n = fread(buf, 1, sizeof(buf), fs)) > 0) {
@@ -231,7 +231,7 @@ static void sync_logs_from_temp(const char *temp_path, const char *log_path)
             fclose(fd);
 
             if (!copy_ok) {
-                RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","sync_logs: write failed for %s, skipping truncate\n", name);
+                RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","sync_logs: write failed for %s, skipping truncate\n", name);
                 continue;
             }
             /* truncate src */
@@ -245,9 +245,9 @@ static void sync_logs_from_temp(const char *temp_path, const char *log_path)
 void cleanup_services(void)
 {
     /* Signal telemetry2_0 and parodus */
-    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Signal telemetry2_0 to send out any pending messages before reboot\n");
+    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Signal telemetry2_0 to send out any pending messages before reboot\n");
     send_signalcleanup("telemetry2_0", SIGUSR1);
-    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Properly shutdown parodus by sending SIGUSR1 kill signal\n");
+    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Properly shutdown parodus by sending SIGUSR1 kill signal\n");
     send_signalcleanup("parodus", SIGUSR1);
 
     /* Conditional RDM cleanup after image upgrade */
@@ -257,7 +257,7 @@ void cleanup_services(void)
             read_file_to_buf("/tmp/currently_running_image_name", prev, sizeof(prev)) == 0) {
             if (strstr(cdl, prev) == NULL) {
                 if (dir_exists("/media/apps")) {
-                    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Removing the RDM Apps content from Secondary Storage before Reboot (After Image Upgrade)\n");
+                    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Removing the RDM Apps content from Secondary Storage before Reboot (After Image Upgrade)\n");
                     if (clear_subdirectory("/media/apps") != 0) {
                         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Failed to remove some entries under /media/apps\n");
                     }
@@ -299,19 +299,19 @@ void cleanup_services(void)
             char systime_src[512];
             int wn_ssrc = snprintf(systime_src, sizeof(systime_src), "%s/.systime", temp_log_path);
             if (wn_ssrc < 0 || (size_t)wn_ssrc >= sizeof(systime_src)) {
-                RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","systime copy: source path truncated for %s\n", temp_log_path);
+                RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","systime copy: source path truncated for %s\n", temp_log_path);
             } else if (file_exists(systime_src)) {
                 char systime_dst[512];
                 int wn_sdst = snprintf(systime_dst, sizeof(systime_dst), "%s/.systime", persistent_path);
                 if (wn_sdst < 0 || (size_t)wn_sdst >= sizeof(systime_dst)) {
-                    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","systime copy: dest path truncated for %s\n", persistent_path);
+                    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","systime copy: dest path truncated for %s\n", persistent_path);
                 } else {
                 FILE *fs = fopen(systime_src, "rb");
                 FILE *fd = fopen(systime_dst, "wb");
                 if (!fs || !fd) {
                     if (fs) fclose(fs);
                     if (fd) fclose(fd);
-                    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","systime copy: failed to open src/dst (%s -> %s)\n", systime_src, systime_dst);
+                    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","systime copy: failed to open src/dst (%s -> %s)\n", systime_src, systime_dst);
                 } else {
                     char buf[4096]; size_t n;
                     while ((n = fread(buf, 1, sizeof(buf), fs)) > 0) {
@@ -328,19 +328,19 @@ void cleanup_services(void)
     const char *bt_enabled = getenv("BLUETOOTH_ENABLED");
     if (bt_enabled && strcmp(bt_enabled, "true") == 0) {
         const char *services[] = {"sky-bluetoothrcu", "btmgr", "bluetooth", "bt-hciuart", "btmac-preset", "bt", "syslog-ng"};
-        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Shutting down the bluetooth and syslog-ng services gracefully\n");
+        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Shutting down the bluetooth and syslog-ng services gracefully\n");
         for (size_t i = 0; i < sizeof(services)/sizeof(services[0]); ++i) {
             int active = v_secure_system("systemctl --quiet is-active %s", services[i]);
             if (active == 0) {
                 int rc = v_secure_system("systemctl stop %s", services[i]);
                 if (rc == 0) {
-                  RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","%s service stopped successfully\n", services[i]);
+                  RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","%s service stopped successfully\n", services[i]);
                 }
                 else {
-                  RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Failed to stop %s service\n", services[i]);
+                  RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Failed to stop %s service\n", services[i]);
                 }
             } else {
-                RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","%s service is not active\n", services[i]);
+                RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","%s service is not active\n", services[i]);
             }
         }
     }
@@ -408,8 +408,8 @@ int pidfile_write_and_guard(void)
                 if (nread < sizeof(cmd)) cmd[nread] = '\0'; else cmd[sizeof(cmd)-1] = '\0';
                 fclose(pc);
                 if (strstr(cmd, "rebootnow")) {
-                    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","An instance of %s with pid %d is already running..\n", "rebootnow", (int)pid);
-                    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Exiting Binary\n");
+                    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","An instance of %s with pid %d is already running..\n", "rebootnow", (int)pid);
+                    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Exiting Binary\n");
                     fclose(f); /* releases lock via close(lfd) */
                     return -1;
                 }

@@ -36,7 +36,7 @@ static bool g_rbusInitialized = false;
 bool rbus_init(void)
 {
     if (g_rbusInitialized) {
-        RDK_LOG(RDK_LOG_DEBUG, "LOG.RDK.REBOOTINFO", "[%s:%d] RBUS already initialized\n", __FUNCTION__, __LINE__);
+        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "[%s:%d] RBUS already initialized\n", __FUNCTION__, __LINE__);
         return true;
     }
 
@@ -87,7 +87,7 @@ bool rbus_get_string_param(const char* param_name, char* value_buf, size_t buf_s
         if (stringValue != NULL && strlen(stringValue) > 0) {
             strncpy(value_buf, stringValue, buf_size - 1);
             value_buf[buf_size - 1] = '\0';
-            RDK_LOG(RDK_LOG_DEBUG, "LOG.RDK.REBOOTINFO", "[%s:%d] %s=%s\n", 
+            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "[%s:%d] %s=%s\n", 
                     __FUNCTION__, __LINE__, param_name, value_buf);
             success = true;
         }
@@ -121,7 +121,7 @@ bool rbus_get_bool_param(const char* param_name, bool* value)
     rc = rbus_get(g_rbusHandle, param_name, &paramValue);
     if (rc == RBUS_ERROR_SUCCESS && paramValue != NULL) {
         *value = rbusValue_GetBoolean(paramValue);
-        RDK_LOG(RDK_LOG_DEBUG, "LOG.RDK.REBOOTINFO", "[%s:%d] %s=%s\n", 
+        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "[%s:%d] %s=%s\n", 
                 __FUNCTION__, __LINE__, param_name, *value ? "true" : "false");
         rbusValue_Release(paramValue);
         success = true;
@@ -154,7 +154,7 @@ bool rbus_get_int_param(const char* param_name, int* value)
     rc = rbus_get(g_rbusHandle, param_name, &paramValue);
     if (rc == RBUS_ERROR_SUCCESS && paramValue != NULL) {
         *value = rbusValue_GetInt32(paramValue);
-        RDK_LOG(RDK_LOG_DEBUG, "LOG.RDK.REBOOTINFO", "[%s:%d] %s=%d\n", 
+        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "[%s:%d] %s=%d\n", 
                 __FUNCTION__, __LINE__, param_name, *value);
         rbusValue_Release(paramValue);
         success = true;
@@ -186,7 +186,7 @@ bool rbus_set_bool_param(const char* param_name, bool value)
                 __FUNCTION__, __LINE__, param_name, rc);
         return false;
     }
-    RDK_LOG(RDK_LOG_DEBUG, "LOG.RDK.REBOOTINFO", "[%s:%d] Set %s=%s\n",
+    RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "[%s:%d] Set %s=%s\n",
             __FUNCTION__, __LINE__, param_name, value ? "true" : "false");
     return true;
 }
@@ -211,7 +211,7 @@ bool rbus_set_int_param(const char* param_name, int value)
                 __FUNCTION__, __LINE__, param_name, rc);
         return false;
     }
-    RDK_LOG(RDK_LOG_DEBUG, "LOG.RDK.REBOOTINFO", "[%s:%d] Set %s=%d\n",
+    RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "[%s:%d] Set %s=%d\n",
             __FUNCTION__, __LINE__, param_name, value);
     return true;
 }
