@@ -147,8 +147,18 @@ int handle_cyclic_reboot(const char *source,
     char p_src[128] = {0}, p_rsn[128] = {0}, p_cus[128] = {0}, p_oth[256] = {0}, p_ts[64] = {0};
     int upsecs = 0;
 
-    rbus_get_bool_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RebootStop.Detection", &detection_enabled);
-    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Reboot Loop Detection enabled to check cyclic reboot scenarios:%s\n", detection_enabled ? "true" : "false");
+    int rbret = rbus_get_bool_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RebootStop.Detection", &detection_enabled);
+    if (rbret) {
+        /* Successfully retrieved RFC value for detection_enabled */
+        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Reboot Loop Detection RFC value retrieved: %s\n",
+                detection_enabled ? "true" : "false");
+    } else {
+        /* RBUS fetch failed; continue using default value */
+        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Reboot Loop Detection using default value (RBUS fetch failed): %s\n",
+                detection_enabled ? "true" : "false");
+    }
+    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Reboot Loop Detection enabled to check cyclic reboot scenarios:%s\n",
+            detection_enabled ? "true" : "false");
     if (rbus_get_int_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RebootStop.Duration", &duration)) {
         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","RebootStop Duration: %d\n", duration);
         if (duration > 0 && duration < 24*60) {
