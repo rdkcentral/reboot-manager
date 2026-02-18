@@ -20,7 +20,7 @@ bin_PROGRAMS = rebootnow
 rebootnow_SOURCES = main.c
 rebootnow_LDADD = librebootnow.la
 
-AM_LDFLAGS = -lrdkloggers -lfwutils -lrdkloggers -lrbus -lsecure_wrapper
+AM_LDFLAGS = -lrdkloggers -lfwutils -lrbus -lsecure_wrapper
 bin_PROGRAMS += update-prev-reboot-info
 update_prev_reboot_info_SOURCES = \
     $(srcdir)/rebootmanager-cpc/src/main.c \

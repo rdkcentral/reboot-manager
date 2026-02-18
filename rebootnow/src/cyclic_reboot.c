@@ -166,8 +166,8 @@ int handle_cyclic_reboot(const char *source,
             RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Reason:%s\n", p_rsn);
             RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","customReason:%s\n", p_cus);
             RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","otherReason:%s\n", p_oth);
-            
-	    upsecs = read_proc_uptime_secs();
+ 
+            upsecs = read_proc_uptime_secs();
             if (upsecs >= 0) {
                 RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Device Uptime from last reboot: %d secs\n", upsecs);
             }

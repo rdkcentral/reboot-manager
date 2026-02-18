@@ -120,7 +120,7 @@ static void emit_t2_for_source(const char *source, int is_crash)
         if (strstr(source, "dsMgrMain")) {
             marker = "SYST_ERR_DSMGR_reboot";
         } else if (strstr(source, "IARMDaemonMain")) {
-            marker = "SYST_ERR_IARMDEMON_reboot";
+            marker = "SYST_ERR_IARMDAEMON_reboot";
         } else if (strstr(source, "rmfStreamer")) {
             marker = "SYST_ERR_Rmfstreamer_reboot";
         } else if (strstr(source, "runPod")) {
@@ -191,7 +191,7 @@ int main(int argc, char **argv)
     struct stat st;
     FILE *rebootinfo_json = NULL;
     FILE *prev_rebootinfo_json = NULL;
-    int reboot_count = 1;
+    int proceed_reboot = 1;
     FILE *reboot_flag = NULL;
 
     //RDK Logger Initialisation
@@ -369,8 +369,8 @@ int main(int argc, char **argv)
     }
 
     /* Module returns 0 to defer reboot, 1 to proceed */
-    reboot_count = handle_cyclic_reboot(source, reboot_reason, custom_reason, other_reason);
-    if (reboot_count == 0) {
+    proceed_reboot = handle_cyclic_reboot(source, reboot_reason, custom_reason, other_reason);
+    if (proceed_reboot == 0) {
         return 0; /* exit without performing immediate reboot */
     }
 

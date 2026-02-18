@@ -43,7 +43,9 @@ int write_rebootinfo_log(const char *path, const char *line)
         fclose(f);
         return -1;
     }
-    fclose(f);
+    if (fclose(f) == EOF) {
+        return -1;
+    }
     return 0;
 }
 

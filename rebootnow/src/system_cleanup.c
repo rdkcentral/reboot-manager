@@ -122,7 +122,7 @@ static int remove_dir(const char *path)
             wn = snprintf(child, sizeof(child), "%s/%s", path, de->d_name);
             if (wn < 0 || (size_t)wn >= sizeof(child)) {
                 RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","remove_tree: path truncated for %s/%s\n", path, de->d_name);
-		continue;
+                continue;
             }
             if (lstat(child, &cst) != 0) {
                 continue;
@@ -211,7 +211,7 @@ static void sync_logs_from_temp(const char *temp_path, const char *log_path)
                 continue;
             }
 
-	    copy_ok = 1;
+            copy_ok = 1;
 
             FILE *fs = fopen(src, "r");
             FILE *fd = fopen(dst, "a");

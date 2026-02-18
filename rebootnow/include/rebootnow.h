@@ -1,5 +1,5 @@
-#ifndef REBOOTMANAGER_HOUSEKEEPING_H
-#define REBOOTMANAGER_HOUSEKEEPING_H
+#ifndef REBOOTNOW_H
+#define REBOOTNOW_H
 #include <stddef.h>
 
 #ifdef __cplusplus
@@ -33,4 +33,4 @@ void t2ValNotify(const char *marker, const char *val);
 }
 #endif
 
-#endif /* REBOOTMANAGER_HOUSEKEEPING_H */
+#endif /* REBOOTNOW_H */
