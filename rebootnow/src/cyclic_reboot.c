@@ -217,10 +217,10 @@ int handle_cyclic_reboot(const char *source,
                             v_secure_system("sh /lib/rdk/cronjobs_update.sh %s %s", "remove", "rebootnow");
                             char cron[64];
                             compute_cron_time(stop_duration, cron, sizeof(cron));
-                            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Scheduling Cron for rebootnow as a part of Cyclic reboot operations: %s\n", cron);
-                            v_secure_system(
-                                "sh /lib/rdk/cronjobs_update.sh \"add\" \"rebootnow\" \"%s /usr/local/bin/rebootnow -s \\\"CyclicReboot\\\" -o \\\"Rebooting device after expiry of Cyclic reboot pause window\\\"\"",
-                                cron);
+                            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Scheduling Cron for rebootnow as a part of Cyclic reboot operations: %s\n", cron);
+                            char cron_entry[256];
+                            snprintf(cron_entry, sizeof(cron_entry), "%s /usr/bin/rebootnow -s \"CyclicReboot\" -o \"Rebooting device after expiry of Cyclic reboot pause window\"", cron);
+                            v_secure_system("sh /lib/rdk/cronjobs_update.sh %s %s \"%s\"", "add", "rebootnow", cron_entry);
                             RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Device will reboot in %d mins after expiry of Cyclic reboot pause window!!!\n", stop_duration);
                             touch_file(REBOOTNOW_FLAG);
                             return 0; /* defer reboot */
