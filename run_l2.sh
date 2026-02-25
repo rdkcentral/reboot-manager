@@ -24,7 +24,7 @@ apt-get update && apt-get install -y libjsonrpccpp-dev
 
 /usr/local/bin/update-reboot-info &
 # Run L2 Test cases
-pytest --json-report --json-report-summary --json-report-file $RESULT_DIR/cyclicreboot.json functional_tests/tests/test_cyclic_reboot.py
-pytest --json-report --json-report-summary --json-report-file $RESULT_DIR/crashmaintainence.json functional_tests/tests/test_reboot_crash_maintenance.py
-pytest --json-report --json-report-summary --json-report-file $RESULT_DIR/systemcleanup.json functional_tests/tests/test_system_cleanup.py
-pytest --json-report --json-report-summary --json-report-file $RESULT_DIR/rebootTest.json functional_tests/tests/test_reboot_triggered.py
+pytest --json-report --json-report-summary --json-report-file $RESULT_DIR/cyclicreboot.json tests/functional_tests/test/test_cyclic_reboot.py
+pytest --json-report --json-report-summary --json-report-file $RESULT_DIR/crashmaintainence.json tests/functional_tests/test/test_reboot_crash_maintenance.py
+pytest --json-report --json-report-summary --json-report-file $RESULT_DIR/systemcleanup.json tests/functional_tests/test/test_system_cleanup.py
+pytest --json-report --json-report-summary --json-report-file $RESULT_DIR/rebootTest.json tests/functional_tests/test/test_reboot_triggered.py
