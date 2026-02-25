@@ -14,11 +14,54 @@ extern "C" {
 
 using namespace testing;
 
-static bool g_det_enable=true; static int g_duration=0; static bool g_reboot_stop_enable=false;                                                                                                                                                                           extern "C" {                                                                                                                         bool rbus_get_bool_param(const char* name, bool* value){ if(std::string(name).find("RebootStop.Detection")!=std::string::npos){ *value=g_det_enable; return true; } if(std::string(name).find("RebootStop.Enable")!=std::string::npos){ *value=g_reboot_stop_enable; return true; } return false; }                                                                                                            bool rbus_get_int_param(const char* name, int* value){ if(std::string(name).find("RebootStop.Duration")!=std::string::npos){ *value=g_duration; return true; } return false; }
-bool rbus_set_bool_param(const char* name, bool value){ if(std::string(name).find("RebootStop.Enable")!=std::string::npos){ g_reboot_stop_enable=value; return true; } return false; }
-void t2CountNotify(const char* marker, int val){ (void)marker; (void)val; }
+static bool g_det_enable = true;
+static int g_duration = 0;
+static bool g_reboot_stop_enable = false;
+
+extern "C" {
+
+bool rbus_get_bool_param(const char* name, bool* value)
+{
+    if (std::string(name).find("RebootStop.Detection") != std::string::npos)
+    {
+        *value = g_det_enable;
+        return true;
+    }
+    if (std::string(name).find("RebootStop.Enable") != std::string::npos)
+    {
+        *value = g_reboot_stop_enable;
+        return true;
+    }
+    return false;
 }
 
+bool rbus_get_int_param(const char* name, int* value)
+{
+    if (std::string(name).find("RebootStop.Duration") != std::string::npos)
+    {
+        *value = g_duration;
+        return true;
+    }
+    return false;
+}
+
+bool rbus_set_bool_param(const char* name, bool value)
+{
+    if (std::string(name).find("RebootStop.Enable") != std::string::npos)
+    {
+        g_reboot_stop_enable = value;
+        return true;
+    }
+    return false;
+}
+
+void t2CountNotify(const char* marker, int val)
+{
+    (void)marker;
+    (void)val;
+}
+
+}
 TEST(CyclicReboot, ProceedWhenNoFlag){
     // Ensure rebootNow flag not present
     remove("/opt/secure/reboot/rebootNow");
