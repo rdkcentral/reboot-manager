@@ -11,7 +11,7 @@ env:
 jobs:
   execute-L1-tests-on-pr:
     name: Execute L1 test suite in test container environment
-    runs-on: comcast-ubuntu-latest
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
@@ -42,7 +42,7 @@ jobs:
   upload-test-results:
     name: Upload L1 test results to automatic test result management system
     needs: execute-L1-tests-on-pr
-    runs-on: comcast-ubuntu-latest
+    runs-on: ubuntu-latest
     container:
       image: ghcr.io/rdkcentral/docker-rdk-ci:latest
       volumes:
