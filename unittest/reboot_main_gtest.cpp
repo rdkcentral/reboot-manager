@@ -109,7 +109,7 @@ extern "C" int reboot_main_entry(int argc, char** argv);
 extern "C" {
 #undef t2CountNotify
 #undef t2ValNotify
-#include "../src/rebootNow_main.c"
+#include "../rebootnow/src/main.c"
 }
 #undef main
 
