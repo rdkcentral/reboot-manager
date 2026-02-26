@@ -37,7 +37,8 @@ do
 done
 
 if [ $fail -ne 0 ]; then
-    echo "Some unit tests failed."; exit 1
+  echo "Some unit tests failed."
+  exit 1
 fi
 
 if [ "$ENABLE_COV" = true ]; then
