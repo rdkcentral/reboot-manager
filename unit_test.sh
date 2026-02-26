@@ -44,10 +44,10 @@ fi
 if [ "$ENABLE_COV" = true ]; then
   echo "Listing all .gcda files in unittest, src, and parent directories:"
   find . -name '*.gcda'
-  find ../src -name '*.gcda'
+  find ../rebootnow/src -name '*.gcda'
   find .. -name '*.gcda'
   echo "Generating coverage report from both unittest and src directories"
-  lcov --capture --directory . --directory ../src --output-file coverage.info
+  lcov --capture --directory . --directory ../rebootnow/src --output-file coverage.info
   # Remove system and common test/mocks paths (keep build dir entries)
   lcov --remove coverage.info '/usr/*' --output-file coverage.info
   lcov --remove coverage.info '*/mocks/*' '*/gtest/*' '*/gmock/*' --output-file coverage.info

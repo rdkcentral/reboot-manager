@@ -4,6 +4,7 @@
 #include <cstring>
 #include <string>
 #include <fstream>
+#include <cstdlib>
 extern "C" {
 #include "rebootnow.h"
 }
@@ -69,8 +70,7 @@ TEST(CyclicReboot, ProceedWhenNoFlag){
 }
 
 TEST(CyclicReboot, DeferOnLoopDetection){
-    // Create rebootNow flag and previous info files
-    system("mkdir -p /opt/secure/reboot");
+    ASSERT_EQ(0, system("mkdir -p /opt/secure/reboot"));
     std::ofstream rf("/opt/secure/reboot/rebootNow"); rf<<""; rf.close();
     std::ofstream pf("/opt/secure/reboot/previousreboot.info");
     pf << "{\n\"timestamp\":\"2023-01-01T00:00:00Z\",\n\"source\":\"Src\",\n\"reason\":\"Reason\",\n\"customReason\":\"Custom\",\n\"otherReason\":\"Other\"\n}";
@@ -86,8 +86,7 @@ TEST(CyclicReboot, DeferOnLoopDetection){
 }
 
 TEST(CyclicReboot, DetectionDisabledProceed){
-    // Prepare rebootNow flag and same previous info
-    system("mkdir -p /opt/secure/reboot");
+    ASSERT_EQ(0, system("mkdir -p /opt/secure/reboot"));
     std::ofstream rf2("/opt/secure/reboot/rebootNow"); rf2<<""; rf2.close();
     std::ofstream pf2("/opt/secure/reboot/previousreboot.info");
     pf2 << "{\n\"timestamp\":\"2023-01-01T00:00:00Z\",\n\"source\":\"Src\",\n\"reason\":\"Reason\",\n\"customReason\":\"Custom\",\n\"otherReason\":\"Other\"\n}";
@@ -100,7 +99,7 @@ TEST(CyclicReboot, DetectionDisabledProceed){
 }
 
 TEST(CyclicReboot, SameReasonStopFlagPresent){
-    system("mkdir -p /opt/secure/reboot");
+    ASSERT_EQ(0, system("mkdir -p /opt/secure/reboot"));
     // Ensure rebootNow flag exists
     std::ofstream rf3("/opt/secure/reboot/rebootNow"); rf3<<""; rf3.close();
     // Create previous info with same reasons
@@ -115,7 +114,7 @@ TEST(CyclicReboot, SameReasonStopFlagPresent){
 }
 
 TEST(CyclicReboot, IncrementCounterBelowThresholdProceed){
-    system("mkdir -p /opt/secure/reboot");
+    ASSERT_EQ(0, system("mkdir -p /opt/secure/reboot"));
     std::ofstream rf4("/opt/secure/reboot/rebootNow"); rf4<<""; rf4.close();
     std::ofstream pf4("/opt/secure/reboot/previousreboot.info");
     pf4 << "{\n\"timestamp\":\"2023-01-01T00:00:00Z\",\n\"source\":\"Src\",\n\"reason\":\"Reason\",\n\"customReason\":\"Custom\",\n\"otherReason\":\"Other\"\n}";
@@ -129,7 +128,7 @@ TEST(CyclicReboot, IncrementCounterBelowThresholdProceed){
 }
 
 TEST(CyclicReboot, PreviousInfoMissingProceedsAndResets){
-    system("mkdir -p /opt/secure/reboot");
+    ASSERT_EQ(0, system("mkdir -p /opt/secure/reboot"));
     std::ofstream rf5("/opt/secure/reboot/rebootNow"); rf5<<""; rf5.close();
     // Ensure previous info missing
     remove("/opt/secure/reboot/previousreboot.info");
@@ -146,7 +145,7 @@ TEST(CyclicReboot, PreviousInfoMissingProceedsAndResets){
 }
 
 TEST(CyclicReboot, DifferentReasonResetsCounter){
-    system("mkdir -p /opt/secure/reboot");
+    ASSERT_EQ(0, system("mkdir -p /opt/secure/reboot"));
     std::ofstream rf6("/opt/secure/reboot/rebootNow"); rf6<<""; rf6.close();
     // Previous info with different reason
     std::ofstream pf6("/opt/secure/reboot/previousreboot.info");

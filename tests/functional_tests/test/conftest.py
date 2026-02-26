@@ -26,16 +26,21 @@ def test_env(tmp_path):
     os.makedirs(env["TEMP_LOG_PATH"], exist_ok=True)
     os.makedirs(env["LOG_PATH"], exist_ok=True)
 
-    # Create stub command for reboot so the binary cannot reboot the host
+    # Create stub commands so the binary cannot reboot the host
     bin_dir = tmp_path / "bin"
     os.makedirs(bin_dir, exist_ok=True)
     reboot_stub = bin_dir / "reboot"
     with open(reboot_stub, "w", encoding="utf-8") as f:
         f.write("#!/bin/sh\nexit 0\n")
     os.chmod(reboot_stub, 0o755)
+    systemctl_stub = bin_dir / "systemctl"
+    with open(systemctl_stub, "w", encoding="utf-8") as f:
+        f.write("#!/bin/sh\nexit 0\n")
+    os.chmod(systemctl_stub, 0o755)
     # Prepend stub bin to PATH so execlp("reboot") and systemctl hit our stubs
     env["PATH"] = f"{bin_dir}:{env.get('PATH','')}"
     env["REBOOT_TREAT_UNKNOWN_UPTIME_INSIDE"] = "1"
+    env["REBOOTNOW_DRY_RUN"] = "1"
     return env
 
 @pytest.fixture()

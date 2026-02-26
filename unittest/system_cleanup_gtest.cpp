@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <cstddef>
 #include <cstdarg>
+#include <unistd.h>
 extern "C" {
 #include "rebootnow.h"
 }
@@ -40,7 +41,7 @@ TEST(SystemCleanup, BluetoothServicesStopBranch){
     // Exercise BLUETOOTH_ENABLED path; v_secure_system always returns 0 (active/stop OK)
     g_cmds.clear();
     setenv("BLUETOOTH_ENABLED", "true", 1);
-    perform_housekeeping();
+    cleanup_services();
     ASSERT_FALSE(g_cmds.empty());
     unsetenv("BLUETOOTH_ENABLED");
 }
@@ -49,34 +50,31 @@ TEST(SystemCleanup, BluetoothServicesInactiveAndStopFail){
     // Simulate services not active, then simulate stop failure on subsequent run
     setenv("BLUETOOTH_ENABLED", "true", 1);
     g_cmds.clear(); g_sim_inactive=true; g_sim_stop_fail=false;
-    perform_housekeeping();
+    cleanup_services();
     ASSERT_FALSE(g_cmds.empty());
     // Now simulate active but stop fails
     g_cmds.clear(); g_sim_inactive=false; g_sim_stop_fail=true;
-    perform_housekeeping();
+    cleanup_services();
     ASSERT_FALSE(g_cmds.empty());
     unsetenv("BLUETOOTH_ENABLED");
 }
 
 TEST(SystemCleanup, SyncLogsSamePathNoOp){
-    // When TEMP_LOG_PATH == LOG_PATH, sync should early-return
-    system("mkdir -p ./same_logs");
+    ASSERT_EQ(0, system("mkdir -p ./same_logs"));
     setenv("PERSISTENT_PATH", "./persistent", 1);
     setenv("TEMP_LOG_PATH", "./same_logs", 1);
     setenv("LOG_PATH", "./same_logs", 1);
-    perform_housekeeping();
-    // No assertion needed; test ensures function path executes without error
+    cleanup_services();
 }
 
 TEST(SystemCleanup, SystimeFileCopy){
-    // Prepare temp and persistent paths and a systime file
-    system("mkdir -p ./tmp_logs2");
-    system("mkdir -p ./persistent2");
+    ASSERT_EQ(0, system("mkdir -p ./tmp_logs2"));
+    ASSERT_EQ(0, system("mkdir -p ./persistent2"));
     std::ofstream st("./tmp_logs2/.systime"); st << "1700000000\n"; st.close();
     setenv("PERSISTENT_PATH", "./persistent2", 1);
     setenv("TEMP_LOG_PATH", "./tmp_logs2", 1);
     setenv("LOG_PATH", "./logs_out2", 1);
-    perform_housekeeping();
+    cleanup_services();
     std::ifstream si("./persistent2/.systime");
     ASSERT_TRUE(si.good());
     std::string val; std::getline(si, val);

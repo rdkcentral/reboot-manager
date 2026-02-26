@@ -1,7 +1,8 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <map>
-#include <string>
+#include <cstring>
+#include <cstdio>
 extern "C" {
 #include "rbus_interface.h"
 #include "mocks/rbus_mock_types.h"

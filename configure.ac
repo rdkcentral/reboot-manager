@@ -19,19 +19,18 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-AC_INIT(REBOOT, 1.0, saranya_elango@comcast.com)
+AC_INIT([REBOOT], [1.0], [saranya_elango@comcast.com])
 AC_CONFIG_SRCDIR([rebootnow/src/main.c])
-AC_CONFIG_HEADER([config.h])
-AM_INIT_AUTOMAKE(REBOOT, REBOOT)
+AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_MACRO_DIRS([m4])
+AM_INIT_AUTOMAKE([subdir-objects foreign ])
+LT_INIT
 
 IS_LIBRDKCONFIG_ENABLED=" "
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
-
-# Checks for libraries.
-AM_PROG_LIBTOOL
 
 # Set shared libraries
 AC_DISABLE_STATIC

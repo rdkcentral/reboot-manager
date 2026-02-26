@@ -14,7 +14,7 @@ COMMON_CPPFLAGS = -DGTEST_ENABLE \
         -include $(srcdir)/mocks/rbus_mock_types.h \
         -include $(srcdir)/mocks/telemetry_busmessage_sender.h
 
-COMMON_LDADD = -lgtest -lgtest_main -lgmock -lgmock_main -lpthread -lgcov
+COMMON_LDADD = -lgtest -lgmock -lpthread -lgcov
 # Split flags so C doesn't receive C++-only options like -fpermissive
 COMMON_CFLAGS = -fprofile-arcs -ftest-coverage
 COMMON_CXXFLAGS = -fprofile-arcs -ftest-coverage -fpermissive

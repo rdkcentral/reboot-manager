@@ -3,6 +3,7 @@
 #include <cstring>
 #include <fstream>
 extern "C" {
+#include <stdio.h>
 #include "rebootnow.h"
 }
 

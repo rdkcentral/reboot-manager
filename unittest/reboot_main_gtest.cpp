@@ -5,6 +5,9 @@
 #include <cstring>
 #include <fstream>
 #include <unistd.h>
+#include <cstdlib>
+#include <cstdio>
+
 // Ensure telemetry mock header is visible to the translation unit
 #include "mocks/telemetry_busmessage_sender.h"
 extern "C" {
@@ -94,7 +97,7 @@ bool rbus_get_int_param(const char* name, int* value){ if(!value) return false; 
 bool rbus_set_bool_param(const char* name, bool value){ (void)name; g_reboot_stop_enable=value; return true; }
 bool rbus_set_int_param(const char* name, int value){ (void)value; if(std::string(name).find("RebootPendingNotification")!=std::string::npos){ g_notif_called=true; } return true; }
 // Housekeeping stub
-void perform_housekeeping(void){}
+void cleanup_services(void){}
 // Stubbed process/system functions
 unsigned int sleep_stub(unsigned int){ return 0; }
 pid_t fork_stub(void){ return 1; }
@@ -112,6 +115,11 @@ extern "C" {
 #include "../rebootnow/src/main.c"
 }
 #undef main
+#undef sleep
+#undef fork
+#undef execlp
+#undef kill
+#undef waitpid
 
 TEST(RebootMain, NoArgs){
     reset_getopt_state();
@@ -127,7 +135,6 @@ TEST(RebootMain, NormalSourceDefer){
     const char* argv[] = { "rebootnow", "-s", "HtmlDiagnostics", "-o", "User requested reboot" };
     int rc = reboot_main_entry(5, (char**)argv);
     ASSERT_EQ(rc, 0);
-    // Marker should include SYST_ERR_HtmlDiagnostics
     bool found=false; for(auto &m: g_markers){ if(m.find("SYST_ERR_HtmlDiagnostics")!=string::npos) found=true; }
     ASSERT_TRUE(found);
 }
@@ -284,7 +291,7 @@ TEST(RebootMain, EmitT2SpecialMappings){
     const char* argv2[] = { "rebootnow", "-c", "IARMDaemonMain", "-o", "Crash" };
     int rc2 = reboot_main_entry(5, (char**)argv2);
     ASSERT_EQ(rc2, 0);
-    bool foundIARM=false; for(auto &m: g_markers){ if(m.find("SYST_ERR_IARMDEMON_reboot")!=std::string::npos) foundIARM=true; }
+    bool foundIARM=false; for(auto &m: g_markers){ if(m.find("SYST_ERR_IARMDAEMON_reboot")!=std::string::npos) foundIARM=true; }
     ASSERT_TRUE(foundIARM);
 }
 
@@ -387,11 +394,10 @@ TEST(RebootMain, InvokeT2CountNotify){
 }
 
 TEST(RebootMain, InvokeCheckStringValue){
-    // Exercise checkstringvalue success and failure paths
     const char* arr1[] = { "Alpha", "Beta", "Gamma" };
     const char* arr2[] = { "One", "Two", "Three" };
-    ASSERT_EQ(1, checkstringvalue(arr1, 3, "Bet"));
-    ASSERT_EQ(0, checkstringvalue(arr2, 3, "Four"));
+    ASSERT_EQ(1, check_string_value(arr1, 3, "Bet"));
+    ASSERT_EQ(0, check_string_value(arr2, 3, "Four"));
 }
 
 TEST(RebootMain, InvokeUsageDirect){
@@ -406,21 +412,18 @@ TEST(RebootMain, CallT2InitAndEvent){
 }
 
 TEST(RebootMain, UpdateRebootLog_EdgeCases){
-    // Hit early-return and truncation branches
-    ASSERT_EQ(UpdateRebootLog(NULL, 0, 0, "%s", "x"), 0u);
+    ASSERT_EQ(update_reboot_log(NULL, 0, 0, "%s", "x"), 0u);
     char buf[8] = {0};
     size_t used = 0;
-    // Fill close to end
-    used = UpdateRebootLog(buf, sizeof(buf), used, "%s", "1234");
-    // Intentionally overflow with large string to hit truncation logic
-    used = UpdateRebootLog(buf, sizeof(buf), used, "%s", "ABCDEFGHijklmnop");
+    used = update_reboot_log(buf, sizeof(buf), used, "%s", "1234");
+    used = update_reboot_log(buf, sizeof(buf), used, "%s", "ABCDEFGHijklmnop");
     ASSERT_EQ(buf[sizeof(buf)-1], '\0');
 }
 
 TEST(RebootMain, UpdateRebootLog_BufferFullGuard){
     // bytes_used >= buffer_size - 1 should early-return and ensure NUL at end
     char buf[16]; memset(buf, 'X', sizeof(buf)); buf[sizeof(buf)-1] = '\0';
-    size_t ret = UpdateRebootLog(buf, sizeof(buf), sizeof(buf)-1, "%s", "ignored");
+    size_t ret = update_reboot_log(buf, sizeof(buf), sizeof(buf)-1, "%s", "ignored");
     ASSERT_EQ(ret, sizeof(buf)-1);
     ASSERT_EQ(buf[sizeof(buf)-1], '\0');
 }

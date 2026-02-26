@@ -13,4 +13,4 @@ bool rbus_set_int_param(const char* name, int value){ (void)name; (void)value; r
 
 int handle_cyclic_reboot(const char* s, const char* r, const char* c, const char* o){ (void)s; (void)r; (void)c; (void)o; return 0; }
 
-void perform_housekeeping(void){}
+void cleanup_services(void){}

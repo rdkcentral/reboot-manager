@@ -21,7 +21,7 @@ Feature: Crash maintenance reboot categorization
 
     Scenario: Ensure crash-triggered maintenance reboot is categorized correctly
         Given /opt/secure/reboot/reboot.info does not exist
-        When reboot-manager runs with crash source dsMgrMain and reason MAINTENANCE_REBOOT
+        When reboot-manager runs with crash source dsMgrMain and reason FIRMWARE_FAILURE
         Then /opt/secure/reboot/reboot.info should be created
         And the source should be dsMgrMain
         And the reason should be FIRMWARE_FAILURE

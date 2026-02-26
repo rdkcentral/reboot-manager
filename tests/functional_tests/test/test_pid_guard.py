@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-import subprocess
 
 PID_FILE = "/tmp/.rebootNow.pid"
 
