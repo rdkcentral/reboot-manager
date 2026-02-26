@@ -17,15 +17,20 @@ extern "C" {
 
 using namespace testing;
 static std::vector<std::string> g_cmds;
-
-extern "C" int v_secure_system(const char* fmt, ...){
-    (void)fmt;
-    g_cmds.push_back("call");
-    return 0;
-}
-
 static bool g_sim_inactive = false;
 static bool g_sim_stop_fail = false;
+
+extern "C" int v_secure_system(const char* fmt, ...){
+    std::string cmd = fmt ? std::string(fmt) : std::string();
+    g_cmds.push_back(cmd.empty() ? "call" : cmd);
+    if (g_sim_inactive && cmd.find("is-active") != std::string::npos) {
+        return 1;
+    }
+    if (g_sim_stop_fail && cmd.find("systemctl stop") != std::string::npos) {
+        return 1;
+    }
+    return 0;
+}
 
 TEST(SystemCleanup, PidfileWriteAndGuardAndCleanup){
     // Ensure no PID file exists
@@ -89,6 +94,95 @@ TEST(SystemCleanup, PidfileExistingOverwrite){
     ASSERT_EQ(0, access("/tmp/.rebootNow.pid", F_OK));
     cleanup_pidfile();
     ASSERT_NE(0, access("/tmp/.rebootNow.pid", F_OK));
+}
+
+
+TEST(SystemCleanup, PidfilePathIsDirectoryReturnsError){
+    system("rm -rf /tmp/.rebootNow.pid");
+    ASSERT_EQ(0, system("mkdir -p /tmp/.rebootNow.pid"));
+    ASSERT_EQ(-1, pidfile_write_and_guard());
+    system("rm -rf /tmp/.rebootNow.pid");
+}
+
+TEST(SystemCleanup, TempLogPathMissingHandledGracefully){
+    setenv("PERSISTENT_PATH", "./persistent_missing", 1);
+    setenv("TEMP_LOG_PATH", "./does_not_exist_temp_logs", 1);
+    setenv("LOG_PATH", "./logs_missing", 1);
+    cleanup_services();
+    SUCCEED();
+}
+
+TEST(SystemCleanup, RdmCleanupRemovesMediaAppsChildren){
+    ASSERT_EQ(0, system("mkdir -p /etc/rdm"));
+    ASSERT_EQ(0, system("mkdir -p /media/apps/rdm/downloads/cert-test-bundle"));
+
+    std::ofstream manifest("/etc/rdm/rdm-manifest.xml");
+    manifest << "<manifest/>\n";
+    manifest.close();
+
+    std::ofstream flashed("/opt/cdl_flashed_file_name");
+    flashed << "image-B\n";
+    flashed.close();
+
+    std::ofstream running("/tmp/currently_running_image_name");
+    running << "image-A\n";
+    running.close();
+
+    std::ofstream appFile("/media/apps/rdm/downloads/cert-test-bundle/pkg.log");
+    appFile << "payload\n";
+    appFile.close();
+
+    cleanup_services();
+
+    ASSERT_NE(0, access("/media/apps/rdm", F_OK));
+
+    system("rm -rf /media/apps");
+    remove("/etc/rdm/rdm-manifest.xml");
+    remove("/opt/cdl_flashed_file_name");
+    remove("/tmp/currently_running_image_name");
+}
+
+TEST(SystemCleanup, SyncLogsCopiesSupportedFilesOnly){
+    ASSERT_EQ(0, system("mkdir -p ./tmp_logs_cov"));
+    ASSERT_EQ(0, system("mkdir -p ./logs_out_cov"));
+
+    std::ofstream f1("./tmp_logs_cov/a.log"); f1 << "AAA"; f1.close();
+    std::ofstream f2("./tmp_logs_cov/b.txt"); f2 << "BBB"; f2.close();
+    std::ofstream f3("./tmp_logs_cov/c.bin"); f3 << "CCC"; f3.close();
+
+    setenv("PERSISTENT_PATH", "./persistent_cov", 1);
+    setenv("TEMP_LOG_PATH", "./tmp_logs_cov", 1);
+    setenv("LOG_PATH", "./logs_out_cov", 1);
+
+    cleanup_services();
+
+    std::ifstream outA("./logs_out_cov/a.log"); std::string sA; std::getline(outA, sA);
+    std::ifstream outB("./logs_out_cov/b.txt"); std::string sB; std::getline(outB, sB);
+    std::ifstream outC("./logs_out_cov/c.bin");
+
+    ASSERT_EQ(sA, "AAA");
+    ASSERT_EQ(sB, "BBB");
+    ASSERT_FALSE(outC.good());
+}
+
+TEST(SystemCleanup, SyncSkippedWhenLightSleepKillSwitchExists){
+    ASSERT_EQ(0, system("mkdir -p /opt/persistent"));
+    std::ofstream ks("/opt/persistent/.lightsleepKillSwitchEnable"); ks << "1\n"; ks.close();
+
+    ASSERT_EQ(0, system("mkdir -p ./tmp_logs_skip"));
+    ASSERT_EQ(0, system("mkdir -p ./logs_out_skip"));
+    std::ofstream inA("./tmp_logs_skip/a.log"); inA << "AAA"; inA.close();
+
+    setenv("PERSISTENT_PATH", "./persistent_skip", 1);
+    setenv("TEMP_LOG_PATH", "./tmp_logs_skip", 1);
+    setenv("LOG_PATH", "./logs_out_skip", 1);
+
+    cleanup_services();
+
+    std::ifstream outA("./logs_out_skip/a.log");
+    ASSERT_FALSE(outA.good());
+
+    remove("/opt/persistent/.lightsleepKillSwitchEnable");
 }
 
 GTEST_API_ int main(int argc, char *argv[]){

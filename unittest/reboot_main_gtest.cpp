@@ -112,8 +112,10 @@ extern "C" int reboot_main_entry(int argc, char** argv);
 extern "C" {
 #undef t2CountNotify
 #undef t2ValNotify
+#define handle_cyclic_reboot handle_cyclic_reboot_stub
 #include "../rebootnow/src/main.c"
 }
+#undef handle_cyclic_reboot
 #undef main
 #undef sleep
 #undef fork

@@ -49,6 +49,7 @@ reboot_main_gtest_SOURCES = reboot_main_gtest.cpp \
         mocks/rdk_logger_stub.c
 reboot_main_gtest_CPPFLAGS = $(COMMON_CPPFLAGS)
 reboot_main_gtest_CPPFLAGS += -I$(srcdir)/mocks -I$(top_srcdir)/unittest/mocks
+reboot_main_gtest_CPPFLAGS += -DT2_EVENT_ENABLED
 reboot_main_gtest_LDADD = $(COMMON_LDADD)
 reboot_main_gtest_CXXFLAGS = $(COMMON_CXXFLAGS)
 reboot_main_gtest_CFLAGS = $(COMMON_CFLAGS)

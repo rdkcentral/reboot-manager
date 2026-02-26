@@ -30,10 +30,11 @@ export top_builddir=`pwd`
 git clone https://github.com/rdkcentral/rdk_logger.git
 cp rdk_logger/include/rdk_logger.h /usr/local/include/.
 
+mkdir -p m4
 automake --add-missing
 autoreconf --install
 export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-export LDFLAGS="-L/usr/local/lib -lpthread -lrdkloggers -ltelemetry_msgsender -lt2utils -lrbus -lsecure_wrapper"
+export LDFLAGS="-L/usr/local/lib -lpthread -lrdkloggers -lrbus -lsecure_wrapper"
 
 ./configure --prefix=${INSTALL_DIR}
 make && make install

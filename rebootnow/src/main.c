@@ -44,10 +44,6 @@ static const char *PARODUS_REBOOT_INFO_FILE = "/opt/secure/reboot/parodusreboot.
 static const char *REBOOTNOW_FLAG = "/opt/secure/reboot/rebootNow";
 static const char *PREVIOUS_REBOOT_INFO_FILE = "/opt/secure/reboot/previousreboot.info";
 
-#ifdef RDK_LOGGER_ENABLED
-int g_rdk_logger_enabled = 0;
-#endif
-
 static const char *APP_TRIGGERED_REASONS[] = {
     "Servicemanager", "systemservice_legacy", "WarehouseReset", "WarehouseService",
     "HrvInitWHReset", "HrvColdInitReset", "HtmlDiagnostics", "InstallTDK", "StartTDK",
@@ -218,7 +214,6 @@ int main(int argc, char **argv)
     }
 
     if (0 == rdk_logger_init("/etc/debug.ini")) {
-        g_rdk_logger_enabled = 1;
         RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "[%s:%d] RDK Logger initialized\n", __FUNCTION__, __LINE__);
     }
 
