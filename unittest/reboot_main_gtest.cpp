@@ -8,7 +8,7 @@
 // Ensure telemetry mock header is visible to the translation unit
 #include "mocks/telemetry_busmessage_sender.h"
 extern "C" {
-#include "rebootNow.h"
+#include "rebootnow.h"
 }
 
 #define GTEST_DEFAULT_RESULT_FILEPATH "/tmp/Gtest_Report/"
