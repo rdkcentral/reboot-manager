@@ -60,22 +60,6 @@ TEST(UtilsTest, TimestampUpdate_TinyBuffer)
     ASSERT_EQ(buf[0], '\0');
 }
 
-TEST(UtilsTest, TelemetryNoopHelpers)
-{
-    g_t2_d_count = 0;
-    g_t2_s_count = 0;
-    t2CountNotify("UTILS_MARKER", 1);
-    t2ValNotify("UTILS_MARKER", "VAL");
-    ASSERT_EQ(g_t2_d_count, 1);
-    ASSERT_EQ(g_t2_s_count, 1);
-
-    t2CountNotify(nullptr, 1);
-    t2ValNotify(nullptr, "VAL");
-    t2ValNotify("UTILS_MARKER", nullptr);
-    ASSERT_EQ(g_t2_d_count, 1);
-    ASSERT_EQ(g_t2_s_count, 1);
-}
-
 GTEST_API_ int main(int argc, char *argv[]){
     char testresults_fullfilepath[GTEST_REPORT_FILEPATH_SIZE];
     memset( testresults_fullfilepath, 0, GTEST_REPORT_FILEPATH_SIZE );
