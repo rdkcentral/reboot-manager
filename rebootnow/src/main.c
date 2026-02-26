@@ -286,6 +286,14 @@ int main(int argc, char **argv)
     }
 
     // Log into rebootInfo.log in a similar format
+    rebootinfo_json = fopen(REBOOTINFO_LOG, "w");
+    if (rebootinfo_json) {
+        fclose(rebootinfo_json);
+    } else {
+        RDK_LOG(RDK_LOG_ERROR, "LOG.RDK.REBOOTINFO", "Failed to truncate %s (errno=%d)\n", REBOOTINFO_LOG, errno);
+        return 1;
+    }
+
     timestamp_update(ts, sizeof(ts));
 
     bytes_used = update_reboot_log(reason_str, sizeof(reason_str), bytes_used, "RebootReason: ");

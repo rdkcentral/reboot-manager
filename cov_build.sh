@@ -36,5 +36,5 @@ autoreconf --install
 export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 export LDFLAGS="-L/usr/local/lib -lpthread -lrdkloggers -lrbus -lsecure_wrapper"
 
-./configure --prefix=${INSTALL_DIR}
+./configure --prefix=${INSTALL_DIR} CFLAGS="-Wno-implicit-function-declaration -Wno-unused-result"
 make && make install
