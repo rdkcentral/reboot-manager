@@ -142,6 +142,34 @@ TEST(SystemCleanup, RdmCleanupRemovesMediaAppsChildren){
     remove("/tmp/currently_running_image_name");
 }
 
+TEST(SystemCleanup, DeviceScriptsInvokedWhenPresent){
+    ASSERT_EQ(0, system("mkdir -p /lib/rdk"));
+
+    std::ofstream emmc("/lib/rdk/eMMC_Upgrade.sh"); emmc << "#!/bin/sh\nexit 0\n"; emmc.close();
+    std::ofstream aps4("/lib/rdk/aps4_reset.sh"); aps4 << "#!/bin/sh\nexit 0\n"; aps4.close();
+    std::ofstream www("/lib/rdk/update_www-backup.sh"); www << "#!/bin/sh\nexit 0\n"; www.close();
+
+    setenv("DEVICE_NAME", "XiOne", 1);
+    g_cmds.clear();
+    cleanup_services();
+
+    bool emmc_called = false;
+    bool aps4_called = false;
+    bool www_called = false;
+    for (const auto& c : g_cmds) {
+        if (c.find("eMMC_Upgrade.sh") != std::string::npos) emmc_called = true;
+        if (c.find("aps4_reset.sh") != std::string::npos) aps4_called = true;
+        if (c.find("update_www-backup.sh") != std::string::npos) www_called = true;
+    }
+    ASSERT_TRUE(emmc_called);
+    ASSERT_TRUE(aps4_called);
+    ASSERT_TRUE(www_called);
+
+    remove("/lib/rdk/eMMC_Upgrade.sh");
+    remove("/lib/rdk/aps4_reset.sh");
+    remove("/lib/rdk/update_www-backup.sh");
+}
+
 TEST(SystemCleanup, SyncLogsCopiesSupportedFilesOnly){
     ASSERT_EQ(0, system("mkdir -p ./tmp_logs_cov"));
     ASSERT_EQ(0, system("mkdir -p ./logs_out_cov"));

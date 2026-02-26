@@ -291,7 +291,6 @@ int main(int argc, char **argv)
         fclose(rebootinfo_json);
     } else {
         RDK_LOG(RDK_LOG_ERROR, "LOG.RDK.REBOOTINFO", "Failed to truncate %s (errno=%d)\n", REBOOTINFO_LOG, errno);
-        return 1;
     }
 
     timestamp_update(ts, sizeof(ts));
