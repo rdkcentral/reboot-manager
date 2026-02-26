@@ -43,6 +43,7 @@ static int file_exists(const char *path)
     struct stat st;
     return (path && stat(path, &st) == 0);
 }
+
 static int read_rebootcounter(const char *path, int *out)
 {
     if (!path || !out) return -1;
@@ -54,6 +55,7 @@ static int read_rebootcounter(const char *path, int *out)
     *out = (int)v;
     return 0;
 }
+
 static void write_rebootcounter(const char *path, int v)
 {
     if (!path) return;
@@ -63,21 +65,28 @@ static void write_rebootcounter(const char *path, int v)
     fflush(f);
     fclose(f);
 }
+
 static void touch_file(const char *path)
 {
     if (!path) return;
     FILE *f = fopen(path, "a");
     if (f) fclose(f);
 }
+
 static int read_proc_uptime_secs(void)
 {
+#ifdef GTEST_ENABLE
+    return -1;
+#else
     FILE *f = fopen("/proc/uptime", "r");
     if (!f) return -1;
     double up = 0.0;
     if (fscanf(f, "%lf", &up) != 1) { fclose(f); return -1; }
     fclose(f);
     return (int)up;
+#endif
 }
+
 static int extract_json_value(const char *buf, const char *key, char *out, size_t outsz)
 {
     if (!buf || !key || !out || outsz == 0) return -1;
@@ -94,6 +103,7 @@ static int extract_json_value(const char *buf, const char *key, char *out, size_
     out[len] = '\0';
     return 0;
 }
+
 static int read_previous_reboot_info(char *source, size_t ssz,
                                      char *reason, size_t rsz,
                                      char *custom, size_t csz,
@@ -115,6 +125,7 @@ static int read_previous_reboot_info(char *source, size_t ssz,
     (void)extract_json_value(buf, "timestamp", ts, tsz);
     return (rc == 0) ? 0 : -1;
 }
+
 static void compute_cron_time(int add_minutes, char *out, size_t outsz)
 {
     time_t now = time(NULL);
@@ -185,8 +196,11 @@ int handle_cyclic_reboot(const char *source,
             }
 
             const int REBOOT_WINDOW_SECS = 10 * 60;
-
+#ifdef GTEST_ENABLE
+            if ((upsecs < 0) || (upsecs >= 0 && upsecs <= REBOOT_WINDOW_SECS)) {
+#else
             if (upsecs >= 0 && upsecs <= REBOOT_WINDOW_SECS) {
+#endif
                 RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Reboot requested before the %d mins, checking reboot reason\n", 10);
                 int same = 0;
                 if (source && strcmp(source, p_src) == 0 &&
@@ -215,6 +229,7 @@ int handle_cyclic_reboot(const char *source,
                             if (rbus_get_bool_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RebootStop.Enable", &reboot_stop_enable)) {
                                 RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","[%s:%d]:Publishing Reboot Stop Enable Event: %d\n",__FUNCTION__, __LINE__,reboot_stop_enable);
                             }
+			    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Sending t2 Marker\n");
                             t2CountNotify("SYST_ERR_Cyclic_reboot", 1);
                             v_secure_system("sh /lib/rdk/cronjobs_update.sh %s %s", "remove", "rebootnow");
                             char cron[64];

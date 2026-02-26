@@ -29,8 +29,8 @@ struct MockVal {
     int i=0;
     enum { 
         STR, 
-	BOOL, 
-	INT 
+        BOOL, 
+        INT 
     } t=STR;
 };
 
@@ -42,7 +42,7 @@ rbusError_t rbus_open(rbusHandle_t* handle, const char* name){
     return RBUS_ERROR_SUCCESS;
 }
 void rbus_close(rbusHandle_t handle){
-	(void)handle; 
+    (void)handle; 
 }
 rbusError_t rbus_get(rbusHandle_t handle, const char* name, rbusValue_t* value){ 
     (void)handle; 
@@ -52,19 +52,19 @@ rbusError_t rbus_get(rbusHandle_t handle, const char* name, rbusValue_t* value){
     MockVal* mv = new MockVal();
     if(g_str.count(ns)){ 
         mv->t=MockVal::STR;
-	mv->s=g_str[ns]; 
+        mv->s=g_str[ns]; 
     }
     else if(g_bool.count(ns)){ 
         mv->t=MockVal::BOOL; 
-	mv->b=g_bool[ns]; 
+        mv->b=g_bool[ns]; 
     }
     else if(g_int.count(ns)){
         mv->t=MockVal::INT; 
-	mv->i=g_int[ns]; 
+        mv->i=g_int[ns]; 
     }
     else {
         delete mv; 
-	return 3; 
+        return 3; 
     }
     *value = (rbusValue_t)mv; 
     return RBUS_ERROR_SUCCESS;
@@ -79,14 +79,14 @@ rbusError_t rbus_set(rbusHandle_t handle, const char* name, rbusValue_t value, v
     if(mv->t==MockVal::BOOL){ 
         if(g_set_fail_bool) 
             return 6; 
-	g_bool[ns]=mv->b; 
-	return RBUS_ERROR_SUCCESS; 
+        g_bool[ns]=mv->b; 
+        return RBUS_ERROR_SUCCESS; 
     }
     if(mv->t==MockVal::INT){ 
         if(g_set_fail_int) 
             return 7; 
-	g_int[ns]=mv->i; 
-	return RBUS_ERROR_SUCCESS; 
+        g_int[ns]=mv->i; 
+        return RBUS_ERROR_SUCCESS; 
     }
     return 5; 
 }

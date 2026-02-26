@@ -3,7 +3,7 @@ ACLOCAL_AMFLAGS = -I m4
 
 bin_PROGRAMS = reboot_utils_gtest reboot_rbus_gtest reboot_cyclic_gtest reboot_system_gtest reboot_main_gtest
 
-AM_CPPFLAGS = -I$(srcdir)/mocks -I$(top_srcdir)/include -I$(top_srcdir)/src -I$(top_srcdir)/unittest/mocks
+AM_CPPFLAGS = -I$(srcdir)/mocks -I$(top_srcdir)/rebootnow/include -I$(top_srcdir)/rebootnow/src -I$(top_srcdir)/unittest/mocks
 AM_CXXFLAGS = -std=c++14
 
 # Only preprocessor defs and forced include here; no C++ standard flags

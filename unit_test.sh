@@ -36,9 +36,9 @@ do
   $test || fail=1
 done
 
-#if [ $fail -ne 0 ]; then
- # echo "Some unit tests failed."; exit 1
-#fi
+if [ $fail -ne 0 ]; then
+    echo "Some unit tests failed."; exit 1
+fi
 
 if [ "$ENABLE_COV" = true ]; then
   echo "Listing all .gcda files in unittest, src, and parent directories:"

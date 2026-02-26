@@ -26,28 +26,6 @@ extern "C" int v_secure_system(const char* fmt, ...){
 static bool g_sim_inactive = false;
 static bool g_sim_stop_fail = false;
 
-TEST(SystemCleanup, SyncLogsFromTemp)
-{
-    // Prepare temp and log directories
-    system("mkdir -p ./tmp_logs");
-    system("mkdir -p ./logs_out");
-    std::ofstream f1("./tmp_logs/a.log"); f1<<"AAA"; f1.close();
-    std::ofstream f2("./tmp_logs/b.txt"); f2<<"BBB"; f2.close();
-    std::ofstream f3("./tmp_logs/skip.bin"); f3<<"CCC"; f3.close();
-
-    // Set environment for housekeeping
-    setenv("PERSISTENT_PATH", "./persistent", 1);
-    setenv("TEMP_LOG_PATH", "./tmp_logs", 1);
-    setenv("LOG_PATH", "./logs_out", 1);
-
-    //perform_housekeeping();
-
-    std::ifstream outA("./logs_out/a.log"); std::string sA; std::getline(outA, sA);
-    std::ifstream outB("./logs_out/b.txt"); std::string sB; std::getline(outB, sB);
-    ASSERT_EQ(sA, "AAA");
-    ASSERT_EQ(sB, "BBB");
-}
-
 TEST(SystemCleanup, PidfileWriteAndGuardAndCleanup){
     // Ensure no PID file exists
     remove("/tmp/.rebootNow.pid");

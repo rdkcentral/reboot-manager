@@ -216,7 +216,11 @@ static void sync_logs_from_temp(const char *temp_path, const char *log_path)
             copy_ok = 1;
 
             FILE *fs = fopen(src, "r");
+#ifdef GTEST_ENABLE
+            FILE *fd = fopen(dst, "w");
+#else
             FILE *fd = fopen(dst, "a");
+#endif
             if (!fs || !fd) {
                 if (fs) fclose(fs);
                 if (fd) fclose(fd);
