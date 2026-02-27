@@ -334,46 +334,41 @@ int main(int argc, char **argv)
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Invoke setPreviousRebootInfo to save reboot information under %s folder\n", REBOOT_INFO_DIR);
     
     rebootinfo_json = fopen(REBOOT_INFO_FILE, "w");
-    prev_rebootinfo_json = fopen(PREVIOUS_REBOOT_INFO_FILE, "w");
-
-    if (rebootinfo_json || prev_rebootinfo_json) {
-        if (rebootinfo_json) {
-            fprintf(rebootinfo_json, "{\n");
-            fprintf(rebootinfo_json, "\"timestamp\":\"%s\",\n", ts);
-            fprintf(rebootinfo_json, "\"source\":\"%s\",\n", source ? source : "");
-            fprintf(rebootinfo_json, "\"reason\":\"%s\",\n", reboot_reason);
-            fprintf(rebootinfo_json, "\"customReason\":\"%s\",\n", custom_reason);
-            fprintf(rebootinfo_json, "\"otherReason\":\"%s\"\n", other_reason ? other_reason : "");
-            fprintf(rebootinfo_json, "}\n");
-            fclose(rebootinfo_json);
-            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Saving reboot info in %s file\n", REBOOT_INFO_FILE);
-        } else {
-            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Failed to open %s for writing (errno=%d)\n", REBOOT_INFO_FILE, errno);
-        }
-
-        if (prev_rebootinfo_json) {
-            fprintf(prev_rebootinfo_json, "{\n");
-            fprintf(prev_rebootinfo_json, "\"timestamp\":\"%s\",\n", ts);
-            fprintf(prev_rebootinfo_json, "\"source\":\"%s\",\n", source ? source : "");
-            fprintf(prev_rebootinfo_json, "\"reason\":\"%s\",\n", reboot_reason);
-            fprintf(prev_rebootinfo_json, "\"customReason\":\"%s\",\n", custom_reason);
-            fprintf(prev_rebootinfo_json, "\"otherReason\":\"%s\"\n", other_reason ? other_reason : "");
-            fprintf(prev_rebootinfo_json, "}\n");
-            fclose(prev_rebootinfo_json);
-            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Saving reboot info in %s file (for cyclic handler)\n", PREVIOUS_REBOOT_INFO_FILE);
-        } else {
-            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Failed to open %s for writing (errno=%d)\n", PREVIOUS_REBOOT_INFO_FILE, errno);
-        }
-
-        snprintf(reason_str, sizeof(reason_str), "PreviousRebootInfo:%s,%s,%s,%s\n", ts, custom_reason, source ? source : "", reboot_reason);
-        write_rebootinfo_log(PARODUS_REBOOT_INFO_FILE, reason_str);
-        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Updated Reboot Reason information in %s and %s\n", REBOOT_INFO_FILE, PARODUS_REBOOT_INFO_FILE);
+    if (rebootinfo_json) {
+        fprintf(rebootinfo_json, "{\n");
+        fprintf(rebootinfo_json, "\"timestamp\":\"%s\",\n", ts);
+        fprintf(rebootinfo_json, "\"source\":\"%s\",\n", source ? source : "");
+        fprintf(rebootinfo_json, "\"reason\":\"%s\",\n", reboot_reason);
+        fprintf(rebootinfo_json, "\"customReason\":\"%s\",\n", custom_reason);
+        fprintf(rebootinfo_json, "\"otherReason\":\"%s\"\n", other_reason ? other_reason : "");
+        fprintf(rebootinfo_json, "}\n");
+        fclose(rebootinfo_json);
+        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Saving reboot info in %s file\n", REBOOT_INFO_FILE);
     } else {
-        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Failed to open both %s and %s for writing (errno=%d)\n", REBOOT_INFO_FILE, PREVIOUS_REBOOT_INFO_FILE, errno);
+        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Failed to open %s for writing (errno=%d)\n", REBOOT_INFO_FILE, errno);
     }
 
-    /* Module returns 0 to defer reboot, 1 to proceed */
+    snprintf(reason_str, sizeof(reason_str), "PreviousRebootInfo:%s,%s,%s,%s\n", ts, custom_reason, source ? source : "", reboot_reason);
+    write_rebootinfo_log(PARODUS_REBOOT_INFO_FILE, reason_str);
+    RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Updated Reboot Reason information in %s and %s\n", REBOOT_INFO_FILE, PARODUS_REBOOT_INFO_FILE);
+
     proceed_reboot = handle_cyclic_reboot(source, reboot_reason, custom_reason, other_reason);
+
+    prev_rebootinfo_json = fopen(PREVIOUS_REBOOT_INFO_FILE, "w");
+    if (prev_rebootinfo_json) {
+        fprintf(prev_rebootinfo_json, "{\n");
+        fprintf(prev_rebootinfo_json, "\"timestamp\":\"%s\",\n", ts);
+        fprintf(prev_rebootinfo_json, "\"source\":\"%s\",\n", source ? source : "");
+        fprintf(prev_rebootinfo_json, "\"reason\":\"%s\",\n", reboot_reason);
+        fprintf(prev_rebootinfo_json, "\"customReason\":\"%s\",\n", custom_reason);
+        fprintf(prev_rebootinfo_json, "\"otherReason\":\"%s\"\n", other_reason ? other_reason : "");
+        fprintf(prev_rebootinfo_json, "}\n");
+        fclose(prev_rebootinfo_json);
+        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Saving reboot info in %s file (for cyclic handler)\n", PREVIOUS_REBOOT_INFO_FILE);
+    } else {
+        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Failed to open %s for writing (errno=%d)\n", PREVIOUS_REBOOT_INFO_FILE, errno);
+    }
+
     if (proceed_reboot == 0) {
         return 0; /* exit without performing immediate reboot */
     }
