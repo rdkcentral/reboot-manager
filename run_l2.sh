@@ -17,8 +17,14 @@
 # limitations under the License.
 ##########################################################################
 
-AUTOMAKE_OPTIONS = foreign
-ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = rebootnow/src
+RESULT_DIR="/tmp/l2_test_report"
+mkdir -p "$RESULT_DIR"
 
-include_HEADERS = rebootnow/include/rebootnow.h rebootnow/include/rbus_interface.h
+apt-get update && apt-get install -y libjsonrpccpp-dev
+
+/usr/local/bin/update-reboot-info &
+# Run L2 Test cases
+pytest --json-report --json-report-summary --json-report-file $RESULT_DIR/cyclicreboot.json tests/functional_tests/test/test_cyclic_reboot.py
+pytest --json-report --json-report-summary --json-report-file $RESULT_DIR/crashmaintainence.json tests/functional_tests/test/test_reboot_crash_maintenance.py
+pytest --json-report --json-report-summary --json-report-file $RESULT_DIR/systemcleanup.json tests/functional_tests/test/test_system_cleanup.py
+pytest --json-report --json-report-summary --json-report-file $RESULT_DIR/rebootTest.json tests/functional_tests/test/test_reboot_triggered.py

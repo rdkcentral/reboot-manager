@@ -17,8 +17,24 @@
 # limitations under the License.
 ##########################################################################
 
-AUTOMAKE_OPTIONS = foreign
-ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = rebootnow/src
+WORKDIR=`pwd`
 
-include_HEADERS = rebootnow/include/rebootnow.h rebootnow/include/rbus_interface.h
+apt-get update
+apt-get install -y libjsonrpccpp-dev
+
+cd $WORKDIR
+export INSTALL_DIR='/usr/local'
+export top_srcdir=`pwd`
+export top_builddir=`pwd`
+
+git clone https://github.com/rdkcentral/rdk_logger.git
+cp rdk_logger/include/rdk_logger.h /usr/local/include/.
+
+mkdir -p m4
+automake --add-missing
+autoreconf --install
+export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+export LDFLAGS="-L/usr/local/lib -lpthread -lrdkloggers -lrbus -lsecure_wrapper"
+
+./configure --prefix=${INSTALL_DIR} CFLAGS="-Wno-implicit-function-declaration -Wno-unused-result"
+make && make install

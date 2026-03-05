@@ -17,8 +17,10 @@
 # limitations under the License.
 ##########################################################################
 
-AUTOMAKE_OPTIONS = foreign
-ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = rebootnow/src
+Feature: System cleanup log synchronization
 
-include_HEADERS = rebootnow/include/rebootnow.h rebootnow/include/rbus_interface.h
+    Scenario: Ensure temporary logs are copied to persistent location during reboot
+        Given sample log files exist in TEMP_LOG_PATH
+        When reboot-manager runs and housekeeping is executed
+        Then the same files should exist in LOG_PATH
+        And copied files should preserve their expected contents

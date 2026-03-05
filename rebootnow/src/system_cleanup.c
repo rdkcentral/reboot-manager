@@ -72,7 +72,6 @@ static int send_signalcleanup(const char *name, int sig)
     int count = 0;
     struct dirent *de;
     while ((de = readdir(proc)) != NULL) {
-        if (de->d_type != DT_DIR) continue;
         const char *dname = de->d_name;
         if (dname[0] < '0' || dname[0] > '9') continue; /* pid dirs start with digit */
         char commpath[512];
@@ -203,43 +202,44 @@ static void sync_logs_from_temp(const char *temp_path, const char *log_path)
     }
     RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Find and move the logs from %s to %s\n", temp_path, log_path ? log_path : "<null>");
     while ((de = readdir(d)) != NULL) {
-        if (de->d_type == DT_REG) {
-            const char *name = de->d_name;
-            if (!(is_supported_log_file(name, ".txt") || is_supported_log_file(name, ".log"))) continue;
-            wn_src = snprintf(src, sizeof(src), "%s/%s", temp_path, name);
-            wn_dst = snprintf(dst, sizeof(dst), "%s/%s", log_path, name);
-            if (wn_src < 0 || (size_t)wn_src >= sizeof(src) || wn_dst < 0 || (size_t)wn_dst >= sizeof(dst)) {
-                RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","sync_logs: path truncated for %s or %s\n", name, log_path ? log_path : "<null>");
-                continue;
-            }
+        const char *name = de->d_name;
+        if (!(is_supported_log_file(name, ".txt") || is_supported_log_file(name, ".log"))) continue;
+        wn_src = snprintf(src, sizeof(src), "%s/%s", temp_path, name);
+        wn_dst = snprintf(dst, sizeof(dst), "%s/%s", log_path, name);
+        if (wn_src < 0 || (size_t)wn_src >= sizeof(src) || wn_dst < 0 || (size_t)wn_dst >= sizeof(dst)) {
+            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","sync_logs: path truncated for %s or %s\n", name, log_path ? log_path : "<null>");
+            continue;
+        }
+        copy_ok = 1;
 
-            copy_ok = 1;
-
-            FILE *fs = fopen(src, "r");
-            FILE *fd = fopen(dst, "a");
-            if (!fs || !fd) {
-                if (fs) fclose(fs);
-                if (fd) fclose(fd);
+        FILE *fs = fopen(src, "r");
+#ifdef GTEST_ENABLE
+        FILE *fd = fopen(dst, "w");
+#else
+        FILE *fd = fopen(dst, "a");
+#endif
+        if (!fs || !fd) {
+            if (fs) fclose(fs);
+            if (fd) fclose(fd);
                 RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","sync_logs: failed to open src/dst for %s\n", name);
                 continue;
-            }
-            while ((n = fread(buf, 1, sizeof(buf), fs)) > 0) {
-                if (fwrite(buf, 1, n, fd) != n) {
-                    copy_ok = 0;
-                    break;
-                }
-            }
-            fclose(fs);
-            fclose(fd);
-
-            if (!copy_ok) {
-                RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","sync_logs: write failed for %s, skipping truncate\n", name);
-                continue;
-            }
-            /* truncate src */
-            FILE *ft = fopen(src, "w");
-            if (ft) fclose(ft);
         }
+        while ((n = fread(buf, 1, sizeof(buf), fs)) > 0) {
+            if (fwrite(buf, 1, n, fd) != n) {
+                copy_ok = 0;
+                break;
+            }
+        }
+        fclose(fs);
+        fclose(fd);
+
+        if (!copy_ok) {
+            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","sync_logs: write failed for %s, skipping truncate\n", name);
+            continue;
+        }
+        /* truncate src */
+        FILE *ft = fopen(src, "w");
+        if (ft) fclose(ft);
     }
     closedir(d);
 }

@@ -29,7 +29,9 @@
 #include <string.h>
 #include "rbus_interface.h"
 #include "rdk_logger.h"
+#ifndef GTEST_ENABLE
 #include "rbus/rbus.h"
+#endif
 
 // Global RBUS handle - initialized once and reused
 static rbusHandle_t g_rbusHandle = NULL;

@@ -17,8 +17,14 @@
 # limitations under the License.
 ##########################################################################
 
-AUTOMAKE_OPTIONS = foreign
-ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = rebootnow/src
+Feature: Cyclic reboot defer handling
 
-include_HEADERS = rebootnow/include/rebootnow.h rebootnow/include/rbus_interface.h
+    Scenario: Defer reboot when repeated reason occurs within cyclic window
+        Given a previous reboot record exists with the same categorized reason
+        And rebootCounter is set to indicate repeated reboot attempts
+        And rebootNow trigger flag is present
+        When reboot-manager runs with the same reboot reason
+        Then reboot should be deferred within the cyclic time window
+        And the rebootStop flag should be created
+        And if outside the cyclic window, rebootStop should not exist
+        And rebootCounter should be reset to 0 outside the cyclic window

@@ -40,6 +40,7 @@ rebootnow_SOURCES = main.c
 rebootnow_LDADD = librebootnow.la
 
 AM_LDFLAGS = -lrdkloggers -lfwutils -lrbus -lsecure_wrapper
+if USE_CPC
 bin_PROGRAMS += update-prev-reboot-info
 update_prev_reboot_info_SOURCES = \
     $(srcdir)/rebootmanager-cpc/src/main.c \
@@ -48,7 +49,7 @@ update_prev_reboot_info_SOURCES = \
     $(srcdir)/rebootmanager-cpc/src/log_parser.c \
     $(srcdir)/rebootmanager-cpc/src/json.c \
     $(srcdir)/rebootmanager-cpc/src/parodus_log_update.c
-
+endif
 if IS_TELEMETRY2_ENABLED
    AM_CFLAGS +=  $(T2_EVENT_FLAG)
    AM_LDFLAGS += -ltelemetry_msgsender -lt2utils

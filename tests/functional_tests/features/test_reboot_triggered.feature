@@ -17,8 +17,13 @@
 # limitations under the License.
 ##########################################################################
 
-AUTOMAKE_OPTIONS = foreign
-ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = rebootnow/src
+Feature: App-triggered reboot artifact verification
 
-include_HEADERS = rebootnow/include/rebootnow.h rebootnow/include/rbus_interface.h
+    Scenario: Ensure reboot metadata and flags are created for app-triggered reboot
+        Given prior reboot artifacts are removed
+        When reboot-manager runs with source HtmlDiagnostics
+        Then /opt/secure/reboot/reboot.info should be created with source HtmlDiagnostics
+        And the reason in reboot.info should be APP_TRIGGERED
+        And /opt/secure/reboot/parodusreboot.info should contain a PreviousRebootInfo entry
+        And /opt/logs/rebootInfo.log should include a RebootReason line
+        And /opt/secure/reboot/rebootNow should exist

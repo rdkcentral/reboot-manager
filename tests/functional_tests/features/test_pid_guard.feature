@@ -17,8 +17,12 @@
 # limitations under the License.
 ##########################################################################
 
-AUTOMAKE_OPTIONS = foreign
-ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = rebootnow/src
+Feature: PID guard handling
 
-include_HEADERS = rebootnow/include/rebootnow.h rebootnow/include/rbus_interface.h
+    Scenario: Ensure PID guard file is maintained across consecutive runs
+        Given the PID guard file /tmp/.rebootNow.pid does not exist
+        When reboot-manager is executed for the first time
+        Then the /tmp/.rebootNow.pid file should be created
+        When reboot-manager is executed again with the same trigger source
+        Then the second execution should succeed
+        And the /tmp/.rebootNow.pid file should still exist
