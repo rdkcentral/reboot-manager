@@ -149,7 +149,7 @@ flowchart TD
 
 ### 6.2 Key Operations in cleanup_services
 
-1. Signal `telemetry2_0` and `parodus` with `SIGUSR1`.
+1. Signal `telemetry2_0` with `SIGIO` to flush pending messages before reboot; signal `parodus` with `SIGUSR1` for graceful shutdown.
 2. Optional cleanups for RDM, temp logs, and transient directories.
 3. Conditional bluetooth stack/service stop if enabled.
 4. Call `sync()` and short delay before reboot.
