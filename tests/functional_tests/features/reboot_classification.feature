@@ -17,8 +17,9 @@
 # limitations under the License.
 ##########################################################################
 
-AUTOMAKE_OPTIONS = foreign
-ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = reboot-helper/src reboot-reason-fetcher/src
+Feature: Ensure soft reboots are correctly updated with respective categories
 
-include_HEADERS = reboot-helper/include/rebootnow.h reboot-helper/include/rbus_interface.h reboot-reason-fetcher/include/update-reboot-info.h
+	Scenario: Verify soft reboot reasons are categorised as APP_triggered, OPS_triggered and Maintainance
+	     Given the update-reboot-info binary is up and running
+	     When soft reboot is triggered
+	     Then the reason should be categorised properly

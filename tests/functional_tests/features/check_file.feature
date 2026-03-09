@@ -17,8 +17,9 @@
 # limitations under the License.
 ##########################################################################
 
-AUTOMAKE_OPTIONS = foreign
-ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = reboot-helper/src reboot-reason-fetcher/src
+Feature: Ensure Files are created under /opt/secure/reboot when reboot is triggered
 
-include_HEADERS = reboot-helper/include/rebootnow.h reboot-helper/include/rbus_interface.h reboot-reason-fetcher/include/update-reboot-info.h
+	Scenario: Verify reboot.info and parodusreboot.info files are created when reboot is triggered
+	     Given the update-reboot-info binary is up and running
+	     When the reboot is triggered
+	     Then the reboot.info and parodusreboot.info file should be created under /opt/secure/reboot

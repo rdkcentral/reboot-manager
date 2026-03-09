@@ -17,8 +17,9 @@
 # limitations under the License.
 ##########################################################################
 
-AUTOMAKE_OPTIONS = foreign
-ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = reboot-helper/src reboot-reason-fetcher/src
+Feature: Ensure Reboot Reason is found in /opt/logs/rebootInfo.log for soft reboot.
 
-include_HEADERS = reboot-helper/include/rebootnow.h reboot-helper/include/rbus_interface.h reboot-reason-fetcher/include/update-reboot-info.h
+	Scenario: Verify rebootInfo.log is updated when soft reboot is triggered
+	     Given the update-reboot-info binary is up and running
+	     When soft reboot is triggered
+	     Then the reason should get updated in /opt/logs/rebootInfo.log

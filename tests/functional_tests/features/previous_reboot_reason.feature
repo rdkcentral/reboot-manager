@@ -17,8 +17,9 @@
 # limitations under the License.
 ##########################################################################
 
-AUTOMAKE_OPTIONS = foreign
-ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = reboot-helper/src reboot-reason-fetcher/src
+Feature: Ensure Previous reboot reasons are captured in previousreboot.info file
 
-include_HEADERS = reboot-helper/include/rebootnow.h reboot-helper/include/rbus_interface.h reboot-reason-fetcher/include/update-reboot-info.h
+	Scenario: Verify Previous reboot reasons are captured in previousreboot.info file
+	     Given the update-reboot-info binary is up and running
+	     When the reboot is triggered
+	     Then the previous reboot reason should be captured in previousreboot.info file

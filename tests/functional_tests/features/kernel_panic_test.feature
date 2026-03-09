@@ -17,8 +17,9 @@
 # limitations under the License.
 ##########################################################################
 
-AUTOMAKE_OPTIONS = foreign
-ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = reboot-helper/src reboot-reason-fetcher/src
+Feature: Ensure Kernel Panic are reported with OOPs string in /opt/logs/messages.txt file.
 
-include_HEADERS = reboot-helper/include/rebootnow.h reboot-helper/include/rbus_interface.h reboot-reason-fetcher/include/update-reboot-info.h
+	Scenario: Verify messages.txt is updated with OOPS string when kernel panic  is triggered
+	     Given the update-reboot-info binary is up and running
+	     When kernel panic is reported
+	     Then the /opt/logs/messages.txt should be reported with OOPS string
