@@ -409,19 +409,6 @@ int classify_reboot_reason(RebootInfo *info, const EnvContext *ctx, const Hardwa
         return ERROR_GENERAL;
     }
 
-	if (strcmp(ctx->soc, "AMLOGIC") == 0) {
-        if (info->reason[0] != '\0') {
-            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Bypassing classification for AMLOGIC; reason already set to %s\n", info->reason);
-            return SUCCESS;
-        }
-    }
-    
-    if (strcmp(ctx->soc, "MEDIATEK") == 0 || strcmp(ctx->soc, "MTK") == 0) {
-        if (info->reason[0] != '\0') {
-            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Bypassing classification for MTK; reason already set to %s\n", info->reason);
-            return SUCCESS;
-        }
-    }
     RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Classifying reboot reason\n");
     if (fwFailure && fwFailure->detected) {
         if (fwFailure->initiator[0] != '\0') {
