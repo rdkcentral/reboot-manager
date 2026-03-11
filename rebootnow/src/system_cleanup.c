@@ -248,7 +248,7 @@ void cleanup_services(void)
 {
     /* Signal telemetry2_0 and parodus */
     RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Signal telemetry2_0 to send out any pending messages before reboot\n");
-    send_signalcleanup("telemetry2_0", SIGUSR1);
+    send_signalcleanup("telemetry2_0", SIGIO);
     RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Properly shutdown parodus by sending SIGUSR1 kill signal\n");
     send_signalcleanup("parodus", SIGUSR1);
 
