@@ -31,7 +31,7 @@
 #include <sys/types.h>
 #include "rebootnow.h"
 #include "secure_wrapper.h"
-#include "rbus_interface.h"
+#include "rebootmgr_rbus_interface.h"
 #include "rdk_logger.h"
 #include <sys/wait.h>
 
