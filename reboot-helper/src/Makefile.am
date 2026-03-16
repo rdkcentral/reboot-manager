@@ -26,6 +26,7 @@ AM_CFLAGS = -std=c99 -Wall -Wextra -Werror -O2 -I./reboot-helper/include -DRDK_L
 
 # Library target
 lib_LTLIBRARIES = librebootnow.la
+librebootnow_la_LDFLAGS = -shared
 librebootnow_la_SOURCES = reboot_main.c \
       system_cleanup.c \
       cyclic_reboot.c \
@@ -35,9 +36,9 @@ librebootnow_la_SOURCES = reboot_main.c \
 librebootnow_la_LIBADD = -lfwutils -lrdkloggers -lrbus -lsecure_wrapper
 
 # CLI wrapper binary
-bin_PROGRAMS = reboot
-reboot_SOURCES = reboot_main.c
-reboot_LDADD = librebootnow.la
+bin_PROGRAMS = rebootnow
+rebootnow_SOURCES = main.c
+rebootnow_LDADD = librebootnow.la
 
 AM_LDFLAGS = -lrdkloggers -lfwutils -lrbus -lsecure_wrapper
 
