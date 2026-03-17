@@ -104,7 +104,4 @@ def is_binary_running():
 def check_file_exists(file_path):
     return os.path.isfile(file_path)
 
-def run_sim(args):
-    subprocess.run(["sh", SIM] + args, cwd=HERE, check=True)
-    sleep(0.2)
 
