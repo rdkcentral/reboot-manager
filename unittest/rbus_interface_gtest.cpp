@@ -4,7 +4,7 @@
 #include <cstring>
 #include <cstdio>
 extern "C" {
-#include "rbus_interface.h"
+#include "rebootmgr_rbus_interface.h"
 #include "mocks/rbus_mock_types.h"
 }
 
