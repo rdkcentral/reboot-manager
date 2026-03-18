@@ -4,7 +4,7 @@
 #include <fstream>
 extern "C" {
 #include <stdio.h>
-#include "rebootnow.h"
+#include "reboot.h"
 }
 
 #define GTEST_DEFAULT_RESULT_FILEPATH "/tmp/Gtest_Report/"

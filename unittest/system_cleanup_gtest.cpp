@@ -8,7 +8,7 @@
 #include <cstdarg>
 #include <unistd.h>
 extern "C" {
-#include "rebootnow.h"
+#include "reboot.h"
 }
 
 #define GTEST_DEFAULT_RESULT_FILEPATH "/tmp/Gtest_Report/"

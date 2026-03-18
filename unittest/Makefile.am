@@ -20,7 +20,7 @@ COMMON_CPPFLAGS = -DGTEST_ENABLE \
 
 COMMON_LDADD = -lgtest -lgmock -lpthread -lgcov
 # Split flags so C doesn't receive C++-only options like -fpermissive
-COMMON_CFLAGS = -fprofile-arcs -ftest-coverage -fpermissive -Wno-implicit-function-declaration
+COMMON_CFLAGS = -fprofile-arcs -ftest-coverage
 COMMON_CXXFLAGS = -fprofile-arcs -ftest-coverage -fpermissive -Wno-implicit-function-declaration
 
 reboot_utils_gtest_SOURCES = utils_gtest.cpp $(top_srcdir)/../reboot-helper/src/utils.c mocks/rdk_logger_stub.c

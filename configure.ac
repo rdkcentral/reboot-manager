@@ -20,7 +20,6 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_INIT([REBOOT], [1.0], [saranya_elango@comcast.com])
-AC_CONFIG_SRCDIR([reboot-helper/src/reboot_main.c], [reboot-reason-fetcher/src/rebootreason_main.c])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIRS([m4])
 AM_INIT_AUTOMAKE([subdir-objects foreign ])

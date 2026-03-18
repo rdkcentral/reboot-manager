@@ -5,6 +5,7 @@
 #include <cerrno>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdio.h>
 
 static bool g_mock_fs_enabled = false;
 static std::unordered_map<std::string, std::string> g_mock_path_map;

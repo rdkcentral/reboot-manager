@@ -11,7 +11,7 @@ int parse_device_properties(EnvContext *ctx)
     char buffer[MAX_REASON_LENGTH];
     if (!ctx) {
         RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Context pointer is NULL\n");
-        return FAILURE;
+        return ERROR_GENERAL;
     }
     memset(ctx, 0, sizeof(EnvContext));
     ctx->platcoSupport = false;
@@ -131,7 +131,7 @@ int parse_legacy_log(const char *logPath, RebootInfo *info)
     int found_fields = 0;
     if (!logPath || !info) {
         RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Invalid parameters for parse_legacy_log\n");
-        return FAILURE;
+        return ERROR_GENERAL;
     }
     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Parsing legacy log: %s\n", logPath);
     fp = fopen(logPath, "r");
@@ -257,7 +257,7 @@ int read_amlogic_reset_reason(HardwareReason *hw, RebootInfo *info)
     char saved_timestamp[MAX_TIMESTAMP_LENGTH];
     
     if (!hw || !info) {
-        return FAILURE;
+        return ERROR_GENERAL;
     }
 
     strncpy(saved_timestamp, info->timestamp, sizeof(saved_timestamp) - 1);

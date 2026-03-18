@@ -552,7 +552,7 @@ int classify_reboot_reason(RebootInfo *info, const EnvContext *ctx, const Hardwa
             for (size_t i = 0; i < len && i < sizeof(lower) - 1; i++) {
                 lower[i] = tolower((unsigned char)info->reason[i]);
             }
-            lower[len] = '\0';
+            lower[(len < sizeof(lower) - 1) ? len : (sizeof(lower) - 1)] = '\0';
             FILE *klog = fopen("/opt/logs/messages.txt", "a");
             if (klog) {
                 fprintf(klog, "PreviousRebootReason: %s\n", lower);
