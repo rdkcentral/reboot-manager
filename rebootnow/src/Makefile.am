@@ -30,7 +30,7 @@ librebootnow_la_SOURCES = \
       system_cleanup.c \
       cyclic_reboot.c \
       utils.c \
-      rbus_interface.c
+      rebootmgr_rbus_interface.c
 
 librebootnow_la_LIBADD = -lfwutils -lrdkloggers -lrbus -lsecure_wrapper
 
