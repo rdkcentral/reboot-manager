@@ -1,4 +1,4 @@
-`1AUTOMAKE_OPTIONS = foreign subdir-objects
+AUTOMAKE_OPTIONS = foreign subdir-objects
 
 reboot_CFLAGS += -fPIC -pthread
 bin_PROGRAMS = update-prev-reboot-info

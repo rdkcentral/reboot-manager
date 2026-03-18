@@ -113,7 +113,7 @@ extern "C" {
 #undef t2CountNotify
 #undef t2ValNotify
 #define handle_cyclic_reboot handle_cyclic_reboot_stub
-#include "../rebootnow/src/main.c"
+#include "../reboot-helper/src/main.c"
 }
 #undef handle_cyclic_reboot
 #undef main
