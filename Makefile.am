@@ -21,4 +21,4 @@ AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS = -I m4
 SUBDIRS = rebootnow/src
 
-include_HEADERS = rebootnow/include/rebootnow.h rebootnow/include/rbus_interface.h
+include_HEADERS = rebootnow/include/rebootnow.h rebootnow/include/rebootmgr_rbus_interface.h

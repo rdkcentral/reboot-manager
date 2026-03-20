@@ -25,7 +25,7 @@ reboot_utils_gtest_LDADD = $(COMMON_LDADD)
 reboot_utils_gtest_CXXFLAGS = $(COMMON_CXXFLAGS)
 reboot_utils_gtest_CFLAGS = $(COMMON_CFLAGS)
 
-reboot_rbus_gtest_SOURCES = rbus_interface_gtest.cpp $(top_srcdir)/../rebootnow/src/rbus_interface.c mocks/rdk_logger_stub.c
+reboot_rbus_gtest_SOURCES = rbus_interface_gtest.cpp $(top_srcdir)/../rebootnow/src/rebootmgr_rbus_interface.c mocks/rdk_logger_stub.c
 reboot_rbus_gtest_CPPFLAGS = $(COMMON_CPPFLAGS)
 reboot_rbus_gtest_LDADD = $(COMMON_LDADD)
 reboot_rbus_gtest_CXXFLAGS = $(COMMON_CXXFLAGS)
