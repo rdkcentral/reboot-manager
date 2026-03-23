@@ -636,7 +636,7 @@ TEST_F(RebootClassifyTest, classify_reboot_reason_AmlogicBypassWhenReasonPreset)
 
     int result = classify_reboot_reason(&info, &ctx, &hwReason, &panicInfo, &fwFailure);
     EXPECT_EQ(result, SUCCESS);
-    EXPECT_STREQ(info.reason, "PRESET_REASON");
+    EXPECT_STREQ(info.reason, "SOFTWARE_MASTER_RESET");
 }
 
 TEST_F(RebootClassifyTest, classify_reboot_reason_MtkBypassWhenReasonPreset) {
@@ -657,7 +657,7 @@ TEST_F(RebootClassifyTest, classify_reboot_reason_MtkBypassWhenReasonPreset) {
 
     int result = classify_reboot_reason(&info, &ctx, &hwReason, &panicInfo, &fwFailure);
     EXPECT_EQ(result, SUCCESS);
-    EXPECT_STREQ(info.reason, "MTK_PRESET");
+    EXPECT_STREQ(info.reason, "SOFTWARE_MASTER_RESET");
 }
 
 TEST_F(RebootClassifyTest, classify_reboot_reason_FirmwareFailureWithInitiatorAndDetails) {

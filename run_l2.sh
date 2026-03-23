@@ -29,6 +29,8 @@ mkdir -p /opt/logs
 touch /opt/logs/messages.txt
 apt-get update && apt-get install -y libjsonrpccpp-dev
 
+echo "LOG.RDK.DEFAULT = INFO" >> /etc/debug.ini
+
 # Run L2 Test cases
 pytest --json-report --json-report-summary --json-report-file $RESULT_DIR/crashmaintainence.json tests/functional_tests/test/test_reboot_crash_maintenance.py
 pytest --json-report --json-report-summary --json-report-file $RESULT_DIR/rebootTest.json tests/functional_tests/test/test_reboot_triggered.py

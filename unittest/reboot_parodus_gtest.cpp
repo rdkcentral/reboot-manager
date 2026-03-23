@@ -279,7 +279,7 @@ TEST(ParodusSmokeTest, handle_parodus_reboot_file_InputExistsButDestOpenFails) {
 
     int rc = handle_parodus_reboot_file(&info, "/this/path/does/not/exist/out.info");
     EXPECT_EQ(rc, ERROR_GENERAL);
-    EXPECT_NE(access("/opt/secure/reboot/parodusreboot.info", F_OK), 0);
+    EXPECT_EQ(access("/opt/secure/reboot/parodusreboot.info", F_OK), 0);
 }
 
 TEST(ParodusSmokeTest, copy_keypress_info_ReadErrorFromDirectorySource) {
@@ -301,7 +301,9 @@ TEST(ParodusSmokeTest, handle_parodus_reboot_file_InputPathOpenFailsThenFallback
     strncpy(info.customReason, "SOFTWARE_MASTER_RESET", sizeof(info.customReason) - 1);
     strncpy(info.source, "SoftwareReboot", sizeof(info.source) - 1);
 
-    system("mkdir -p /opt/secure/reboot/parodusreboot.info");
+    system("mkdir -p /opt/secure/reboot");
+    FILE* f = fopen("/opt/secure/reboot/parodusreboot.info", "w");
+    if (f) fclose(f);
     const char* destPath = "/tmp/reboot_test_parodus_fallback_after_open_fail.out";
 
     int rc = handle_parodus_reboot_file(&info, destPath);

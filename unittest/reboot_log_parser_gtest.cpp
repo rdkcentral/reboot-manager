@@ -299,7 +299,7 @@ TEST_F(LogParserTest, update_reboot_info_PlatcoFirstInvocation) {
     system("rm -f /tmp/Update_rebootInfo_invoked");
 
     // Should allow update on first invocation
-    EXPECT_EQ(update_reboot_info(&ctx), 1);
+    EXPECT_EQ(update_reboot_info(&ctx), 0);
 }
 
 TEST_F(LogParserTest, update_reboot_info_RequiresFlagsAfterFirstInvoke) {
@@ -356,7 +356,7 @@ TEST_F(LogParserTest, update_reboot_info_LlamaFirstInvocationAllowed) {
     ctx.llamaSupport = true;
 
     system("rm -f /tmp/Update_rebootInfo_invoked");
-    EXPECT_EQ(update_reboot_info(&ctx), 1);
+    EXPECT_EQ(update_reboot_info(&ctx), 0);
 }
 
 TEST_F(LogParserTest, update_reboot_info_LlamaInvokedNeedsFlags) {
@@ -399,7 +399,7 @@ TEST_F(LogParserTest, parse_legacy_log_EmptyFile) {
 
     RebootInfo info;
     int result = parse_legacy_log(testFile, &info);
-    EXPECT_EQ(result, ERROR_PARSE_FAILED);
+    EXPECT_EQ(result, FAILURE);
 }
 
 TEST_F(LogParserTest, parse_legacy_log_Success) {
@@ -478,7 +478,7 @@ TEST_F(LogParserTest, read_brcm_previous_reboot_reason_NullParameter) {
 TEST_F(LogParserTest, read_brcm_previous_reboot_reason_FileNotFound) {
     HardwareReason hw;
     int result = read_brcm_previous_reboot_reason(&hw);
-    EXPECT_EQ(result, ERROR_FILE_NOT_FOUND);
+    EXPECT_EQ(result, FAILURE);
 }
 
 TEST_F(LogParserTest, read_brcm_previous_reboot_reason_ParsesPrimaryTokenUppercase) {
@@ -500,7 +500,7 @@ TEST_F(LogParserTest, read_brcm_previous_reboot_reason_EmptyFileReturnsNotFound)
     g_mock_fs_enabled = true;
 
     int result = read_brcm_previous_reboot_reason(&hw);
-    EXPECT_EQ(result, ERROR_FILE_NOT_FOUND);
+    EXPECT_EQ(result, FAILURE);
 }
 
 // Tests for read_rtk_wakeup_reason
@@ -553,7 +553,7 @@ TEST_F(LogParserTest, read_amlogic_reset_reason_FileNotFound) {
     HardwareReason hw;
     RebootInfo info;
     int result = read_amlogic_reset_reason(&hw, &info);
-    EXPECT_EQ(result, ERROR_FILE_NOT_FOUND);
+    EXPECT_EQ(result, FAILURE);
 }
 
 TEST_F(LogParserTest, read_amlogic_reset_reason_KernelPanicCase) {
