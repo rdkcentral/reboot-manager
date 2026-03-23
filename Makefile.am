@@ -19,6 +19,6 @@
 
 AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = rebootnow/src
+SUBDIRS = reboot-helper/src reboot-reason-fetcher/src
 
-include_HEADERS = rebootnow/include/rebootnow.h rebootnow/include/rebootmgr_rbus_interface.h
+include_HEADERS = rebootnow/include/rebootnow.h rebootnow/include/rebootmgr_rbus_interface.h reboot-reason-fetcher/include/update-reboot-info.h

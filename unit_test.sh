@@ -30,7 +30,13 @@ for test in \
   ./reboot_rbus_gtest \
   ./reboot_cyclic_gtest \
   ./reboot_system_gtest \
-  ./reboot_main_gtest
+  ./reboot_main_gtest \
+  /reboot_json_gtest \
+  ./reboot_parodus_gtest \
+  ./reboot_platform_hal_gtest \
+  ./reboot_log_parser_gtest \
+  ./reboot_classify_gtest \
+  ./rebootreason_main_gtest
 do
   echo "Running $test"
   $test || fail=1
