@@ -3,6 +3,8 @@ ENABLE_COV=true
 if [ "x${1:-}" = "x--disable-cov" ]; then ENABLE_COV=false; fi
 
 TOP_DIR=$(pwd)
+HELPER_SRC_DIR="${HELPER_SRC_DIR:-../reboot-helper/src}"
+FETCHER_SRC_DIR="${FETCHER_SRC_DIR:-../reboot-reason-fetcher/src}"
 cd unittest/
 
 if [ -f Makefile ]; then

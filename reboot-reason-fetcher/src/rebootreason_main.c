@@ -89,7 +89,7 @@ int main(void)
 #endif
     RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Start of Reboot Reason \n");
 
-    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Acquired rebootInfo lock\n");
+    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Acquiring rebootInfo lock\n");
     if (acquire_lock(LOCK_DIR) != SUCCESS) {
         RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Failed to acquire lock, another instance may be running \n");
         return ERROR_LOCK_FAILED;
