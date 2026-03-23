@@ -96,6 +96,6 @@ if test "$USE_CPC" = "yes"; then
         AC_DEFINE([USE_CPC], [1], [Define to enable CPC support])
 fi
 
-AC_CONFIG_FILES([Makefile reboot-helper/src/Makefile reboot-reason-fetcher/src/Makefile])
+AC_CONFIG_FILES([Makefile reboot-helper/src/Makefile])
 
 AC_OUTPUT
