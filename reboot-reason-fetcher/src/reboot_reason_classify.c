@@ -191,7 +191,7 @@ int detect_kernel_panic(const EnvContext *ctx, PanicInfo *panicInfo)
     }
     memset(panicInfo, 0, sizeof(PanicInfo));
     panicInfo->detected = false;
-    if (strcmp(ctx->soc, "BRCM") == 0) {
+    if (strcasecmp(ctx->soc, "BRCM") == 0 || strcasecmp(ctx->soc, "BROADCOM") == 0) {
         RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Checking BRCM kernel panic in messages.txt \n");
         FILE *fp = fopen(KERNEL_LOG_FILE, "r");
         if (fp) {

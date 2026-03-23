@@ -128,7 +128,7 @@ int main(void)
         } else {
             has_reboot_info = true;
         }
-	if (access(PREVIOUS_PARODUSREBOOT_INFO_FILE, F_OK) == 0) {
+	if (access(PARODUS_REBOOT_INFO_FILE, F_OK) == 0) {
             handle_parodus_reboot_file(&rebootInfo, PREVIOUS_PARODUSREBOOT_INFO_FILE);
 	}
     }
