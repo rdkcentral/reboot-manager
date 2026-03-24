@@ -33,9 +33,6 @@ public:
     MOCK_METHOD(int, parse_legacy_log, (const char *logPath, RebootInfo *info), ());
     MOCK_METHOD(int, should_update_reboot_info, (const EnvContext *ctx), ());
     MOCK_METHOD(int, read_brcm_previous_reboot_reason, (HardwareReason *hw), ());
-    MOCK_METHOD(int, read_rtk_wakeup_reason, (HardwareReason *hw), ());
-    MOCK_METHOD(int, read_amlogic_reset_reason, (HardwareReason *hw, RebootInfo *info), ());
-    MOCK_METHOD(int, read_mtk_reset_reason, (HardwareReason *hw, RebootInfo *info), ());
     MOCK_METHOD(int, detect_kernel_panic, (const EnvContext *ctx, PanicInfo *panicInfo), ());
     MOCK_METHOD(int, check_firmware_failure, (const EnvContext *ctx, FirmwareFailure *fwFailure), ());
     MOCK_METHOD(int, classify_reboot_reason, (RebootInfo *info, const EnvContext *ctx, const HardwareReason *hwReason, const PanicInfo *panicInfo, const FirmwareFailure *fwFailure), ());

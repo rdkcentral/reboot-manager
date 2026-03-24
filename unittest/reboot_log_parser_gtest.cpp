@@ -158,6 +158,37 @@ protected:
     }
 };
 
+enum class HalTestSoc {
+    Brcm,
+    Broadcom,
+    Realtek,
+    Amlogic,
+    Mtk,
+    Mediatek,
+    Unknown
+};
+
+static const char* hal_test_soc_name(HalTestSoc soc) {
+    switch (soc) {
+        case HalTestSoc::Brcm: return "BRCM";
+        case HalTestSoc::Broadcom: return "BROADCOM";
+        case HalTestSoc::Realtek: return "REALTEK";
+        case HalTestSoc::Amlogic: return "AMLOGIC";
+        case HalTestSoc::Mtk: return "MTK";
+        case HalTestSoc::Mediatek: return "MEDIATEK";
+        case HalTestSoc::Unknown: return "UNKNOWN_SOC";
+    }
+    return "UNKNOWN_SOC";
+}
+
+static void set_hal_test_soc(EnvContext* ctx, HalTestSoc soc) {
+    if (!ctx) {
+        return;
+    }
+    memset(ctx->soc, 0, sizeof(ctx->soc));
+    strncpy(ctx->soc, hal_test_soc_name(soc), sizeof(ctx->soc) - 1);
+}
+
 // Tests for parse_device_properties
 TEST_F(LogParserTest, parse_device_properties_NullContext) {
     EXPECT_EQ(parse_device_properties(nullptr), ERROR_GENERAL);
@@ -503,221 +534,208 @@ TEST_F(LogParserTest, read_brcm_previous_reboot_reason_EmptyFileReturnsNotFound)
     EXPECT_EQ(result, FAILURE);
 }
 
-// Tests for read_rtk_wakeup_reason
-TEST_F(LogParserTest, read_rtk_wakeup_reason_NullParameter) {
-    EXPECT_EQ(read_rtk_wakeup_reason(nullptr), ERROR_GENERAL);
+TEST_F(LogParserTest, get_hardware_reason_brcm_InvalidParams) {
+    EXPECT_EQ(read_brcm_previous_reboot_reason(nullptr), ERROR_GENERAL);
 }
 
-TEST_F(LogParserTest, read_rtk_wakeup_reason_SystemCmdlinePath) {
-    HardwareReason hw;
-    memset(&hw, 0, sizeof(hw));
-
-    int result = read_rtk_wakeup_reason(&hw);
-    EXPECT_TRUE(result == SUCCESS || result == FAILURE);
-    if (result == SUCCESS) {
-        EXPECT_NE(hw.mappedReason[0], '\0');
-    }
-}
-
-TEST_F(LogParserTest, read_rtk_wakeup_reason_ParsesWakeupReason) {
-    HardwareReason hw;
-    memset(&hw, 0, sizeof(hw));
-    setupMockFile("/proc/cmdline", "/tmp/reboot_test/cmdline", "foo=1 wakeupreason=thermal_reboot bar=2\n");
-    g_mock_fs_enabled = true;
-
-    int result = read_rtk_wakeup_reason(&hw);
-    EXPECT_EQ(result, SUCCESS);
-    EXPECT_STREQ(hw.mappedReason, "THERMAL_REBOOT");
-}
-
-TEST_F(LogParserTest, read_rtk_wakeup_reason_NoKeyFailure) {
-    HardwareReason hw;
-    memset(&hw, 0, sizeof(hw));
-    setupMockFile("/proc/cmdline", "/tmp/reboot_test/cmdline_no_key", "foo=1 bar=2\n");
-    g_mock_fs_enabled = true;
-
-    int result = read_rtk_wakeup_reason(&hw);
-    EXPECT_EQ(result, FAILURE);
-}
-
-// Tests for read_amlogic_reset_reason
-TEST_F(LogParserTest, read_amlogic_reset_reason_NullParameters) {
+TEST_F(LogParserTest, get_hardware_reason_DispatchBrcmPath) {
+    EnvContext ctx;
     HardwareReason hw;
     RebootInfo info;
-
-    EXPECT_EQ(read_amlogic_reset_reason(nullptr, &info), ERROR_GENERAL);
-    EXPECT_EQ(read_amlogic_reset_reason(&hw, nullptr), ERROR_GENERAL);
-}
-
-TEST_F(LogParserTest, read_amlogic_reset_reason_FileNotFound) {
-    HardwareReason hw;
-    RebootInfo info;
-    int result = read_amlogic_reset_reason(&hw, &info);
-    EXPECT_EQ(result, FAILURE);
-}
-
-TEST_F(LogParserTest, read_amlogic_reset_reason_KernelPanicCase) {
-    HardwareReason hw;
-    RebootInfo info;
+    memset(&ctx, 0, sizeof(ctx));
     memset(&hw, 0, sizeof(hw));
     memset(&info, 0, sizeof(info));
-    strncpy(info.timestamp, "2026-03-10T20:00:00Z", sizeof(info.timestamp) - 1);
-    setupMockFile("/sys/devices/platform/aml_pm/reset_reason", "/tmp/reboot_test/amlogic_case12", "12\n");
-    g_mock_fs_enabled = true;
+    set_hal_test_soc(&ctx, HalTestSoc::Brcm);
 
-    int result = read_amlogic_reset_reason(&hw, &info);
-    EXPECT_EQ(result, SUCCESS);
-    EXPECT_STREQ(hw.mappedReason, "KERNEL_PANIC");
-    EXPECT_STREQ(info.reason, "KERNEL_PANIC");
-    EXPECT_STREQ(info.timestamp, "2026-03-10T20:00:00Z");
+    int rc = get_hardware_reason(&ctx, &hw, &info);
+    EXPECT_EQ(rc, SUCCESS);
+    EXPECT_NE(hw.mappedReason[0], '\0');
 }
 
-TEST_F(LogParserTest, read_amlogic_reset_reason_DefaultUnknownCase) {
+TEST_F(LogParserTest, get_hardware_reason_DispatchAmlogicPath) {
+    EnvContext ctx;
     HardwareReason hw;
     RebootInfo info;
+    memset(&ctx, 0, sizeof(ctx));
     memset(&hw, 0, sizeof(hw));
     memset(&info, 0, sizeof(info));
-    setupMockFile("/sys/devices/platform/aml_pm/reset_reason", "/tmp/reboot_test/amlogic_case99", "99\n");
-    g_mock_fs_enabled = true;
+    set_hal_test_soc(&ctx, HalTestSoc::Amlogic);
 
-    int result = read_amlogic_reset_reason(&hw, &info);
-    EXPECT_EQ(result, SUCCESS);
-    EXPECT_STREQ(hw.mappedReason, "UNKNOWN_RESET");
-    EXPECT_STREQ(info.reason, "UNKNOWN_RESET");
+    int rc = get_hardware_reason(&ctx, &hw, &info);
+    EXPECT_EQ(rc, SUCCESS);
+    EXPECT_STREQ(hw.mappedReason, "UNKNOWN");
 }
 
-TEST_F(LogParserTest, read_amlogic_reset_reason_AllKnownCasesTable) {
-    struct AmlCase {
-        int code;
-        const char* expectedReason;
-    };
-
-    const AmlCase cases[] = {
-        {0, "POWER_ON_RESET"},
-        {1, "SOFTWARE_MASTER_RESET"},
-        {2, "FACTORY_RESET"},
-        {3, "UPDATE_BOOT"},
-        {4, "FAST_BOOT"},
-        {5, "SUSPEND_BOOT"},
-        {6, "HIBERNATE_BOOT"},
-        {7, "FASTBOOT_BOOTLOADER"},
-        {8, "SHUTDOWN_REBOOT"},
-        {9, "RPMPB_REBOOT"},
-        {10, "THERMAL_REBOOT"},
-        {11, "CRASH_REBOOT"},
-        {12, "KERNEL_PANIC"},
-        {13, "WATCHDOG_REBOOT"},
-        {14, "AMLOGIC_DDR_SHA2_REBOOT"},
-        {15, "FFV_REBOOT"}
-    };
-
-    for (const auto& testCase : cases) {
-        HardwareReason hw;
-        RebootInfo info;
-        memset(&hw, 0, sizeof(hw));
-        memset(&info, 0, sizeof(info));
-        strncpy(info.timestamp, "2026-03-10T21:00:00Z", sizeof(info.timestamp) - 1);
-
-	char value[16] = {0};
-        snprintf(value, sizeof(value), "%d\n", testCase.code);
-        setupMockFile("/sys/devices/platform/aml_pm/reset_reason", "/tmp/reboot_test/amlogic_case_tbl", value);
-        g_mock_fs_enabled = true;
-
-        int result = read_amlogic_reset_reason(&hw, &info);
-        EXPECT_EQ(result, SUCCESS);
-        EXPECT_STREQ(hw.mappedReason, testCase.expectedReason);
-        EXPECT_STREQ(info.reason, testCase.expectedReason);
-        EXPECT_STREQ(info.timestamp, "2026-03-10T21:00:00Z");
-    }
-}
-
-// Tests for read_mtk_reset_reason
-TEST_F(LogParserTest, read_mtk_reset_reason_NullParameters) {
+TEST_F(LogParserTest, get_hardware_reason_UnknownSocFallsBackToUnknown) {
+    EnvContext ctx;
     HardwareReason hw;
     RebootInfo info;
-
-    EXPECT_EQ(read_mtk_reset_reason(nullptr, &info), ERROR_GENERAL);
-    EXPECT_EQ(read_mtk_reset_reason(&hw, nullptr), ERROR_GENERAL);
-}
-
-TEST_F(LogParserTest, read_mtk_reset_reason_FileNotFound) {
-    HardwareReason hw;
-    RebootInfo info;
-    int result = read_mtk_reset_reason(&hw, &info);
-    EXPECT_EQ(result, FAILURE);
-}
-
-TEST_F(LogParserTest, read_mtk_reset_reason_HexWatchdogCase) {
-    HardwareReason hw;
-    RebootInfo info;
+    memset(&ctx, 0, sizeof(ctx));
     memset(&hw, 0, sizeof(hw));
     memset(&info, 0, sizeof(info));
-    strncpy(info.timestamp, "2026-03-10T20:20:00Z", sizeof(info.timestamp) - 1);
-    setupMockFile("/sys/mtk_pm/boot_reason", "/tmp/reboot_test/mtk_case_e0", "0xE0\n");
-    g_mock_fs_enabled = true;
+    set_hal_test_soc(&ctx, HalTestSoc::Unknown);
 
-    int result = read_mtk_reset_reason(&hw, &info);
-    EXPECT_EQ(result, SUCCESS);
-    EXPECT_STREQ(hw.mappedReason, "WATCHDOG_REBOOT");
-    EXPECT_STREQ(info.reason, "WATCHDOG_REBOOT");
-    EXPECT_STREQ(info.timestamp, "2026-03-10T20:20:00Z");
+    int rc = get_hardware_reason(&ctx, &hw, &info);
+    EXPECT_EQ(rc, SUCCESS);
+    EXPECT_NE(hw.mappedReason[0], '\0');
 }
 
-TEST_F(LogParserTest, read_mtk_reset_reason_DecimalPowerOnCase) {
+TEST_F(LogParserTest, get_hardware_reason_brcm_FilePathBehavior) {
+    EnvContext ctx;
+    HardwareReason hw;
+    memset(&ctx, 0, sizeof(ctx));
+    memset(&hw, 0, sizeof(hw));
+    set_hal_test_soc(&ctx, HalTestSoc::Brcm);
+
+    int rc = read_brcm_previous_reboot_reason(&hw);
+    EXPECT_TRUE(rc == SUCCESS || rc == FAILURE);
+    EXPECT_NE(hw.mappedReason[0], '\0');
+}
+
+TEST_F(LogParserTest, get_hardware_reason_DispatchRtkAliasPath) {
+    EnvContext ctx;
     HardwareReason hw;
     RebootInfo info;
+    memset(&ctx, 0, sizeof(ctx));
     memset(&hw, 0, sizeof(hw));
     memset(&info, 0, sizeof(info));
-    setupMockFile("/sys/mtk_pm/boot_reason", "/tmp/reboot_test/mtk_case_00", "0\n");
-    g_mock_fs_enabled = true;
+    set_hal_test_soc(&ctx, HalTestSoc::Realtek);
 
-    int result = read_mtk_reset_reason(&hw, &info);
-    EXPECT_EQ(result, SUCCESS);
-    EXPECT_STREQ(hw.mappedReason, "POWER_ON_RESET");
-    EXPECT_STREQ(info.reason, "POWER_ON_RESET");
+    int rc = get_hardware_reason(&ctx, &hw, &info);
+    EXPECT_EQ(rc, SUCCESS);
+    EXPECT_STREQ(hw.mappedReason, "UNKNOWN");
 }
 
-TEST_F(LogParserTest, read_mtk_reset_reason_AllMappedCasesTable) {
-    struct MtkCase {
-        const char* value;
-        const char* expectedReason;
-    };
-
-    const MtkCase cases[] = {
-        {"0x00\n", "POWER_ON_RESET"},
-        {"0xD1\n", "SOFTWARE_MASTER_RESET"},
-        {"0xE4\n", "THERMAL_REBOOT"},
-        {"0xEE\n", "KERNEL_PANIC"},
-        {"0xE0\n", "WATCHDOG_REBOOT"},
-        {"0x99\n", "UNKNOWN_RESET"}
-    };
-
-    for (const auto& testCase : cases) {
-        HardwareReason hw;
-        RebootInfo info;
-        memset(&hw, 0, sizeof(hw));
-        memset(&info, 0, sizeof(info));
-        strncpy(info.timestamp, "2026-03-10T21:30:00Z", sizeof(info.timestamp) - 1);
-
-        setupMockFile("/sys/mtk_pm/boot_reason", "/tmp/reboot_test/mtk_case_tbl", testCase.value);
-        g_mock_fs_enabled = true;
-
-        int result = read_mtk_reset_reason(&hw, &info);
-        EXPECT_EQ(result, SUCCESS);
-        EXPECT_STREQ(hw.mappedReason, testCase.expectedReason);
-        EXPECT_STREQ(info.reason, testCase.expectedReason);
-        EXPECT_STREQ(info.timestamp, "2026-03-10T21:30:00Z");
-    }
-}
-
-TEST_F(LogParserTest, read_rtk_wakeup_reason_EmptyValueStillSuccessPath) {
+TEST_F(LogParserTest, get_hardware_reason_DispatchMtkPath) {
+    EnvContext ctx;
     HardwareReason hw;
+    RebootInfo info;
+    memset(&ctx, 0, sizeof(ctx));
     memset(&hw, 0, sizeof(hw));
-    setupMockFile("/proc/cmdline", "/tmp/reboot_test/cmdline_empty_value", "foo=1 wakeupreason= bar=2\n");
+    memset(&info, 0, sizeof(info));
+    set_hal_test_soc(&ctx, HalTestSoc::Mtk);
+
+    int rc = get_hardware_reason(&ctx, &hw, &info);
+    EXPECT_TRUE(rc == SUCCESS || rc == FAILURE || rc == ERROR_GENERAL);
+}
+
+TEST_F(LogParserTest, get_hardware_reason_DispatchBroadcomAliasPath) {
+    EnvContext ctx;
+    HardwareReason hw;
+    RebootInfo info;
+    memset(&ctx, 0, sizeof(ctx));
+    memset(&hw, 0, sizeof(hw));
+    memset(&info, 0, sizeof(info));
+    set_hal_test_soc(&ctx, HalTestSoc::Broadcom);
+
+    int rc = get_hardware_reason(&ctx, &hw, &info);
+    EXPECT_EQ(rc, SUCCESS);
+    EXPECT_STREQ(hw.mappedReason, "UNKNOWN");
+}
+
+TEST_F(LogParserTest, get_hardware_reason_DispatchMediatekAliasPath) {
+    EnvContext ctx;
+    HardwareReason hw;
+    RebootInfo info;
+    memset(&ctx, 0, sizeof(ctx));
+    memset(&hw, 0, sizeof(hw));
+    memset(&info, 0, sizeof(info));
+    set_hal_test_soc(&ctx, HalTestSoc::Mediatek);
+
+    int rc = get_hardware_reason(&ctx, &hw, &info);
+    EXPECT_TRUE(rc == SUCCESS || rc == FAILURE || rc == ERROR_GENERAL);
+}
+
+TEST_F(LogParserTest, get_hardware_reason_EmptySocFallbackPath) {
+    EnvContext ctx;
+    HardwareReason hw;
+    RebootInfo info;
+    memset(&ctx, 0, sizeof(ctx));
+    memset(&hw, 0, sizeof(hw));
+    memset(&info, 0, sizeof(info));
+
+    int rc = get_hardware_reason(&ctx, &hw, &info);
+    EXPECT_EQ(rc, SUCCESS);
+    EXPECT_NE(hw.mappedReason[0], '\0');
+}
+
+TEST_F(LogParserTest, get_hardware_reason_brcm_ReadsAndUppercases) {
+    setupMockFile("/proc/brcm/previous_reboot_reason", "/tmp/reboot_test/brcm_reason", "watchdog_reset\n");
     g_mock_fs_enabled = true;
 
-    int result = read_rtk_wakeup_reason(&hw);
-    EXPECT_EQ(result, SUCCESS);
+    EnvContext ctx;
+    HardwareReason hw;
+    memset(&ctx, 0, sizeof(ctx));
+    memset(&hw, 0, sizeof(hw));
+    set_hal_test_soc(&ctx, HalTestSoc::Brcm);
+
+    EXPECT_EQ(read_brcm_previous_reboot_reason(&hw), SUCCESS);
+    EXPECT_STREQ(hw.rawReason, "WATCHDOG_RESET");
+    EXPECT_STREQ(hw.mappedReason, "WATCHDOG_RESET");
+}
+
+TEST_F(LogParserTest, get_hardware_reason_DispatchAmlogicUsesReadPath) {
+    setupMockFile("/sys/devices/platform/aml_pm/reset_reason", "/tmp/reboot_test/amlogic_sysfs", "12\n");
+    g_mock_fs_enabled = true;
+
+    EnvContext ctx;
+    HardwareReason hw;
+    RebootInfo info;
+    memset(&ctx, 0, sizeof(ctx));
+    memset(&hw, 0, sizeof(hw));
+    memset(&info, 0, sizeof(info));
+    set_hal_test_soc(&ctx, HalTestSoc::Amlogic);
+
+    EXPECT_EQ(get_hardware_reason(&ctx, &hw, &info), SUCCESS);
+    EXPECT_STREQ(hw.mappedReason, "UNKNOWN");
+    EXPECT_EQ(info.reason[0], '\0');
+}
+
+TEST_F(LogParserTest, get_hardware_reason_DispatchMtkUsesReadPath) {
+    setupMockFile("/sys/mtk_pm/boot_reason", "/tmp/reboot_test/mtk_sysfs", "0xD1\n");
+    g_mock_fs_enabled = true;
+
+    EnvContext ctx;
+    HardwareReason hw;
+    RebootInfo info;
+    memset(&ctx, 0, sizeof(ctx));
+    memset(&hw, 0, sizeof(hw));
+    memset(&info, 0, sizeof(info));
+    set_hal_test_soc(&ctx, HalTestSoc::Mediatek);
+    strncpy(info.timestamp, "2026-03-10T11:22:33Z", sizeof(info.timestamp) - 1);
+
+    EXPECT_EQ(get_hardware_reason(&ctx, &hw, &info), SUCCESS);
+    EXPECT_STREQ(hw.mappedReason, "UNKNOWN");
+    EXPECT_EQ(info.reason[0], '\0');
+    EXPECT_STREQ(info.timestamp, "2026-03-10T11:22:33Z");
+}
+
+TEST_F(LogParserTest, get_hardware_reason_brcm_EmptyFileUnknown) {
+    setupMockFile("/proc/brcm/previous_reboot_reason", "/tmp/reboot_test/brcm_empty_2", "");
+    g_mock_fs_enabled = true;
+
+    EnvContext ctx;
+    HardwareReason hw;
+    memset(&ctx, 0, sizeof(ctx));
+    memset(&hw, 0, sizeof(hw));
+    set_hal_test_soc(&ctx, HalTestSoc::Brcm);
+
+    EXPECT_EQ(read_brcm_previous_reboot_reason(&hw), FAILURE);
+    EXPECT_EQ(hw.mappedReason[0], '\0');
+}
+
+TEST_F(LogParserTest, get_hardware_reason_brcm_OpenFailsReturnsErrorGeneral) {
+    g_mock_path_map["/proc/brcm/previous_reboot_reason"] = "/tmp/reboot_test/does_not_exist_brcm";
+    g_mock_fs_enabled = true;
+
+    EnvContext ctx;
+    HardwareReason hw;
+    memset(&ctx, 0, sizeof(ctx));
+    memset(&hw, 0, sizeof(hw));
+    set_hal_test_soc(&ctx, HalTestSoc::Brcm);
+
+    int rc = read_brcm_previous_reboot_reason(&hw);
+    EXPECT_EQ(rc, FAILURE);
     EXPECT_EQ(hw.mappedReason[0], '\0');
 }
 

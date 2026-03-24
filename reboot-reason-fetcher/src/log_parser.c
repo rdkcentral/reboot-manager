@@ -26,6 +26,14 @@ int parse_device_properties(EnvContext *ctx)
         memcpy(ctx->soc, buffer, len);
         ctx->soc[len] = '\0';
     }
+    if (getDevicePropertyData("RDK_PROFILE", buffer, sizeof(buffer)) == UTILS_SUCCESS) {
+        size_t len = strlen(buffer);
+        if (len >= sizeof(ctx->rdkProfile)) {
+            len = sizeof(ctx->rdkProfile) - 1;
+        }
+        memcpy(ctx->rdkProfile, buffer, len);
+        ctx->rdkProfile[len] = '\0';
+    }
     if (getDevicePropertyData("BUILD_TYPE", buffer, sizeof(buffer)) == UTILS_SUCCESS) {
         size_t len = strlen(buffer);
         if (len >= sizeof(ctx->buildType)) {
@@ -51,7 +59,7 @@ int parse_device_properties(EnvContext *ctx)
     if (getDevicePropertyData("REBOOT_INFO_STT_SUPPORT", buffer, sizeof(buffer)) == UTILS_SUCCESS) {
         ctx->rebootInfoSttSupport = (strcasecmp(buffer, "true") == 0);
     }
-     if (ctx->soc[0] == '\0' || ctx->device_type[0] == '\0') {
+     if (ctx->soc[0] == '\0' || ctx->device_type[0] == '\0' || ctx->rdkProfile[0] == '\0') {
         FILE *dp = fopen("/etc/device.properties", "r");
         if (dp) {
             char line[256];
@@ -70,6 +78,13 @@ int parse_device_properties(EnvContext *ctx)
                     }
                     memcpy(ctx->soc, val, len); 
                     ctx->soc[len] = '\0';
+                } else if (ctx->rdkProfile[0] == '\0' && strcmp(key, "RDK_PROFILE") == 0) {
+                    size_t len = strlen(val);
+                    if (len >= sizeof(ctx->rdkProfile)) {
+                        len = sizeof(ctx->rdkProfile) - 1;
+                    }
+                    memcpy(ctx->rdkProfile, val, len);
+                    ctx->rdkProfile[len] = '\0';
                 } else if (ctx->device_type[0] == '\0' && (strcmp(key, "DEVICE_TYPE") == 0 || strcmp(key, "DEVICE_NAME") == 0)) {
                     size_t len = strlen(val); 
                     if (len >= sizeof(ctx->device_type)) {
@@ -85,7 +100,7 @@ int parse_device_properties(EnvContext *ctx)
             return FAILURE;
         }
     }
-    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Device properties parsed - SOC: %s, BuildType: %s, DeviceType: %s\n", ctx->soc, ctx->buildType, ctx->device_type);
+    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Device properties parsed - SOC: %s, RDK_PROFILE: %s, BuildType: %s, DeviceType: %s\n", ctx->soc, ctx->rdkProfile, ctx->buildType, ctx->device_type);
     RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Support flags - PLATCO: %d, LLAMA: %d, STT: %d\n", ctx->platcoSupport, ctx->llamaSupport, ctx->rebootInfoSttSupport);
     return SUCCESS;
 }
@@ -107,6 +122,30 @@ int update_reboot_info(const EnvContext *ctx)
         return 0;
     }
     return 1;
+}
+
+int get_hardware_reason(const EnvContext *ctx, HardwareReason *hwReason, RebootInfo *info)
+{
+    if (ctx == NULL || hwReason == NULL || info == NULL) {
+        RDK_LOG(RDK_LOG_ERROR, "LOG.RDK.REBOOTINFO", "get_hardware_reason: invalid argument(s): ctx=%p, hwReason=%p, info=%p",
+            (const void *)ctx, (void *)hwReason, (void *)info);
+        return ERROR_GENERAL;
+    }
+
+    memset(hwReason, 0, sizeof(HardwareReason));
+
+    if (strcmp(ctx->soc, "BRCM") == 0) {
+        if (read_brcm_previous_reboot_reason(hwReason) == SUCCESS) {
+            return SUCCESS;
+        }
+    }
+
+    if (hwReason->mappedReason[0] == '\0') {
+        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Hardware reason not determined (SOC='%s')", ctx->soc);
+        strcpy(hwReason->mappedReason, "UNKNOWN");
+    }
+
+    return SUCCESS;
 }
 
 static void getVal(const char *line, const char *prefix, char *output, size_t output_size)
@@ -219,269 +258,3 @@ int read_brcm_previous_reboot_reason(HardwareReason *hw)
     return SUCCESS;
 }
 
-int read_rtk_wakeup_reason(HardwareReason *hw)
-{
-    char buf[MAX_BUFFER_SIZE];
-    if (!hw) return ERROR_GENERAL;
-    if (access(RTK_REBOOT_FILE, R_OK) != 0) {
-        return FAILURE;
-    }
-    if (read_file_data(RTK_REBOOT_FILE, buf, sizeof(buf)) != SUCCESS) {
-        return FAILURE;
-    }
-    const char *key = "wakeupreason=";
-    char *pos = strstr(buf, key);
-    if (!pos) {
-        return FAILURE;
-    }
-    pos += strlen(key);
-    char reason[MAX_REASON_LENGTH];
-    size_t i = 0;
-    while (pos[i] && !isspace((unsigned char)pos[i]) && i < sizeof(reason) - 1) {
-        reason[i] = pos[i];
-        i++;
-    }
-    reason[i] = '\0';
-    for (size_t j = 0; j < i; j++) {
-        reason[j] = toupper((unsigned char)reason[j]);
-    }
-    strncpy(hw->mappedReason, reason, sizeof(hw->mappedReason) - 1);
-    hw->mappedReason[sizeof(hw->mappedReason) - 1] = '\0';
-    return SUCCESS;
-}
-
-int read_amlogic_reset_reason(HardwareReason *hw, RebootInfo *info)
-{
-    char buf[64];
-    int resetVal = -1;
-    char saved_timestamp[MAX_TIMESTAMP_LENGTH];
-    
-    if (!hw || !info) {
-        return ERROR_GENERAL;
-    }
-
-    strncpy(saved_timestamp, info->timestamp, sizeof(saved_timestamp) - 1);
-    saved_timestamp[sizeof(saved_timestamp) - 1] = '\0';
-
-    if (access(AMLOGIC_SYSFS_FILE, R_OK) != 0) {
-        return FAILURE;
-    }
-    if (read_file_data(AMLOGIC_SYSFS_FILE, buf, sizeof(buf)) != SUCCESS) {
-        return FAILURE;
-    }
-    resetVal = atoi(buf);
-    switch (resetVal) {
-        case 0:
-            strcpy(info->source, "POWER_ON_REBOOT");
-            strcpy(info->reason, "POWER_ON_RESET");
-            strcpy(info->customReason, "Hardware Register - COLD_BOOT");
-            strcpy(info->otherReason, "Reboot due to hardware power cable unplug");
-            strcpy(hw->mappedReason, "POWER_ON_RESET");
-            break;
-        case 1:
-            strcpy(info->source, "SOFTWARE_REBOOT");
-            strcpy(info->reason, "SOFTWARE_MASTER_RESET");
-            strcpy(info->customReason, "Hardware Register - NORMAL_BOOT");
-            strcpy(info->otherReason, "Reboot due to user triggered reboot command");
-            strcpy(hw->mappedReason, "SOFTWARE_MASTER_RESET");
-            break;
-        case 2:
-            strcpy(info->source, "FACTORY_RESET_REBOOT");
-            strcpy(info->reason, "FACTORY_RESET");
-            strcpy(info->customReason, "Hardware Register - FACTORY_RESET");
-            strcpy(info->otherReason, "Reboot due to factory reset reboot");
-            strcpy(hw->mappedReason, "FACTORY_RESET");
-            break;
-        case 3:
-            strcpy(info->source, "UPGRADE_SYSTEM_REBOOT");
-            strcpy(info->reason, "UPDATE_BOOT");
-            strcpy(info->customReason, "Hardware Register - UPDATE_BOOT");
-            strcpy(info->otherReason, "Reboot due to system upgrade reboot");
-            strcpy(hw->mappedReason, "UPDATE_BOOT");
-            break;
-        case 4:
-            strcpy(info->source, "FASTBOOT_REBOOT");
-            strcpy(info->reason, "FAST_BOOT");
-            strcpy(info->customReason, "Hardware Register - FAST_BOOT");
-            strcpy(info->otherReason, "Reboot due to fast reboot");
-            strcpy(hw->mappedReason, "FAST_BOOT");
-            break;
-        case 5:
-            strcpy(info->source, "SUSPEND_REBOOT");
-            strcpy(info->reason, "SUSPEND_BOOT");
-            strcpy(info->customReason, "Hardware Register - SUSPEND_BOOT");
-            strcpy(info->otherReason, "Reboot due to suspend reboot");
-            strcpy(hw->mappedReason, "SUSPEND_BOOT");
-            break;
-        case 6:
-            strcpy(info->source, "HIBERNATE_REBOOT");
-            strcpy(info->reason, "HIBERNATE_BOOT");
-            strcpy(info->customReason, "Hardware Register - HIBERNATE_BOOT");
-            strcpy(info->otherReason, "Reboot due to hibernate reboot");
-            strcpy(hw->mappedReason, "HIBERNATE_BOOT");
-            break;
-        case 7:
-            strcpy(info->source, "BOOTLOADER_REBOOT");
-            strcpy(info->reason, "FASTBOOT_BOOTLOADER");
-            strcpy(info->customReason, "Hardware Register - FASTBOOT_BOOTLOADER");
-            strcpy(info->otherReason, "Reboot due to fastboot bootloader reboot");
-            strcpy(hw->mappedReason, "FASTBOOT_BOOTLOADER");
-            break;
-        case 8:
-            strcpy(info->source, "SHUTDOWN_REBOOT");
-            strcpy(info->reason, "SHUTDOWN_REBOOT");
-            strcpy(info->customReason, "Hardware Register - SHUTDOWN_REBOOT");
-            strcpy(info->otherReason, "Reboot due to shutdown");
-            strcpy(hw->mappedReason, "SHUTDOWN_REBOOT");
-            break;
-        case 9:
-            strcpy(info->source, "RPMPB");
-            strcpy(info->reason, "RPMPB_REBOOT");
-            strcpy(info->customReason, "Hardware Register - RPMPB_REBOOT");
-            strcpy(info->otherReason, "Reboot due to RPMPB");
-            strcpy(hw->mappedReason, "RPMPB_REBOOT");
-            break;
-        case 10:
-            strcpy(info->source, "THERMAL");
-            strcpy(info->reason, "THERMAL_REBOOT");
-            strcpy(info->customReason, "Hardware Register - THERMAL_REBOOT");
-            strcpy(info->otherReason, "Reboot due to thermal value");
-            strcpy(hw->mappedReason, "THERMAL_REBOOT");
-            break;
-        case 11:
-            strcpy(info->source, "CRASH_DUMP");
-            strcpy(info->reason, "CRASH_REBOOT");
-            strcpy(info->customReason, "Hardware Register - CRASH_REBOOT");
-            strcpy(info->otherReason, "Reboot due to crash dump");
-            strcpy(hw->mappedReason, "CRASH_REBOOT");
-            break;
-        case 12:
-            strcpy(info->source, "KernelPanic");
-            strcpy(info->reason, "KERNEL_PANIC");
-            strcpy(info->customReason, "Hardware Register - KERNEL_PANIC");
-            strcpy(info->otherReason, "Reboot due to oops dump caused panic");
-            strcpy(hw->mappedReason, "KERNEL_PANIC");
-            break;
-        case 13:
-            strcpy(info->source, "WATCH_DOG");
-            strcpy(info->reason, "WATCHDOG_REBOOT");
-            strcpy(info->customReason, "Hardware Register - WATCHDOG_REBOOT");
-            strcpy(info->otherReason, "Reboot due to watch dog timer");
-            strcpy(hw->mappedReason, "WATCHDOG_REBOOT");
-            break;
-        case 14:
-            strcpy(info->source, "STR_AUTH_FAIL");
-            strcpy(info->reason, "AMLOGIC_DDR_SHA2_REBOOT");
-            strcpy(info->customReason, "Hardware Register - AMLOGIC_DDR_SHA2_REBOOT");
-            strcpy(info->otherReason, "Reboot due to STR Authorization failure");
-            strcpy(hw->mappedReason, "AMLOGIC_DDR_SHA2_REBOOT");
-            break;
-        case 15:
-            strcpy(info->source, "FFV");
-            strcpy(info->reason, "FFV_REBOOT");
-            strcpy(info->customReason, "Hardware Register - FFV_REBOOT");
-            strcpy(info->otherReason, "Reboot due to Reserved FFV");
-            strcpy(hw->mappedReason, "FFV_REBOOT");
-            break;
-        default:
-            strcpy(info->source, "HARD_POWER_RESET");
-            strcpy(info->reason, "UNKNOWN_RESET");
-            strcpy(info->customReason, "UNKNOWN");
-            strcpy(info->otherReason, "Reboot due to unknown reason");
-            strcpy(hw->mappedReason, "UNKNOWN_RESET");
-            break;
-    }
-
-    if (saved_timestamp[0] != '\0') {
-        strncpy(info->timestamp, saved_timestamp, sizeof(info->timestamp) - 1);
-        info->timestamp[sizeof(info->timestamp) - 1] = '\0';
-    }
-    return SUCCESS;
-}
-
-int read_mtk_reset_reason(HardwareReason *hw, RebootInfo *info)
-{
-    char buf[64];
-    int resetVal = -1;
-    char saved_timestamp[MAX_TIMESTAMP_LENGTH];
-    
-    if (!hw || !info) {
-        return ERROR_GENERAL;
-    }
-
-    strncpy(saved_timestamp, info->timestamp, sizeof(saved_timestamp) - 1);
-    saved_timestamp[sizeof(saved_timestamp) - 1] = '\0';
-
-    if (access(MTK_SYSFS_FILE, R_OK) != 0) {
-        return FAILURE;
-    }
-    if (read_file_data(MTK_SYSFS_FILE, buf, sizeof(buf)) != SUCCESS) {
-        return FAILURE;
-    }
-    
-    // Parse hex value from MTK sysfs file
-    if (strncmp(buf, "0x", 2) == 0 || strncmp(buf, "0X", 2) == 0) {
-        resetVal = (int)strtol(buf, NULL, 16);
-    } else {
-        resetVal = (int)strtol(buf, NULL, 10);
-    }
-    
-    // Store raw reason as string representation
-    strncpy(hw->rawReason, buf, sizeof(hw->rawReason) - 1);
-    hw->rawReason[sizeof(hw->rawReason) - 1] = '\0';
-    
-    // Remove newline if present
-    char *newline = strchr(hw->rawReason, '\n');
-    if (newline) *newline = '\0';
-    
-    switch (resetVal) {
-        case 0x00:
-            strcpy(info->source, "POWER_ON_REBOOT");
-            strcpy(info->reason, "POWER_ON_RESET");
-            strcpy(info->customReason, "COLD_BOOT");
-            strcpy(info->otherReason, "Reboot due to hardware power cable unplug");
-            strcpy(hw->mappedReason, "POWER_ON_RESET");
-            break;
-        case 0xD1:
-            strcpy(info->source, "SOFTWARE_REBOOT");
-            strcpy(info->reason, "SOFTWARE_MASTER_RESET");
-            strcpy(info->customReason, "NORMAL_BOOT");
-            strcpy(info->otherReason, "Reboot due to user triggered reboot command");
-            strcpy(hw->mappedReason, "SOFTWARE_MASTER_RESET");
-            break;
-        case 0xE4:
-            strcpy(info->source, "THERMAL");
-            strcpy(info->reason, "THERMAL_REBOOT");
-            strcpy(info->customReason, "THERMAL_REBOOT");
-            strcpy(info->otherReason, "Reboot due to thermal value");
-            strcpy(hw->mappedReason, "THERMAL_REBOOT");
-            break;
-        case 0xEE:
-            strcpy(info->source, "KernelPanic");
-            strcpy(info->reason, "KERNEL_PANIC");
-            strcpy(info->customReason, "KERNEL_PANIC");
-            strcpy(info->otherReason, "Reboot due to oops dump caused panic");
-            strcpy(hw->mappedReason, "KERNEL_PANIC");
-            break;
-        case 0xE0:
-            strcpy(info->source, "WATCH_DOG");
-            strcpy(info->reason, "WATCHDOG_REBOOT");
-            strcpy(info->customReason, "WATCHDOG_REBOOT");
-            strcpy(info->otherReason, "Reboot due to watch dog timer");
-            strcpy(hw->mappedReason, "WATCHDOG_REBOOT");
-            break;
-        default:
-            strcpy(info->source, "HARD_POWER_RESET");
-            strcpy(info->reason, "UNKNOWN_RESET");
-            strcpy(info->customReason, "UNKNOWN");
-            strcpy(info->otherReason, "Reboot due to unknown reason");
-            strcpy(hw->mappedReason, "UNKNOWN_RESET");
-            break;
-    }
-
-    if (saved_timestamp[0] != '\0') {
-        strncpy(info->timestamp, saved_timestamp, sizeof(info->timestamp) - 1);
-        info->timestamp[sizeof(info->timestamp) - 1] = '\0';
-    }
-    return SUCCESS;
-}

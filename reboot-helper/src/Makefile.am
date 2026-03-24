@@ -55,7 +55,6 @@ update_prev_reboot_info_SOURCES = \
 else
 update_prev_reboot_info_SOURCES = \
       $(top_srcdir)/reboot-reason-fetcher/src/rebootreason_main.c \
-      $(top_srcdir)/reboot-reason-fetcher/src/platform_hal.c \
       $(top_srcdir)/reboot-reason-fetcher/src/reboot_reason_classify.c \
       $(top_srcdir)/reboot-reason-fetcher/src/log_parser.c \
       $(top_srcdir)/reboot-reason-fetcher/src/json.c \

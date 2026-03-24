@@ -35,7 +35,6 @@ for test in \
   ./reboot_main_gtest \
   ./reboot_json_gtest \
   ./reboot_parodus_gtest \
-  ./reboot_platform_hal_gtest \
   ./reboot_log_parser_gtest \
   ./reboot_classify_gtest \
   ./rebootreason_main_gtest

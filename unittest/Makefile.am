@@ -3,7 +3,7 @@ ACLOCAL_AMFLAGS = -I m4
 
 bin_PROGRAMS = reboot_utils_gtest reboot_rbus_gtest reboot_cyclic_gtest reboot_system_gtest reboot_main_gtest \
                rebootreason_main_gtest reboot_log_parser_gtest reboot_classify_gtest \
-               reboot_json_gtest reboot_platform_hal_gtest reboot_parodus_gtest
+               reboot_json_gtest reboot_parodus_gtest
 
 AM_CPPFLAGS = -I$(srcdir)/mocks -I$(top_srcdir)/../reboot-helper/include -I$(top_srcdir)/../reboot-reason-fetcher/include -I$(top_srcdir)/../reboot-helper/src -I$(top_srcdir)/../reboot-reason-fetcher/src
 AM_CXXFLAGS = -std=c++14
@@ -60,8 +60,6 @@ reboot_classify_gtest_SOURCES = reboot_classify_gtest.cpp $(top_srcdir)/../reboo
                                 mocks/rdk_logger_stub.c
 reboot_json_gtest_SOURCES = reboot_json_gtest.cpp $(top_srcdir)/../reboot-reason-fetcher/src/json.c \
                             mocks/rdk_logger_stub.c
-reboot_platform_hal_gtest_SOURCES = reboot_platform_hal_gtest.cpp $(top_srcdir)/../reboot-reason-fetcher/src/platform_hal.c \
-                                    mocks/rdk_logger_stub.c mocks/mock_reboot_utils.cpp
 reboot_parodus_gtest_SOURCES = reboot_parodus_gtest.cpp $(top_srcdir)/../reboot-reason-fetcher/src/parodus_log_update.c \
                                mocks/rdk_logger_stub.c
 
@@ -90,11 +88,6 @@ reboot_json_gtest_CPPFLAGS = $(COMMON_CPPFLAGS)
 reboot_json_gtest_LDADD = $(COMMON_LDADD)
 reboot_json_gtest_CXXFLAGS = $(COMMON_CXXFLAGS)
 reboot_json_gtest_CFLAGS = $(COMMON_CFLAGS)
-
-reboot_platform_hal_gtest_CPPFLAGS = $(COMMON_CPPFLAGS)
-reboot_platform_hal_gtest_LDADD = $(COMMON_LDADD) -ldl
-reboot_platform_hal_gtest_CXXFLAGS = $(COMMON_CXXFLAGS)
-reboot_platform_hal_gtest_CFLAGS = $(COMMON_CFLAGS)
 
 reboot_parodus_gtest_CPPFLAGS = $(COMMON_CPPFLAGS)
 reboot_parodus_gtest_LDADD = $(COMMON_LDADD)

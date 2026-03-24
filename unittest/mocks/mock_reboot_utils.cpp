@@ -63,27 +63,6 @@ extern "C" {
         return ERROR_GENERAL;
     }
 
-    int read_rtk_wakeup_reason(HardwareReason *hw) {
-        if (g_mockRebootUtils) {
-            return g_mockRebootUtils->read_rtk_wakeup_reason(hw);
-        }
-        return ERROR_GENERAL;
-    }
-
-    int read_amlogic_reset_reason(HardwareReason *hw, RebootInfo *info) {
-        if (g_mockRebootUtils) {
-            return g_mockRebootUtils->read_amlogic_reset_reason(hw, info);
-        }
-        return ERROR_GENERAL;
-    }
-
-    int read_mtk_reset_reason(HardwareReason *hw, RebootInfo *info) {
-        if (g_mockRebootUtils) {
-            return g_mockRebootUtils->read_mtk_reset_reason(hw, info);
-        }
-        return ERROR_GENERAL;
-    }
-
     int detect_kernel_panic(const EnvContext *ctx, PanicInfo *panicInfo) {
         if (g_mockRebootUtils) {
             return g_mockRebootUtils->detect_kernel_panic(ctx, panicInfo);
@@ -126,3 +105,4 @@ extern "C" {
 }
 
 #endif // GTEST_ENABLE
+

@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <ctype.h>
 #include "rdk_logger.h"
+#include <time.h>
 
 #define KERNEL_LOG_FILE "/opt/logs/messages.txt"
 #define PSTORE_CONSOLE_LOG_FILE "/sys/fs/pstore/console-ramoops-0"
@@ -191,7 +192,7 @@ int detect_kernel_panic(const EnvContext *ctx, PanicInfo *panicInfo)
     }
     memset(panicInfo, 0, sizeof(PanicInfo));
     panicInfo->detected = false;
-    if (strcasecmp(ctx->soc, "BRCM") == 0 || strcasecmp(ctx->soc, "BROADCOM") == 0) {
+    if (strcmp(ctx->soc, "BRCM") == 0) {
         RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Checking BRCM kernel panic in messages.txt \n");
         FILE *fp = fopen(KERNEL_LOG_FILE, "r");
         if (fp) {
@@ -208,12 +209,22 @@ int detect_kernel_panic(const EnvContext *ctx, PanicInfo *panicInfo)
                 search_panic_in_file(KERNEL_LOG_FILE, panicInfo);
             }
         }
-    }
-     // RTK/REALTEK (and TV profiles) check PSTORE console
-    if (strcmp(ctx->soc, "RTK") == 0 || strcmp(ctx->soc, "REALTEK") == 0) {
+    } else if (strcmp(ctx->rdkProfile, "TV") == 0) {
         if (search_panic_in_file(PSTORE_CONSOLE_LOG_FILE, panicInfo)) {
             copy_pstore_logs_to_opt();
             RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","PSTORE indicates kernel panic; logs copied \n");
+            /* Align with script: Append kernel panic annotation to KERNEL_LOG_FILE for TV devices */
+            FILE *klog = fopen(KERNEL_LOG_FILE, "a");
+            if (klog) {
+                time_t now = time(NULL);
+                struct tm *tm_info = gmtime(&now);
+                char timestamp[64];
+                strftime(timestamp, sizeof(timestamp), "%a %b %d %H:%M:%S UTC %Y", tm_info);
+                fprintf(klog, "%s PreviousRebootReason: kernel_panic!\n", timestamp);
+                fflush(klog);
+                fclose(klog);
+                RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","TV kernel panic annotated in KERNEL_LOG_FILE\n");
+            }
         }
     }
     if (panicInfo->detected) {

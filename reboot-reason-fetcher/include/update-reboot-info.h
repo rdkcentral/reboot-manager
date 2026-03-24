@@ -121,14 +121,7 @@ int release_lock(const char *lockDir);
 int parse_device_properties(EnvContext *ctx);
 void free_env_context(EnvContext *ctx);
 int get_hardware_reason(const EnvContext *ctx, HardwareReason *hwReason, RebootInfo *info);
-int get_hardware_reason_brcm(const EnvContext *ctx, HardwareReason *hwReason);
-int get_hardware_reason_rtk(const EnvContext *ctx, HardwareReason *hwReason);
-int get_hardware_reason_amlogic(const EnvContext *ctx, HardwareReason *hwReason);
-int get_hardware_reason_mtk(const EnvContext *ctx, HardwareReason *hwReason);
 int read_brcm_previous_reboot_reason(HardwareReason *hw);
-int read_rtk_wakeup_reason(HardwareReason *hw);
-int read_amlogic_reset_reason(HardwareReason *hw, RebootInfo *info);
-int read_mtk_reset_reason(HardwareReason *hw, RebootInfo *info);
 int detect_kernel_panic(const EnvContext *ctx, PanicInfo *panicInfo);
 int check_firmware_failure(const EnvContext *ctx, FirmwareFailure *fwFailure);
 int classify_reboot_reason(RebootInfo *info,
