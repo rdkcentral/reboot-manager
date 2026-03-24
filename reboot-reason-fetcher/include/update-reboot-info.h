@@ -88,6 +88,7 @@ typedef struct {
 /* Environment context structure */
 typedef struct {
     char soc[64];
+    char rdkProfile[64];
     char buildType[64];
     char device_type[64];
     bool platcoSupport;
