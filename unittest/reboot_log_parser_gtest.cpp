@@ -520,7 +520,7 @@ TEST_F(LogParserTest, read_brcm_previous_reboot_reason_ParsesPrimaryTokenUpperca
 
     int result = read_brcm_previous_reboot_reason(&hw);
     EXPECT_EQ(result, SUCCESS);
-    EXPECT_STREQ(hw.rawReason, "watchdog_reset,extra");
+    EXPECT_STREQ(hw.rawReason, "WATCHDOG_RESET,EXTRA");
     EXPECT_STREQ(hw.mappedReason, "WATCHDOG_RESET");
 }
 

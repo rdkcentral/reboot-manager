@@ -140,7 +140,7 @@ int update_parodus_log(const RebootInfo *info);
 int handle_parodus_reboot_file(const RebootInfo *info, const char *destPath);
 int copy_keypress_info(const char *srcPath, const char *destPath);
 void t2CountNotify(char *marker, int val);
-void t2ValNotify(char *marker, const char *val);
+void t2ValNotify(char *marker, char *val);
 int parse_legacy_log(const char *logPath, RebootInfo *info);
 int update_reboot_info(const EnvContext *ctx);
 #endif /* UPDATE_REBOOT_INFO_H */
