@@ -225,9 +225,10 @@ static int read_file_data(const char *path, char *buf, size_t buflen)
 int read_brcm_previous_reboot_reason(HardwareReason *hw)
 {
     char buf[MAX_BUFFER_SIZE];
-    char upbuf[MAX_BUFFER_SIZE];
     if (!hw) return ERROR_GENERAL;
     if (access(BRCM_REBOOT_FILE, R_OK) != 0) {
+        strncpy(hw->mappedReason, "UNKNOWN", sizeof(hw->mappedReason) - 1);
+        hw->mappedReason[sizeof(hw->mappedReason) - 1] = '\0';
         return FAILURE;
     }
     if (read_file_data(BRCM_REBOOT_FILE, buf, sizeof(buf)) != SUCCESS || buf[0] == '\0') {
@@ -239,17 +240,12 @@ int read_brcm_previous_reboot_reason(HardwareReason *hw)
     }
     memcpy(hw->rawReason, buf, raw_len);
     hw->rawReason[raw_len] = '\0';
-
-    size_t buflen = strlen(hw->rawReason);
-    if (buflen >= sizeof(upbuf)) buflen = sizeof(upbuf) - 1;
-    memcpy(upbuf, hw->rawReason, buflen);
-    upbuf[buflen] = '\0';
-    for (char *p = upbuf; *p; ++p) {
+    for (char *p = hw->rawReason; *p; ++p) {
         *p = toupper((unsigned char)*p);
     }
 
-    const char *primary = upbuf;
-    size_t primary_len = strcspn(upbuf, ",\n");
+    const char *primary = hw->rawReason;
+    size_t primary_len = strcspn(hw->rawReason, ",\n");
     if (primary_len >= sizeof(hw->mappedReason)) {
         primary_len = sizeof(hw->mappedReason) - 1;
     }
