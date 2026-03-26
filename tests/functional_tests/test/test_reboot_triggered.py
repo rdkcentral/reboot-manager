@@ -36,3 +36,4 @@ def test_app_triggered_writes_info_and_flag(run_reboot, test_env, opt_paths):
 
     # Verify rebootNow flag created
     assert Path(REBOOTNOW_FLAG).exists()
+
