@@ -22,7 +22,7 @@ AUTOMAKE_OPTIONS = foreign subdir-objects
 reboot_CFLAGS += -fPIC -pthread
 
 AM_CPPFLAGS = -I$(top_srcdir)/reboot-helper/include -I$(top_srcdir)/reboot-reason-fetcher/include
-AM_CFLAGS = -std=c99 -Wall -Wextra -Werror -O2 -I./reboot-helper/include -I./reboot-reason-fetcher/include -I$(srcdir)/rebootmanager-cpc/include -DRDK_LOGGER_ENABLED -fPIC -pthread
+AM_CFLAGS = -std=c99 -Wall -Wextra -Werror -O2 -I./reboot-helper/include -DRDK_LOGGER_ENABLED -fPIC -pthread
 
 # Library target
 lib_LTLIBRARIES = librebootnow.la
@@ -47,7 +47,6 @@ update_prev_reboot_info_SOURCES = \
       $(top_srcdir)/reboot-reason-fetcher/src/rebootreason_main.c \
       $(top_srcdir)/reboot-reason-fetcher/src/json.c \
       $(top_srcdir)/reboot-reason-fetcher/src/parodus_log_update.c
-update_prev_reboot_info_CPPFLAGS = -fPIC -pthread -DRDK_LOGGER_ENABLED
 
 if USE_CPC
 update_prev_reboot_info_SOURCES += \
@@ -61,11 +60,13 @@ else
 update_prev_reboot_info_SOURCES += \
       $(top_srcdir)/reboot-reason-fetcher/src/reboot_reason_classify.c \
       $(top_srcdir)/reboot-reason-fetcher/src/log_parser.c 
-update_prev_reboot_info_CPPFLAGS += \
+update_prev_reboot_info_CPPFLAGS = \
       -I$(top_srcdir)/reboot-reason-fetcher/include
 endif
 
 if IS_TELEMETRY2_ENABLED
    AM_CFLAGS +=  $(T2_EVENT_FLAG)
    AM_LDFLAGS += -ltelemetry_msgsender -lt2utils
+   update_prev_reboot_info_CPPFLAGS += $(T2_EVENT_FLAG)
+   update_prev_reboot_info_LDFLAGS = -ltelemetry_msgsender -lt2utils
 endif
