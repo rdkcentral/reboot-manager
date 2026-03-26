@@ -1,17 +1,46 @@
 import os
+import sys
 import shutil
 import subprocess
 import pytest
 
 REBOOT_INFO_DIR = "/opt/secure/reboot"
 LOG_DIR = "/opt/logs"
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+TEST_DIR = os.path.dirname(__file__)
+
+if TEST_DIR not in sys.path:
+    sys.path.insert(0, TEST_DIR)
+
+
+def _first_existing_path(candidates):
+    for path in candidates:
+        if path and os.path.isfile(path) and os.access(path, os.X_OK):
+            return path
+    return None
 
 @pytest.fixture(scope="session")
 def ensure_binary():
-    # Ensure rebootnow exists in the build
-    bin_path = shutil.which("rebootnow")
+    # Prefer reboot binary from reboot-helper/src build output
+    repo_bin_candidates = [
+        os.path.join(REPO_ROOT, "reboot-helper", "src", "rebootnow"),
+        os.path.join(REPO_ROOT, "reboot-helper", "src", ".libs", "rebootnow"),
+    ]
+    bin_path = _first_existing_path(repo_bin_candidates) or shutil.which("rebootnow")
     if not bin_path:
-        pytest.skip("rebootnow binary not found in PATH; build the project first")
+        pytest.skip("reboot binary not found under reboot-helper/src or PATH; build the project first")
+    return bin_path
+
+@pytest.fixture(scope="session")
+def ensure_update_binary():
+    # Prefer updater binary from reboot-reason-fetcher/src build output
+    repo_bin_candidates = [
+        os.path.join(REPO_ROOT, "reboot-reason-fetcher", "src", "update-prev-reboot-info"),
+        os.path.join(REPO_ROOT, "reboot-reason-fetcher", "src", ".libs", "update-prev-reboot-info"),
+    ]
+    bin_path = _first_existing_path(repo_bin_candidates) or shutil.which("update-prev-reboot-info")
+    if not bin_path:
+        pytest.skip("update-prev-reboot-info binary not found under reboot-reason-fetcher/src or PATH; build the project first")
     return bin_path
 
 @pytest.fixture()
@@ -59,3 +88,17 @@ def run_reboot(ensure_binary, test_env):
         cmd = [ensure_binary] + args
         return subprocess.run(cmd, env=test_env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     return _run
+
+@pytest.fixture()
+def run_update_prev_reboot(ensure_update_binary, test_env):
+    def _run():
+        for flag in ["/tmp/Update_rebootInfo_invoked", "/tmp/stt_received", "/tmp/rebootInfo_Updated"]:
+            if os.path.exists(flag):
+                os.remove(flag)
+        for flag in ["/tmp/stt_received", "/tmp/rebootInfo_Updated"]:
+            with open(flag, "w", encoding="utf-8") as f:
+                f.write("1\n")
+        cmd = [ensure_update_binary]
+        return subprocess.run(cmd, env=test_env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    return _run
+

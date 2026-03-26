@@ -29,7 +29,7 @@
 #include <sys/stat.h>
 #include <signal.h>
 #include <sys/types.h>
-#include "rebootnow.h"
+#include "reboot.h"
 #include "secure_wrapper.h"
 #include "rebootmgr_rbus_interface.h"
 #include "rdk_logger.h"
