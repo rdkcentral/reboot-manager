@@ -17,8 +17,10 @@
 # limitations under the License.
 ##########################################################################
 
-AUTOMAKE_OPTIONS = foreign
-ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = reboot-helper/src
+[Unit]
+Description=Update Previous reboot info
+ConditionPathExists=/tmp/stt_received
 
-include_HEADERS = reboot-helper/include/reboot.h reboot-helper/include/rebootmgr_rbus_interface.h reboot-reason-fetcher/include/update-reboot-info.h
+[Service]
+ExecStart=/lib/rdk/update_previous_reboot_info.sh
+

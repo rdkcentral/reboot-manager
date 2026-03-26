@@ -16,9 +16,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##########################################################################
+[Unit]
+Description=Update Previous reboot info path
+OnFailure=path-fail-notifier@%n.service
 
-AUTOMAKE_OPTIONS = foreign
-ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = reboot-helper/src
+[Path]
+PathChanged=/tmp/stt_received
+Unit=update-reboot-info.service
 
-include_HEADERS = reboot-helper/include/reboot.h reboot-helper/include/rebootmgr_rbus_interface.h reboot-reason-fetcher/include/update-reboot-info.h
+[Install]
+WantedBy=multi-user.target

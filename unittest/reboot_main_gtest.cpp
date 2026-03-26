@@ -11,7 +11,7 @@
 // Ensure telemetry mock header is visible to the translation unit
 #include "mocks/telemetry_busmessage_sender.h"
 extern "C" {
-#include "rebootnow.h"
+#include "reboot.h"
 }
 
 #define GTEST_DEFAULT_RESULT_FILEPATH "/tmp/Gtest_Report/"
@@ -113,7 +113,7 @@ extern "C" {
 #undef t2CountNotify
 #undef t2ValNotify
 #define handle_cyclic_reboot handle_cyclic_reboot_stub
-#include "../rebootnow/src/main.c"
+#include "../reboot-helper/src/reboot_main.c"
 }
 #undef handle_cyclic_reboot
 #undef main

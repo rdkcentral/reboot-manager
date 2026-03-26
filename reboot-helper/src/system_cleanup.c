@@ -27,7 +27,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <signal.h>
-#include "rebootnow.h"
+#include "reboot.h"
 #include "secure_wrapper.h"
 #include "rebootmgr_rbus_interface.h"
 #include "rdk_logger.h"
