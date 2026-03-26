@@ -47,6 +47,7 @@ update_prev_reboot_info_SOURCES = \
       $(top_srcdir)/reboot-reason-fetcher/src/rebootreason_main.c \
       $(top_srcdir)/reboot-reason-fetcher/src/json.c \
       $(top_srcdir)/reboot-reason-fetcher/src/parodus_log_update.c
+update_prev_reboot_info_CPPFLAGS = -fPIC -pthread -DRDK_LOGGER_ENABLED
 
 if USE_CPC
 update_prev_reboot_info_SOURCES += \
