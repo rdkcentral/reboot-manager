@@ -51,7 +51,7 @@ update_prev_reboot_info_SOURCES = \
 
 if USE_CPC
 update_prev_reboot_info_SOURCES = \
-    $(srcdir)/rebootmanager-cpc/src/reboot_reason_classify.c
+    $(srcdir)/rebootmanager-cpc/src/reboot_reason_classify.c \
     $(srcdir)/rebootmanager-cpc/src/platform_hal.c \
     $(srcdir)/rebootmanager-cpc/src/log_parser.c 
 else
