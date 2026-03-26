@@ -54,8 +54,8 @@ update_prev_reboot_info_SOURCES += \
     $(srcdir)/rebootmanager-cpc/src/platform_hal.c \
     $(srcdir)/rebootmanager-cpc/src/log_parser.c 
 update_prev_reboot_info_CPPFLAGS = \
-    -I$(srcdir)/rebootmanager-cpc/include \
-    -I$(top_srcdir)/reboot-reason-fetcher/include
+    -I$(top_srcdir)/reboot-reason-fetcher/include \
+    -I$(srcdir)/rebootmanager-cpc/include 
 else
 update_prev_reboot_info_SOURCES += \
       $(top_srcdir)/reboot-reason-fetcher/src/reboot_reason_classify.c \
