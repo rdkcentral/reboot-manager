@@ -66,6 +66,4 @@ endif
 if IS_TELEMETRY2_ENABLED
    AM_CFLAGS +=  $(T2_EVENT_FLAG)
    AM_LDFLAGS += -ltelemetry_msgsender -lt2utils
-   update_prev_reboot_info_CPPFLAGS += $(T2_EVENT_FLAG)
-   update_prev_reboot_info_LDFLAGS = -ltelemetry_msgsender -lt2utils
 endif
