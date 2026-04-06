@@ -55,7 +55,8 @@ reboot_main_gtest_SOURCES = reboot_main_gtest.cpp \
 rebootreason_main_gtest_SOURCES = rebootreason_main_gtest.cpp mocks/mock_reboot_utils.cpp \
                                   mocks/rdk_logger_stub.c
 reboot_log_parser_gtest_SOURCES = reboot_log_parser_gtest.cpp $(top_srcdir)/../reboot-reason-fetcher/src/log_parser.c \
-                                  mocks/rdk_logger_stub.c
+				  $(top_srcdir)/../reboot-reason-fetcher/src/reboot_checker.c \
+                                  mocks/rdk_logger_stub.c 
 reboot_classify_gtest_SOURCES = reboot_classify_gtest.cpp $(top_srcdir)/../reboot-reason-fetcher/src/reboot_reason_classify.c \
                                 mocks/rdk_logger_stub.c
 reboot_json_gtest_SOURCES = reboot_json_gtest.cpp $(top_srcdir)/../reboot-reason-fetcher/src/json.c \

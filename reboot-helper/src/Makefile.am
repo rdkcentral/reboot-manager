@@ -58,7 +58,8 @@ update_prev_reboot_info_CPPFLAGS = \
 else
 update_prev_reboot_info_SOURCES += \
       $(top_srcdir)/reboot-reason-fetcher/src/reboot_reason_classify.c \
-      $(top_srcdir)/reboot-reason-fetcher/src/log_parser.c 
+      $(top_srcdir)/reboot-reason-fetcher/src/log_parser.c
+      $(top_srcdir)/reboot-reason-fetcher/src/reboot_checker.c
 update_prev_reboot_info_CPPFLAGS = \
       -I$(top_srcdir)/reboot-reason-fetcher/include
 endif
