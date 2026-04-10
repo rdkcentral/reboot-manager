@@ -49,6 +49,7 @@
 #define AMLOGIC_REBOOT_REASON_PATH "/sys/class/aml_reboot/reboot_reason"
 #define STT_FLAG "/tmp/stt_received"
 #define UPDATE_REBOOT_INFO_INVOKED_FLAG "/tmp/Update_rebootInfo_invoked"
+#define PREV_LOGS_BASE "/opt/logs/PreviousLogs"
 #define PSTORE_DIR "/sys/fs/pstore"
 
 /* Lock directory */
@@ -143,4 +144,5 @@ void t2CountNotify(char *marker, int val);
 void t2ValNotify(char *marker, char *val);
 int parse_legacy_log(const char *logPath, RebootInfo *info);
 int update_reboot_info(const EnvContext *ctx);
+int find_previous_reboot_log(char *out_path, size_t len);
 #endif /* UPDATE_REBOOT_INFO_H */

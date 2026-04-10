@@ -135,8 +135,13 @@ int main(void)
     else {
         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Deriving reboot reason from legacy sources \n");
 
-        if (parse_legacy_log(REBOOT_INFO_LOG_FILE, &rebootInfo) != SUCCESS) {
-            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","No legacy log found or parse failed, will derive from hardware/panic \n");
+	char prev_log_path[MAX_PATH_LENGTH] = {0};
+        if (find_previous_reboot_log(prev_log_path, sizeof(prev_log_path)) == SUCCESS) {
+            if (parse_legacy_log(prev_log_path, &rebootInfo) != SUCCESS) {
+                RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Parse of previous reboot log failed, will derive from hardware/panic \n");
+            }
+        } else {
+            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","No previous reboot log found, will derive from hardware/panic \n");
         }
 
         if (rebootInfo.timestamp[0] == '\0') {

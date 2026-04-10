@@ -739,6 +739,162 @@ TEST_F(LogParserTest, get_hardware_reason_brcm_OpenFailsReturnsErrorGeneral) {
     EXPECT_EQ(hw.mappedReason[0], '\0');
 }
 
+// ============================================================
+// Tests for find_previous_reboot_log
+// ============================================================
+
+TEST_F(LogParserTest, find_previous_reboot_log_NullParameters) {
+    char buf[256];
+    EXPECT_EQ(find_previous_reboot_log(nullptr, sizeof(buf)), ERROR_GENERAL);
+    EXPECT_EQ(find_previous_reboot_log(buf, 0),              ERROR_GENERAL);
+}
+
+TEST_F(LogParserTest, find_previous_reboot_log_NoLogsReturnsNotFound) {
+    // Point LOG_PATH at an empty directory — no PreviousLogs at all
+    setenv("LOG_PATH", "/tmp/reboot_test/nologs", 1);
+    char out[256] = {0};
+    int rc = find_previous_reboot_log(out, sizeof(out));
+    EXPECT_EQ(rc, ERROR_FILE_NOT_FOUND);
+    EXPECT_EQ(out[0], '\0');
+    unsetenv("LOG_PATH");
+}
+
+TEST_F(LogParserTest, find_previous_reboot_log_TimestampedSubdir) {
+    // Build: /tmp/reboot_test/logs/PreviousLogs/20260101_120000/last_reboot
+    //                                                           /rebootInfo.log
+    system("mkdir -p /tmp/reboot_test/logs/PreviousLogs/20260101_120000");
+    createTestLogFile("/tmp/reboot_test/logs/PreviousLogs/20260101_120000/last_reboot", "");
+    createTestLogFile("/tmp/reboot_test/logs/PreviousLogs/20260101_120000/rebootInfo.log",
+                      "RebootInitiatedBy: Servicemanager\n");
+    setenv("LOG_PATH", "/tmp/reboot_test/logs", 1);
+    char out[512] = {0};
+    int rc = find_previous_reboot_log(out, sizeof(out));
+    EXPECT_EQ(rc, SUCCESS);
+    EXPECT_STRNE(out, "");
+    EXPECT_NE(strstr(out, "rebootInfo.log"), nullptr);
+    unsetenv("LOG_PATH");
+}
+
+TEST_F(LogParserTest, find_previous_reboot_log_FlatFallback) {
+    // No timestamped sub-dir, but flat PreviousLogs/rebootInfo.log exists
+    system("mkdir -p /tmp/reboot_test/logs/PreviousLogs");
+    createTestLogFile("/tmp/reboot_test/logs/PreviousLogs/rebootInfo.log",
+                      "RebootInitiatedBy: WebPA\n");
+    setenv("LOG_PATH", "/tmp/reboot_test/logs", 1);
+    char out[512] = {0};
+    int rc = find_previous_reboot_log(out, sizeof(out));
+    EXPECT_EQ(rc, SUCCESS);
+    EXPECT_STREQ(out, "/tmp/reboot_test/logs/PreviousLogs/rebootInfo.log");
+    unsetenv("LOG_PATH");
+}
+
+TEST_F(LogParserTest, find_previous_reboot_log_Bak1Preferred) {
+    // Both flat rebootInfo.log and bak1_rebootInfo.log exist — bak1 preferred
+    system("mkdir -p /tmp/reboot_test/logs/PreviousLogs");
+    createTestLogFile("/tmp/reboot_test/logs/PreviousLogs/rebootInfo.log",     "old\n");
+    createTestLogFile("/tmp/reboot_test/logs/PreviousLogs/bak1_rebootInfo.log","newer\n");
+    setenv("LOG_PATH", "/tmp/reboot_test/logs", 1);
+    char out[512] = {0};
+    int rc = find_previous_reboot_log(out, sizeof(out));
+    EXPECT_EQ(rc, SUCCESS);
+    EXPECT_STREQ(out, "/tmp/reboot_test/logs/PreviousLogs/bak1_rebootInfo.log");
+    unsetenv("LOG_PATH");
+}
+
+TEST_F(LogParserTest, find_previous_reboot_log_Bak2WhenBak1Missing) {
+    system("mkdir -p /tmp/reboot_test/logs/PreviousLogs");
+    createTestLogFile("/tmp/reboot_test/logs/PreviousLogs/rebootInfo.log",     "old\n");
+    createTestLogFile("/tmp/reboot_test/logs/PreviousLogs/bak2_rebootInfo.log","bak2\n");
+    setenv("LOG_PATH", "/tmp/reboot_test/logs", 1);
+    char out[512] = {0};
+    int rc = find_previous_reboot_log(out, sizeof(out));
+    EXPECT_EQ(rc, SUCCESS);
+    EXPECT_STREQ(out, "/tmp/reboot_test/logs/PreviousLogs/bak2_rebootInfo.log");
+    unsetenv("LOG_PATH");
+}
+
+// ============================================================
+// Tests for parse_legacy_log — raw-field (non-Previous-prefixed) parsing
+// ============================================================
+
+TEST_F(LogParserTest, parse_legacy_log_RawFields) {
+    const char *testFile = "/tmp/reboot_test/raw_reboot.log";
+    createTestLogFile(testFile,
+                      "Thu Jan  1 12:00:00 UTC 2026 RebootReason: MAINTENANCE_REBOOT\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 RebootInitiatedBy: Servicemanager\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 RebootTime: Thu Jan  1 12:00:00 UTC 2026\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 CustomReason: MAINTENANCE_REBOOT\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 OtherReason: Scheduled maintenance\n");
+
+    RebootInfo info;
+    memset(&info, 0, sizeof(RebootInfo));
+    int result = parse_legacy_log(testFile, &info);
+    EXPECT_EQ(result, SUCCESS);
+    EXPECT_STREQ(info.source, "Servicemanager");
+    EXPECT_STREQ(info.customReason, "MAINTENANCE_REBOOT");
+    EXPECT_STREQ(info.otherReason, "Scheduled maintenance");
+}
+
+TEST_F(LogParserTest, parse_legacy_log_HalSysReboot) {
+    // When RebootInitiatedBy is HAL_SYS_Reboot, real initiator and reason
+    // are extracted from the "Triggered from" RebootReason line.
+    const char *testFile = "/tmp/reboot_test/hal_sys_reboot.log";
+    createTestLogFile(testFile,
+                      "Thu Jan  1 12:00:00 UTC 2026 RebootReason: Triggered from WebPA FIRMWARE_FAILURE (XRE)\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 RebootInitiatedBy: HAL_SYS_Reboot\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 RebootTime: Thu Jan  1 12:00:00 UTC 2026\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 CustomReason: FIRMWARE_FAILURE\n");
+
+    RebootInfo info;
+    memset(&info, 0, sizeof(RebootInfo));
+    int result = parse_legacy_log(testFile, &info);
+    EXPECT_EQ(result, SUCCESS);
+    // Initiator should be unwrapped from "Triggered from WebPA ..."
+    EXPECT_STREQ(info.source, "WebPA");
+    // OtherReason should be the text between initiator and '('
+    EXPECT_STREQ(info.otherReason, "FIRMWARE_FAILURE");
+    EXPECT_STREQ(info.customReason, "FIRMWARE_FAILURE");
+}
+
+TEST_F(LogParserTest, parse_legacy_log_HalSysReboot_NoTriggerLine) {
+    // HAL_SYS_Reboot but no matching Triggered-from RebootReason line
+    // source stays as HAL_SYS_Reboot, no crash
+    const char *testFile = "/tmp/reboot_test/hal_notrigger.log";
+    createTestLogFile(testFile,
+                      "Thu Jan  1 12:00:00 UTC 2026 RebootInitiatedBy: HAL_SYS_Reboot\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 CustomReason: UNKNOWN\n");
+
+    RebootInfo info;
+    memset(&info, 0, sizeof(RebootInfo));
+    int result = parse_legacy_log(testFile, &info);
+    EXPECT_EQ(result, SUCCESS);
+    EXPECT_STREQ(info.source, "HAL_SYS_Reboot");
+    EXPECT_STREQ(info.customReason, "UNKNOWN");
+}
+
+TEST_F(LogParserTest, parse_legacy_log_PreviousPrefixTakesPriority) {
+    // File contains both raw and Previous-prefixed fields;
+    // Previous-prefixed values must win.
+    const char *testFile = "/tmp/reboot_test/mixed_fields.log";
+    createTestLogFile(testFile,
+                      "Thu Jan  1 12:00:00 UTC 2026 RebootInitiatedBy: RawSource\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 PreviousRebootInitiatedBy: LegacySource\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 RebootTime: 2026-01-01 12:00:00 UTC\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 PreviousRebootTime: 2025-12-31 08:00:00 UTC\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 CustomReason: RawCustom\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 PreviousCustomReason: LegacyCustom\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 PreviousOtherReason: LegacyOther\n");
+
+    RebootInfo info;
+    memset(&info, 0, sizeof(RebootInfo));
+    int result = parse_legacy_log(testFile, &info);
+    EXPECT_EQ(result, SUCCESS);
+    EXPECT_STREQ(info.source,       "LegacySource");
+    EXPECT_STREQ(info.timestamp,    "2025-12-31 08:00:00 UTC");
+    EXPECT_STREQ(info.customReason, "LegacyCustom");
+    EXPECT_STREQ(info.otherReason,  "LegacyOther");
+}
+
 GTEST_API_ int main(int argc, char *argv[]) {
     char testresults_fullfilepath[GTEST_REPORT_FILEPATH_SIZE];
 
