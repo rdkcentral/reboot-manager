@@ -64,6 +64,7 @@ static const char *OPS_TRIGGERED_REASONS[] = {
     "HAL_CDL_notify_mgr_event", "vldsg_estb_poll_ecm_operational_state", "BcmIndicateEcmReset", "SASWatchDog",
     "BP3_Provisioning", "eMMC_FW_UPGRADE", "BOOTLOADER_UPGRADE", "cdl_service", "BCMCommandHandler",
     "BRCM_Image_Validate", "docsis_mode_check.sh", "tch_nvram.sh", "Receiver", "CANARY_Update", "boot_FSR",
+    "CyclicReboot",
 };
 
 static const char *MAINTENANCE_TRIGGERED_REASONS[] = {
