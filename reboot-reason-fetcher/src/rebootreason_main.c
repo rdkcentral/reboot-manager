@@ -186,12 +186,6 @@ int main(void)
     }
     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Copying keypress info \n");
     copy_keypress_info(KEYPRESS_INFO_FILE, PREVIOUS_KEYPRESS_INFO_FILE);
-    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Creating invocation flag\n");
-    FILE *flag_fp = fopen(UPDATE_REBOOT_INFO_INVOKED_FLAG, "w");
-    if (flag_fp) {
-        fprintf(flag_fp, "1\n");
-        fclose(flag_fp);
-    }
 
     RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Reboot reason processing completed successfully \n");
 

@@ -92,10 +92,10 @@ def run_reboot(ensure_binary, test_env):
 @pytest.fixture()
 def run_update_prev_reboot(ensure_update_binary, test_env):
     def _run():
-        for flag in ["/tmp/Update_rebootInfo_invoked", "/tmp/stt_received", "/tmp/rebootInfo_Updated"]:
+        for flag in ["/tmp/stt_received"]:
             if os.path.exists(flag):
                 os.remove(flag)
-        for flag in ["/tmp/stt_received", "/tmp/rebootInfo_Updated"]:
+        for flag in ["/tmp/stt_received"]:
             with open(flag, "w", encoding="utf-8") as f:
                 f.write("1\n")
         cmd = [ensure_update_binary]

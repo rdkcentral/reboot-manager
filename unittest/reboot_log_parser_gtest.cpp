@@ -15,8 +15,6 @@ static std::unordered_map<std::string, std::string> g_mock_path_map;
 static char g_soc_value[64] = {0};
 static char g_build_type_value[64] = {0};
 static char g_device_type_value[64] = {0};
-static char g_platco_value[16] = {0};
-static char g_llama_value[16] = {0};
 static char g_stt_value[16] = {0};
 
 extern "C" {
@@ -37,10 +35,6 @@ extern "C" {
                 selected = g_build_type_value;
             } else if (strcmp(key, "DEVICE_TYPE") == 0 && g_device_type_value[0] != '\0') {
                 selected = g_device_type_value;
-            } else if (strcmp(key, "PLATCO_SUPPORT") == 0 && g_platco_value[0] != '\0') {
-                selected = g_platco_value;
-            } else if (strcmp(key, "LLAMA_SUPPORT") == 0 && g_llama_value[0] != '\0') {
-                selected = g_llama_value;
             } else if (strcmp(key, "REBOOT_INFO_STT_SUPPORT") == 0 && g_stt_value[0] != '\0') {
                 selected = g_stt_value;
             }
@@ -130,8 +124,6 @@ protected:
         memset(g_soc_value, 0, sizeof(g_soc_value));
         memset(g_build_type_value, 0, sizeof(g_build_type_value));
         memset(g_device_type_value, 0, sizeof(g_device_type_value));
-        memset(g_platco_value, 0, sizeof(g_platco_value));
-        memset(g_llama_value, 0, sizeof(g_llama_value));
         memset(g_stt_value, 0, sizeof(g_stt_value));
     }
 
@@ -202,9 +194,7 @@ TEST_F(LogParserTest, parse_device_properties_Success) {
     createTestLogFile("/tmp/reboot_test/device.properties",
                       "SOC=BRCM\n"
                       "BUILD_TYPE=prod\n"
-                      "DEVICE_TYPE=stb\n"
-                      "PLATCO_SUPPORT=true\n"
-                      "LLAMA_SUPPORT=false\n");
+                      "DEVICE_TYPE=stb\n");
 
     // Since parse_device_properties reads from /etc/device.properties,
     // we test the fallback parsing path
@@ -218,8 +208,6 @@ TEST_F(LogParserTest, parse_device_properties_InitializesDefaults) {
 
     int result = parse_device_properties(&ctx);
     EXPECT_EQ(result, SUCCESS);
-    EXPECT_FALSE(ctx.platcoSupport);
-    EXPECT_FALSE(ctx.llamaSupport);
     EXPECT_FALSE(ctx.rebootInfoSttSupport);
 }
 
@@ -231,8 +219,6 @@ TEST_F(LogParserTest, parse_device_properties_UsesMockPropertyValues) {
     strncpy(g_soc_value, "BRCM", sizeof(g_soc_value) - 1);
     strncpy(g_build_type_value, "prod", sizeof(g_build_type_value) - 1);
     strncpy(g_device_type_value, "stb", sizeof(g_device_type_value) - 1);
-    strncpy(g_platco_value, "true", sizeof(g_platco_value) - 1);
-    strncpy(g_llama_value, "false", sizeof(g_llama_value) - 1);
     strncpy(g_stt_value, "true", sizeof(g_stt_value) - 1);
 
     int result = parse_device_properties(&ctx);
@@ -240,8 +226,6 @@ TEST_F(LogParserTest, parse_device_properties_UsesMockPropertyValues) {
     EXPECT_STREQ(ctx.soc, "BRCM");
     EXPECT_STREQ(ctx.buildType, "prod");
     EXPECT_STREQ(ctx.device_type, "stb");
-    EXPECT_TRUE(ctx.platcoSupport);
-    EXPECT_FALSE(ctx.llamaSupport);
     EXPECT_TRUE(ctx.rebootInfoSttSupport);
 }
 
@@ -252,14 +236,10 @@ TEST_F(LogParserTest, parse_device_properties_UppercaseTrueValues) {
     g_mock_props_enabled = true;
     strncpy(g_soc_value, "RTK", sizeof(g_soc_value) - 1);
     strncpy(g_device_type_value, "stb", sizeof(g_device_type_value) - 1);
-    strncpy(g_platco_value, "TRUE", sizeof(g_platco_value) - 1);
-    strncpy(g_llama_value, "TRUE", sizeof(g_llama_value) - 1);
     strncpy(g_stt_value, "TRUE", sizeof(g_stt_value) - 1);
 
     int result = parse_device_properties(&ctx);
     EXPECT_EQ(result, SUCCESS);
-    EXPECT_TRUE(ctx.platcoSupport);
-    EXPECT_TRUE(ctx.llamaSupport);
     EXPECT_TRUE(ctx.rebootInfoSttSupport);
 }
 
@@ -321,50 +301,37 @@ TEST_F(LogParserTest, update_reboot_info_NullContext) {
     EXPECT_EQ(update_reboot_info(nullptr), 0);
 }
 
-TEST_F(LogParserTest, update_reboot_info_PlatcoFirstInvocation) {
+TEST_F(LogParserTest, update_reboot_info_PlatcoWithoutSttFlag) {
     EnvContext ctx;
     memset(&ctx, 0, sizeof(EnvContext));
-    ctx.platcoSupport = true;
 
-    // Remove the invoked flag
-    system("rm -f /tmp/Update_rebootInfo_invoked");
+    system("rm -f /tmp/stt_received");
 
-    // Should allow update on first invocation
+    // Should block update without STT flag
     EXPECT_EQ(update_reboot_info(&ctx), 0);
 }
 
-TEST_F(LogParserTest, update_reboot_info_RequiresFlagsAfterFirstInvoke) {
+TEST_F(LogParserTest, update_reboot_info_RequiresSttFlag) {
     EnvContext ctx;
     memset(&ctx, 0, sizeof(EnvContext));
-    ctx.platcoSupport = true;
+    // Remove flags
+    system("rm -f /tmp/stt_received");
 
-    // Create invoked flag
-    createTestLogFile("/tmp/Update_rebootInfo_invoked", "1\n");
-
-    // Remove other flags
-    system("rm -f /tmp/stt_received /tmp/rebootInfo_Updated");
-
-    // Should block update without required flags
+    // Should block update without STT flag
     EXPECT_EQ(update_reboot_info(&ctx), 0);
-
-    // Clean up
-    system("rm -f /tmp/Update_rebootInfo_invoked");
 }
 
 TEST_F(LogParserTest, update_reboot_info_AllowsWithFlags) {
     EnvContext ctx;
     memset(&ctx, 0, sizeof(EnvContext));
-    ctx.platcoSupport = true;
 
-    // Create all required flags
-    createTestLogFile("/tmp/Update_rebootInfo_invoked", "1\n");
+    // Create required flags
     createTestLogFile("/tmp/stt_received", "1\n");
-    createTestLogFile("/tmp/rebootInfo_Updated", "1\n");
 
     EXPECT_EQ(update_reboot_info(&ctx), 1);
 
     // Clean up
-    system("rm -f /tmp/Update_rebootInfo_invoked /tmp/stt_received /tmp/rebootInfo_Updated");
+    system("rm -f /tmp/stt_received");
 }
 
 TEST_F(LogParserTest, update_reboot_info_NonPlatcoRequiresFlags) {
@@ -386,16 +353,15 @@ TEST_F(LogParserTest, update_reboot_info_LlamaFirstInvocationAllowed) {
     memset(&ctx, 0, sizeof(EnvContext));
     ctx.llamaSupport = true;
 
-    system("rm -f /tmp/Update_rebootInfo_invoked");
+    system("rm -f /tmp/stt_received /tmp/rebootInfo_Updated");
     EXPECT_EQ(update_reboot_info(&ctx), 0);
 }
 
-TEST_F(LogParserTest, update_reboot_info_LlamaInvokedNeedsFlags) {
+TEST_F(LogParserTest, update_reboot_info_LlamaRequiresSttFlag) {
     EnvContext ctx;
     memset(&ctx, 0, sizeof(EnvContext));
     ctx.llamaSupport = true;
 
-    createTestLogFile("/tmp/Update_rebootInfo_invoked", "1\n");
     system("rm -f /tmp/stt_received /tmp/rebootInfo_Updated");
     EXPECT_EQ(update_reboot_info(&ctx), 0);
 
@@ -403,7 +369,7 @@ TEST_F(LogParserTest, update_reboot_info_LlamaInvokedNeedsFlags) {
     createTestLogFile("/tmp/rebootInfo_Updated", "1\n");
     EXPECT_EQ(update_reboot_info(&ctx), 1);
 
-    system("rm -f /tmp/Update_rebootInfo_invoked /tmp/stt_received /tmp/rebootInfo_Updated");
+    system("rm -f /tmp/stt_received /tmp/rebootInfo_Updated");
 }
 
 // Tests for parse_legacy_log
@@ -739,7 +705,7 @@ TEST_F(LogParserTest, get_hardware_reason_brcm_OpenFailsReturnsErrorGeneral) {
     EXPECT_EQ(hw.mappedReason[0], '\0');
 }
 
-/ ============================================================
+// ============================================================
 // Tests for find_previous_reboot_log
 // ============================================================
 
@@ -908,4 +874,5 @@ GTEST_API_ int main(int argc, char *argv[]) {
     cout << "Starting REBOOT_LOG_PARSER GTEST ===================>" << endl;
     return RUN_ALL_TESTS();
 }
+
 

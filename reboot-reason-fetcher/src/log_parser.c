@@ -14,8 +14,6 @@ int parse_device_properties(EnvContext *ctx)
         return ERROR_GENERAL;
     }
     memset(ctx, 0, sizeof(EnvContext));
-    ctx->platcoSupport = false;
-    ctx->llamaSupport = false;
     ctx->rebootInfoSttSupport = false;
     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Parsing device properties using common_utilities\n");
     if (getDevicePropertyData("SOC", buffer, sizeof(buffer)) == UTILS_SUCCESS) {
@@ -49,12 +47,6 @@ int parse_device_properties(EnvContext *ctx)
         }
         memcpy(ctx->device_type, buffer, len);
         ctx->device_type[len] = '\0';
-    }
-    if (getDevicePropertyData("PLATCO_SUPPORT", buffer, sizeof(buffer)) == UTILS_SUCCESS) {
-        ctx->platcoSupport = (strcasecmp(buffer, "true") == 0);
-    }
-    if (getDevicePropertyData("LLAMA_SUPPORT", buffer, sizeof(buffer)) == UTILS_SUCCESS) {
-        ctx->llamaSupport = (strcasecmp(buffer, "true") == 0);
     }
     if (getDevicePropertyData("REBOOT_INFO_STT_SUPPORT", buffer, sizeof(buffer)) == UTILS_SUCCESS) {
         ctx->rebootInfoSttSupport = (strcasecmp(buffer, "true") == 0);
@@ -101,7 +93,7 @@ int parse_device_properties(EnvContext *ctx)
         }
     }
     RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Device properties parsed - SOC: %s, RDK_PROFILE: %s, BuildType: %s, DeviceType: %s\n", ctx->soc, ctx->rdkProfile, ctx->buildType, ctx->device_type);
-    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Support flags - PLATCO: %d, LLAMA: %d, STT: %d\n", ctx->platcoSupport, ctx->llamaSupport, ctx->rebootInfoSttSupport);
+    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Support flags - STT: %d\n",ctx->rebootInfoSttSupport);
     return SUCCESS;
 }
 
