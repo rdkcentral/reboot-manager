@@ -1,6 +1,8 @@
 #include "update-reboot-info.h"
 #include "rdk_logger.h"
 
+int find_previous_reboot_log(char *out_path, size_t len);
+
 void t2CountNotify(char *marker, int val) {
 #ifdef T2_EVENT_ENABLED
     t2_event_d(marker, val);
