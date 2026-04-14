@@ -25,6 +25,28 @@
 #include <unistd.h>
 #include <dirent.h>
 
+static int logfile_path_check(char *dst, size_t dst_len, const char *left, const char *right)
+{
+    size_t left_len;
+    size_t right_len;
+
+    if (!dst || dst_len == 0 || !left || !right) {
+        return ERROR_GENERAL;
+    }
+
+    left_len = strlen(left);
+    right_len = strlen(right);
+    if (left_len + 1 + right_len + 1 > dst_len) {
+        return ERROR_GENERAL;
+    }
+
+    memcpy(dst, left, left_len);
+    dst[left_len] = '/';
+    memcpy(dst + left_len + 1, right, right_len);
+    dst[left_len + 1 + right_len] = '\0';
+    return SUCCESS;
+}
+
 /*
  * find_previous_reboot_log - replicates the log-discovery logic from reboot-checker.sh:
  *   1. Walk $LOG_PATH/PreviousLogs sub-directories for a file named "last_reboot";
@@ -47,23 +69,28 @@ int find_previous_reboot_log(char *out_path, size_t len)
     if (!log_base || log_base[0] == '\0') {
         log_base = "/opt/logs";
     }
-    snprintf(prev_logs, sizeof(prev_logs), "%s/PreviousLogs", log_base);
+    if (logfile_path_check(prev_logs, sizeof(prev_logs), log_base, "PreviousLogs") != SUCCESS) {
+        RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Path too long for PreviousLogs under %s\n", log_base);
+        return ERROR_GENERAL;
+    }
 
     DIR *d = opendir(prev_logs);
     if (d) {
-        struct dirent *ent;
-        while ((ent = readdir(d)) != NULL) {
-            char subdir[MAX_PATH_LENGTH];
-            char marker[MAX_PATH_LENGTH];
-            struct stat st;
+            struct dirent *ent;
+            while ((ent = readdir(d)) != NULL) {
+                char subdir[MAX_PATH_LENGTH];
+                char marker[MAX_PATH_LENGTH];
+                struct stat st;
 
-            if (ent->d_name[0] == '.') continue;
-                snprintf(subdir, sizeof(subdir), "%s/%s", prev_logs, ent->d_name);
+                if (ent->d_name[0] == '.') continue;
+                if (logfile_path_check(subdir, sizeof(subdir), prev_logs, ent->d_name) != SUCCESS) continue;
                 if (stat(subdir, &st) != 0 || !S_ISDIR(st.st_mode)) continue;
 
-                snprintf(marker, sizeof(marker), "%s/last_reboot", subdir);
+                if (logfile_path_check(marker, sizeof(marker), subdir, "last_reboot") != SUCCESS) continue;
                 if (access(marker, F_OK) == 0) {
-                    snprintf(candidate, sizeof(candidate), "%s/rebootInfo.log", subdir);
+                    if (logfile_path_check(candidate, sizeof(candidate), subdir, "rebootInfo.log") != SUCCESS) {
+                        break;
+                    }
                     if (access(candidate, F_OK) == 0) {
                         closedir(d);
                         strncpy(out_path, candidate, len - 1);
@@ -73,15 +100,21 @@ int find_previous_reboot_log(char *out_path, size_t len)
                     }
                     break; /* found marker dir but no log; fall through to flat fallback */
                 }
-        }
+            }
             closedir(d);
     }
 
-    snprintf(candidate, sizeof(candidate), "%s/rebootInfo.log", prev_logs);
+    if (logfile_path_check(candidate, sizeof(candidate), prev_logs, "rebootInfo.log") != SUCCESS) {
+        return ERROR_GENERAL;
+    }
     if (access(candidate, F_OK) == 0) {
         for (i = 1; i <= 3; i++) {
             char bak[MAX_PATH_LENGTH];
-            snprintf(bak, sizeof(bak), "%s/bak%d_rebootInfo.log", prev_logs, i);
+            char bak_name[] = "bak1_rebootInfo.log";
+            bak_name[3] = (char)('0' + i);
+            if (logfile_path_check(bak, sizeof(bak), prev_logs, bak_name) != SUCCESS) {
+                continue;
+            }
             if (access(bak, F_OK) == 0) {
                 strncpy(out_path, bak, len - 1);
                 out_path[len - 1] = '\0';
