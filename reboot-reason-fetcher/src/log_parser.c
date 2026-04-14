@@ -148,67 +148,6 @@ int get_hardware_reason(const EnvContext *ctx, HardwareReason *hwReason, RebootI
     return SUCCESS;
 }
 
-static void getVal(const char *line, const char *prefix, char *output, size_t output_size)
-{
-    const char *value = line + strlen(prefix);
-    while (*value && (*value == ' ' || *value == '\t')) {
-        value++;
-    }
-    strncpy(output, value, output_size - 1);
-    output[output_size - 1] = '\0';
-    char *end = output + strlen(output) - 1;
-    while (end >= output && (*end == ' ' || *end == '\t' || *end == '\n' || *end == '\r')) {
-        *end = '\0';
-        end--;
-    }
-}
-
-int parse_legacy_log(const char *logPath, RebootInfo *info)
-{
-    FILE *fp = NULL;
-    char line[MAX_BUFFER_SIZE];
-    int found_fields = 0;
-    if (!logPath || !info) {
-        RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Invalid parameters for parse_legacy_log\n");
-        return ERROR_GENERAL;
-    }
-    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Parsing legacy log: %s\n", logPath);
-    fp = fopen(logPath, "r");
-    if (!fp) {
-        RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to open legacy log %s: %s\n", logPath, strerror(errno));
-        return ERROR_FILE_NOT_FOUND;
-    }
-     while (fgets(line, sizeof(line), fp)) {
-        if (strstr(line, "PreviousRebootInitiatedBy:")) {
-            getVal(strstr(line, "PreviousRebootInitiatedBy:"), "PreviousRebootInitiatedBy:", info->source, sizeof(info->source));
-            found_fields++;
-        }
-        else if (strstr(line, "PreviousRebootTime:")) {
-            getVal(strstr(line, "PreviousRebootTime:"), "PreviousRebootTime:", info->timestamp, sizeof(info->timestamp));
-            found_fields++;
-        }
-        else if (strstr(line, "PreviousCustomReason:")) {
-            getVal(strstr(line, "PreviousCustomReason:"), "PreviousCustomReason:", info->customReason, sizeof(info->customReason));
-            found_fields++;
-        }
-        else if (strstr(line, "PreviousOtherReason:")) {
-            getVal(strstr(line, "PreviousOtherReason:"), "PreviousOtherReason:", info->otherReason, sizeof(info->otherReason));
-            found_fields++;
-        }
-        if (found_fields >= 4) {
-            break;
-        }
-    }
-    fclose(fp);
-    if (found_fields == 0) {
-        RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","No reboot info fields found in legacy log\n");
-        return FAILURE;
-    }
-    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Parsed legacy log - Found %d fields\n", found_fields);
-    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Timestamp: %s, Source: %s, Reason: %s\n", info->timestamp, info->source, info->reason);
-    return SUCCESS;
-}
-
 static int read_file_data(const char *path, char *buf, size_t buflen)
 {
     FILE *fp = fopen(path, "r");

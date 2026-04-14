@@ -143,4 +143,5 @@ void t2CountNotify(char *marker, int val);
 void t2ValNotify(char *marker, char *val);
 int parse_legacy_log(const char *logPath, RebootInfo *info);
 int update_reboot_info(const EnvContext *ctx);
+int find_previous_reboot_log(char *out_path, size_t len);
 #endif /* UPDATE_REBOOT_INFO_H */

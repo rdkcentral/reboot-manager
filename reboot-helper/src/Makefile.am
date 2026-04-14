@@ -46,7 +46,8 @@ bin_PROGRAMS += update-prev-reboot-info
 update_prev_reboot_info_SOURCES = \
       $(top_srcdir)/reboot-reason-fetcher/src/rebootreason_main.c \
       $(top_srcdir)/reboot-reason-fetcher/src/json.c \
-      $(top_srcdir)/reboot-reason-fetcher/src/parodus_log_update.c
+      $(top_srcdir)/reboot-reason-fetcher/src/parodus_log_update.c \
+      $(top_srcdir)/reboot-reason-fetcher/src/bootup_reason_checker.c
 
 if USE_CPC
 update_prev_reboot_info_SOURCES += \

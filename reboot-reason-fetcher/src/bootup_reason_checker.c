@@ -1,0 +1,250 @@
+/*
+##########################################################################
+# If not stated otherwise in this file or this component's LICENSE
+# file the following copyright and licenses apply:
+#
+# Copyright 2026 Comcast Cable Communications Management, LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+##########################################################################
+*/
+
+#include "update-reboot-info.h"
+#include "rdk_logger.h"
+#include <errno.h>
+#include <unistd.h>
+#include <dirent.h>
+
+/*
+ * find_previous_reboot_log - replicates the log-discovery logic from reboot-checker.sh:
+ *   1. Walk $LOG_PATH/PreviousLogs sub-directories for a file named "last_reboot";
+ *      if found use that directory's rebootInfo.log.
+ *   2. Fall back to $LOG_PATH/PreviousLogs/rebootInfo.log.
+ *   3. If the flat fallback is selected, prefer bak[1-3]_rebootInfo.log
+ *      (handles fast-reboot on non-HDD devices before the 8-min log rotation).
+ */
+int find_previous_reboot_log(char *out_path, size_t len)
+{
+    const char *log_base;
+    char prev_logs[MAX_PATH_LENGTH];
+    char candidate[MAX_PATH_LENGTH];
+    int i;
+
+    if (!out_path || len == 0) return ERROR_GENERAL;
+    out_path[0] = '\0';
+
+    log_base = getenv("LOG_PATH");
+    if (!log_base || log_base[0] == '\0') {
+        log_base = "/opt/logs";
+    }
+    snprintf(prev_logs, sizeof(prev_logs), "%s/PreviousLogs", log_base);
+
+    DIR *d = opendir(prev_logs);
+    if (d) {
+        struct dirent *ent;
+        while ((ent = readdir(d)) != NULL) {
+            char subdir[MAX_PATH_LENGTH];
+            char marker[MAX_PATH_LENGTH];
+            struct stat st;
+
+            if (ent->d_name[0] == '.') continue;
+                snprintf(subdir, sizeof(subdir), "%s/%s", prev_logs, ent->d_name);
+                if (stat(subdir, &st) != 0 || !S_ISDIR(st.st_mode)) continue;
+
+                snprintf(marker, sizeof(marker), "%s/last_reboot", subdir);
+                if (access(marker, F_OK) == 0) {
+                    snprintf(candidate, sizeof(candidate), "%s/rebootInfo.log", subdir);
+                    if (access(candidate, F_OK) == 0) {
+                        closedir(d);
+                        strncpy(out_path, candidate, len - 1);
+                        out_path[len - 1] = '\0';
+                        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Previous reboot log (timestamped dir): %s\n", out_path);
+                        return SUCCESS;
+                    }
+                    break; /* found marker dir but no log; fall through to flat fallback */
+                }
+        }
+            closedir(d);
+    }
+
+    snprintf(candidate, sizeof(candidate), "%s/rebootInfo.log", prev_logs);
+    if (access(candidate, F_OK) == 0) {
+        for (i = 1; i <= 3; i++) {
+            char bak[MAX_PATH_LENGTH];
+            snprintf(bak, sizeof(bak), "%s/bak%d_rebootInfo.log", prev_logs, i);
+            if (access(bak, F_OK) == 0) {
+                strncpy(out_path, bak, len - 1);
+                out_path[len - 1] = '\0';
+                RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Previous reboot log (bak%d fallback): %s\n", i, out_path);
+                return SUCCESS;
+            }
+        }
+        strncpy(out_path, candidate, len - 1);
+        out_path[len - 1] = '\0';
+        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Previous reboot log (flat fallback): %s\n", out_path);
+        return SUCCESS;
+    }
+
+    RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","No previous reboot log found under %s\n", prev_logs);
+    return ERROR_FILE_NOT_FOUND;
+}
+
+/*
+ * resolve_hal_sys_reboot - when RebootInitiatedBy is "HAL_SYS_Reboot", the real
+ * initiator and other-reason are embedded in the RebootReason line:
+ *   "... Triggered from <initiator> <reason words> (optional paren)"
+ */
+static void resolve_hal_sys_reboot(const char *rebootReasonLine,
+                                   char *source, size_t srcLen,
+                                   char *otherReason, size_t orLen)
+{
+    const char *trigger;
+    const char *space;
+    const char *rest;
+    const char *paren;
+    const char *endRest;
+    size_t initLen;
+    size_t restLen;
+    char *end;
+
+    if (!rebootReasonLine || !source || !otherReason) return;
+
+    trigger = strstr(rebootReasonLine, "Triggered from ");
+    if (!trigger) return;
+    trigger += strlen("Triggered from ");
+
+    space = strchr(trigger, ' ');
+    if (!space) {
+        strncpy(source, trigger, srcLen - 1);
+        source[srcLen - 1] = '\0';
+        end = source + strlen(source) - 1;
+        while (end >= source && (*end == '\n' || *end == '\r' || *end == ' ' || *end == '\t')) {
+            *end-- = '\0';
+        }
+        return;
+    }
+    initLen = (size_t)(space - trigger);
+    if (initLen >= srcLen) initLen = srcLen - 1;
+    memcpy(source, trigger, initLen);
+    source[initLen] = '\0';
+
+    rest = space + 1;
+    while (*rest == ' ') rest++;
+    paren = strchr(rest, '(');
+    endRest = paren ? paren : (rest + strlen(rest));
+    restLen = (size_t)(endRest - rest);
+    while (restLen > 0 && (rest[restLen - 1] == ' ' || rest[restLen - 1] == '\t')) restLen--;
+    if (restLen >= orLen) restLen = orLen - 1;
+    memcpy(otherReason, rest, restLen);
+    otherReason[restLen] = '\0';
+}
+
+static void getVal(const char *line, const char *prefix, char *output, size_t output_size)
+{
+    const char *value = line + strlen(prefix);
+    while (*value && (*value == ' ' || *value == '\t')) {
+        value++;
+    }
+    strncpy(output, value, output_size - 1);
+    output[output_size - 1] = '\0';
+    char *end = output + strlen(output) - 1;
+    while (end >= output && (*end == ' ' || *end == '\t' || *end == '\n' || *end == '\r')) {
+        *end = '\0';
+        end--;
+    }
+}
+
+int parse_legacy_log(const char *logPath, RebootInfo *info)
+{
+    FILE *fp = NULL;
+    char line[MAX_BUFFER_SIZE];
+    int found_fields = 0;
+    int raw_fields = 0;
+    char rawInitiatedBy[MAX_REASON_LENGTH] = {0};
+    char rawTime[MAX_TIMESTAMP_LENGTH] = {0};
+    char rawCustom[MAX_REASON_LENGTH] = {0};
+    char rawOther[MAX_REASON_LENGTH] = {0};
+    char rawRebootReason[MAX_BUFFER_SIZE] = {0};
+
+    if (!logPath || !info) {
+        RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Invalid parameters for parse_legacy_log\n");
+        return ERROR_GENERAL;
+    }
+    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Parsing legacy log: %s\n", logPath);
+    fp = fopen(logPath, "r");
+    if (!fp) {
+        RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to open legacy log %s: %s\n", logPath, strerror(errno));
+        return ERROR_FILE_NOT_FOUND;
+    }
+
+    while (fgets(line, sizeof(line), fp)) {
+        if (strstr(line, "PreviousRebootInitiatedBy:")) {
+            getVal(strstr(line, "PreviousRebootInitiatedBy:"), "PreviousRebootInitiatedBy:", info->source, sizeof(info->source));
+            found_fields++;
+        } else if (strstr(line, "PreviousRebootTime:")) {
+            getVal(strstr(line, "PreviousRebootTime:"), "PreviousRebootTime:", info->timestamp, sizeof(info->timestamp));
+            found_fields++;
+        } else if (strstr(line, "PreviousCustomReason:")) {
+            getVal(strstr(line, "PreviousCustomReason:"), "PreviousCustomReason:", info->customReason, sizeof(info->customReason));
+            found_fields++;
+        } else if (strstr(line, "PreviousOtherReason:")) {
+            getVal(strstr(line, "PreviousOtherReason:"), "PreviousOtherReason:", info->otherReason, sizeof(info->otherReason));
+            found_fields++;
+        } else if (strstr(line, "RebootInitiatedBy:")) {
+            getVal(strstr(line, "RebootInitiatedBy:"), "RebootInitiatedBy:", rawInitiatedBy, sizeof(rawInitiatedBy));
+            raw_fields++;
+        } else if (strstr(line, "RebootTime:")) {
+            getVal(strstr(line, "RebootTime:"), "RebootTime:", rawTime, sizeof(rawTime));
+            raw_fields++;
+        } else if (strstr(line, "CustomReason:")) {
+            getVal(strstr(line, "CustomReason:"), "CustomReason:", rawCustom, sizeof(rawCustom));
+            raw_fields++;
+        } else if (strstr(line, "OtherReason:")) {
+            getVal(strstr(line, "OtherReason:"), "OtherReason:", rawOther, sizeof(rawOther));
+            raw_fields++;
+        } else if (strstr(line, "RebootReason:") && !strstr(line, "HAL_SYS_Reboot")) {
+            strncpy(rawRebootReason, line, sizeof(rawRebootReason) - 1);
+            rawRebootReason[sizeof(rawRebootReason) - 1] = '\0';
+        }
+
+        if (found_fields >= 4) break;
+    }
+    fclose(fp);
+
+    if (found_fields == 0 && raw_fields > 0) {
+        if (strcmp(rawInitiatedBy, "HAL_SYS_Reboot") == 0 && rawRebootReason[0] != '\0') {
+            resolve_hal_sys_reboot(rawRebootReason, rawInitiatedBy, sizeof(rawInitiatedBy), rawOther, sizeof(rawOther));
+            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","HAL_SYS_Reboot resolved: initiator=%s, other=%s\n", rawInitiatedBy, rawOther);
+        }
+        strncpy(info->source,       rawInitiatedBy, sizeof(info->source)       - 1);
+        info->source[sizeof(info->source) - 1]             = '\0';
+        strncpy(info->timestamp,    rawTime,         sizeof(info->timestamp)    - 1);
+        info->timestamp[sizeof(info->timestamp) - 1]       = '\0';
+        strncpy(info->customReason, rawCustom,       sizeof(info->customReason) - 1);
+        info->customReason[sizeof(info->customReason) - 1] = '\0';
+        strncpy(info->otherReason,  rawOther,        sizeof(info->otherReason)  - 1);
+        info->otherReason[sizeof(info->otherReason) - 1]   = '\0';
+        found_fields = raw_fields;
+    }
+
+    if (found_fields == 0) {
+        RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","No reboot info fields found in legacy log\n");
+        return FAILURE;
+    }
+
+    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Parsed legacy log - Found %d fields\n", found_fields);
+    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Timestamp: %s, Source: %s, Reason: %s\n", info->timestamp, info->source, info->reason);
+    return SUCCESS;
+}
+
+
