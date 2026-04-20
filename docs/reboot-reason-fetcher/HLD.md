@@ -823,12 +823,6 @@ RDK_LOG(RDK_LOG_ERROR, "LOG.RDK.REBOOTINFO",
 - ✅ `parodus_log_update.c` - Telemetry and parodus log integration
 - ✅ `update-reboot-info.h` - Public API header with all function declarations
 
-### Pending Modules (Future)
-- ⏳ `hw_brcm.c` - Broadcom platform support
-- ⏳ `hw_realtek.c` - Realtek platform support
-- ⏳ `hw_amlogic.c` - Amlogic platform support  
-- ⏳ `hw_mtk.c` - MediaTek platform support
-
 ### Testing
 - ✅ Unit tests (gtest-based) for core logic
 - ✅ Integration tests with legacy shell script output
