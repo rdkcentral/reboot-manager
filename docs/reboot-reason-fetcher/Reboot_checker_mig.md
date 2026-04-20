@@ -215,38 +215,8 @@ fi
 ```
 
 **Why we didn't migrate it:**
-1. **Scope:** Initial C implementation focuses on bootup (reboot reason detection)
-2. **Shutdown** is a **different lifecycle** - it runs during system shutdown
-3. **Separation of concerns:** Shutdown verification may be kept as shell script or moved to different C module later
-4. **Low priority:** Bootup (reason extraction) is more critical than shutdown verification
-
-**Current status:** Shutdown mode still uses the original shell script
-
----
-
-### Didn't Migrate 2: Platform-Specific Hardware Modules
-
-**What exists in shell:**
-- Generic approach, no platform-specific code
-
-**What we planned but didn't implement:**
-```c
-// Future modules (not yet added):
-hw_brcm.c        // Broadcom: Read /proc/brcm/previous_reboot_reason
-hw_realtek.c     // Realtek: Parse /proc/cmdline wakeupreason=...
-hw_amlogic.c     // Amlogic: Map numeric reset code from /sys/.../reset_reason
-hw_mtk.c         // MediaTek: Read /sys/mtk_pm/boot_reason
-```
-
-**Why not yet:**
-1. **Generic fallback exists:** Current `get_hardware_reason()` in rebootreason_main.c handles generic path
-2. **Requires SOC-specific knowledge:** Each platform needs different registers/files
-3. **Incremental approach:** Will be added when deploying on those platforms
-4. **Lower impact:** Most reboot reasons come from software classification, not hardware codes
-
-**Current status:** Generic implementation handles most cases; platform modules are planned
-
----
+- shutdown operation that checks whether the dsmgr and iarmbus process is alive before proceeding with a reboot. We believe this may be a legacy implementation, and we have not found any place where this path is actually invoked.
+- the reboot should happend inrespective of those process running.
 
 ## 4. Newly Added Code Changes in reboot-reason-fetcher
 
@@ -406,11 +376,9 @@ START: rebootreason_main.c main()
 - Integration call in `rebootreason_main.c` - Wire new functions into workflow
 
 **Not Migrated (Intentional):**
-- Shutdown mode - Different lifecycle, kept as shell script
-- Platform-specific hardware modules - Planned for future, generic fallback sufficient
-
+- Shutdown mode - Legacy Implementation and not needed.
+  
 **Result:**
 ✅ Full **bootup** mode now in C (100% feature parity with shell)  
 ✅ Enhanced with panic/firmware/classification (already existed)  
-⏳ Shutdown mode remains shell-based  
-⏳ Platform modules planned for future
+
