@@ -31,7 +31,6 @@
 #include <sys/types.h>
 #include "reboot.h"
 #include "secure_wrapper.h"
-#include "rebootmgr_rbus_interface.h"
 #include "rdk_logger.h"
 #include <sys/wait.h>
 
@@ -222,9 +221,6 @@ int main(int argc, char **argv)
     t2_init("reboot-manager");
 #endif
 
-/* Initialize RBUS before any get/set */
-    (void)rbus_init();
-	
     if (pidfile_write_and_guard() != 0) {
         return 1;
     }
@@ -374,12 +370,12 @@ int main(int argc, char **argv)
         return 0; /* exit without performing immediate reboot */
     }
 
-    if (rbus_get_bool_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ManageableNotification.Enable", &mng_notify_enable))
+    if (rfc_get_bool_param(RFC_MNG_NOTIFY, &mng_notify_enable))
     {
         RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Value of Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.ManageableNotification.Enable: %s\n", 
                                      mng_notify_enable ? "true" : "false");
         if (mng_notify_enable) {
-            rbus_set_int_param("Device.DeviceInfo.X_RDKCENTRAL-COM_xOpsDeviceMgmt.RPC.RebootPendingNotification", 10);
+	    rfc_set_int_param(RFC_FW_REBOOT_NOTIFY, REBOOT_PENDING_NOTIFICATION_DELAY);
         }
     }
 
@@ -394,7 +390,6 @@ int main(int argc, char **argv)
         RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Failed to create %s (errno=%d)\n", REBOOTNOW_FLAG, errno);
     }
 
-    rbus_cleanup();
     
     // Execute reboot sequence: reboot &, wait, fallback to systemctl reboot, then reboot -f
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Rebooting the Device Now\n");

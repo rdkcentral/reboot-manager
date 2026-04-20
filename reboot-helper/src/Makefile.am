@@ -30,17 +30,16 @@ librebootnow_la_LDFLAGS = -shared
 librebootnow_la_SOURCES = \
       system_cleanup.c \
       cyclic_reboot.c \
-      utils.c \
-      rebootmgr_rbus_interface.c
+      utils.c
 
-librebootnow_la_LIBADD = -lfwutils -lrdkloggers -lrbus -lsecure_wrapper
+librebootnow_la_LIBADD = -lfwutils -lrdkloggers -lrfcapi -lsecure_wrapper
 
 # CLI wrapper binary
 bin_PROGRAMS = rebootnow
 rebootnow_SOURCES = reboot_main.c
 rebootnow_LDADD = librebootnow.la
 
-AM_LDFLAGS = -lrdkloggers -lfwutils -lrbus -lsecure_wrapper
+AM_LDFLAGS = -lrdkloggers -lfwutils -lrfcapi -lsecure_wrapper
 
 bin_PROGRAMS += update-prev-reboot-info
 update_prev_reboot_info_SOURCES = \

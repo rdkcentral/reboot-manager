@@ -30,7 +30,6 @@
 #include <unistd.h>
 #include "reboot.h"
 #include "secure_wrapper.h"
-#include "rebootmgr_rbus_interface.h"
 #include "rdk_logger.h"
 
 static const char *PREVIOUS_REBOOT_INFO_FILE = "/opt/secure/reboot/previousreboot.info";

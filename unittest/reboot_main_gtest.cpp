@@ -51,10 +51,6 @@ static inline void reset_getopt_state(){
 
 extern "C" {
 // Stubs used by main
-bool rbus_init(void){ 
-    return true; 
-}                                                                                                 
-void rbus_cleanup(void){}                                                                                                            
 int pidfile_write_and_guard(void){ 
     return 0;
 }                                                                                       
@@ -79,23 +75,37 @@ int v_secure_system(const char* fmt, ...){
 void t2_event_d(const char* marker, int val){ (void)val; g_markers.push_back(marker); }
 void t2_event_s(const char* marker, const char* val){ (void)marker; (void)val; }
 void t2_init(const char* client){ (void)client; }
-// RBUS param helpers used by rebootNow_main.c
 static bool g_notif_called=false;
 static bool g_mng_enable=true;
 static bool g_rbus_get_ok=true;
 static bool g_det_enable=true; static int g_duration=10; static bool g_reboot_stop_enable=false;
-bool rbus_get_bool_param(const char* name, bool* value){
-    if(!value) return false;
-    if(!g_rbus_get_ok) return false;
-    std::string s(name);
-    if(s.find("ManageableNotification.Enable")!=std::string::npos){ *value=g_mng_enable; return true; }
-    if(s.find("RebootStop.Detection")!=std::string::npos){ *value=g_det_enable; return true; }
-    if(s.find("RebootStop.Enable")!=std::string::npos){ *value=g_reboot_stop_enable; return true; }
-    *value=false; return true;
+
+WDMP_STATUS getRFCParameter(char* /*callerID*/, const char* paramName, RFC_ParamData_t* param) {
+    if (!g_rfc_get_ok || !paramName || !param) return WDMP_FAILURE;
+    std::string s(paramName);
+    memset(param, 0, sizeof(*param));
+    if (s.find("ManageableNotification.Enable") != std::string::npos) {
+        strncpy(param->value, g_mng_enable ? "true" : "false", sizeof(param->value)-1); return WDMP_SUCCESS;
+    }
+    if (s.find("RebootStop.Detection") != std::string::npos) {
+        strncpy(param->value, g_det_enable ? "true" : "false", sizeof(param->value)-1); return WDMP_SUCCESS;
+    }
+    if (s.find("RebootStop.Duration") != std::string::npos) {
+        snprintf(param->value, sizeof(param->value), "%d", g_duration); return WDMP_SUCCESS;
+    }
+    if (s.find("RebootStop.Enable") != std::string::npos) {
+        strncpy(param->value, g_reboot_stop_enable ? "true" : "false", sizeof(param->value)-1); return WDMP_SUCCESS;
+    }
+    return WDMP_FAILURE;
 }
-bool rbus_get_int_param(const char* name, int* value){ if(!value) return false; std::string s(name); if(s.find("RebootStop.Duration")!=std::string::npos){ *value=g_duration; return true; } return false; }
-bool rbus_set_bool_param(const char* name, bool value){ (void)name; g_reboot_stop_enable=value; return true; }
-bool rbus_set_int_param(const char* name, int value){ (void)value; if(std::string(name).find("RebootPendingNotification")!=std::string::npos){ g_notif_called=true; } return true; }
+WDMP_STATUS setRFCParameter(char* /*callerID*/, const char* paramName, const char* value, DATA_TYPE /*type*/) {
+    if (!paramName || !value) return WDMP_FAILURE;
+    std::string s(paramName);
+    if (s.find("RebootStop.Enable") != std::string::npos) { g_reboot_stop_enable=(std::string(value)=="true"); return WDMP_SUCCESS; }
+    if (s.find("RebootPendingNotification") != std::string::npos) { g_notif_called=true; return WDMP_SUCCESS; }
+    return WDMP_SUCCESS;
+}
+
 // Housekeeping stub
 void cleanup_services(void){}
 // Stubbed process/system functions
