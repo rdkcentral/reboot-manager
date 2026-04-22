@@ -159,8 +159,7 @@ int handle_cyclic_reboot(const char *source,
     char p_src[128] = {0}, p_rsn[128] = {0}, p_cus[128] = {0}, p_oth[256] = {0}, p_ts[64] = {0};
     int upsecs = 0;
 
-    int rbret = rbus_get_bool_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RebootStop.Detection", &detection_enabled);
-    if (rbret) {
+    if (rfc_get_bool_param(RFC_REBOOTSTOP_DETECTION, &detection_enabled)) {
         /* Successfully retrieved RFC value for detection_enabled */
         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Reboot Loop Detection RFC value retrieved: %s\n",
                 detection_enabled ? "true" : "false");
@@ -171,7 +170,7 @@ int handle_cyclic_reboot(const char *source,
     }
     RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Reboot Loop Detection enabled to check cyclic reboot scenarios:%s\n",
             detection_enabled ? "true" : "false");
-    if (rbus_get_int_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RebootStop.Duration", &duration)) {
+    if (rfc_get_int_param(RFC_REBOOTSTOP_DURATION, &duration)) {
         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","RebootStop Duration: %d\n", duration);
         if (duration > 0 && duration < 24*60) {
             stop_duration = duration;
@@ -223,9 +222,9 @@ int handle_cyclic_reboot(const char *source,
                         if (count >= REBOOT_CYCLE_THRESHOLD) {
                             RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Detected Reboot Loop in device, Halting reboot for next %d mins to perform operations!!!\n", stop_duration);
                             touch_file(REBOOTSTOP_FLAG);
-                            rbus_set_bool_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RebootStop.Enable", true);
+			    rfc_set_bool_param(RFC_REBOOTSTOP_ENABLE, true);
                             bool reboot_stop_enable = false;
-                            if (rbus_get_bool_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RebootStop.Enable", &reboot_stop_enable)) {
+			    if (rfc_get_bool_param(RFC_REBOOTSTOP_ENABLE, &reboot_stop_enable)) {
                                 RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","[%s:%d]:Publishing Reboot Stop Enable Event: %d\n",__FUNCTION__, __LINE__,reboot_stop_enable);
                             }
 			    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Sending t2 Marker\n");
@@ -260,7 +259,7 @@ int handle_cyclic_reboot(const char *source,
 
         if (reboot_counter_reset) {
             RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Publishing Reboot Stop Disable Event\n");
-            rbus_set_bool_param("Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RebootStop.Enable", false);
+	    rfc_set_bool_param(RFC_REBOOTSTOP_ENABLE, false);
             RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Reboot Loop Detection counter reset as device not in reboot loop\n");
             write_rebootcounter(REBOOT_COUNTER_FILE, 0);
             (void)unlink(REBOOTSTOP_FLAG);
