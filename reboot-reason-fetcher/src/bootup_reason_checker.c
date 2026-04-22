@@ -280,4 +280,101 @@ int parse_legacy_log(const char *logPath, RebootInfo *info)
     return SUCCESS;
 }
 
+static int extract_json_value(const char *json, const char *key, char *out, size_t out_size)
+{
+    char pattern[64];
+    const char *start;
+    const char *end;
+    size_t len;
 
+    if (!json || !key || !out || out_size == 0) {
+        return ERROR_GENERAL;
+    }
+
+    snprintf(pattern, sizeof(pattern), "\"%s\":\"", key);
+    start = strstr(json, pattern);
+    if (!start) {
+        return ERROR_GENERAL;
+    }
+    start += strlen(pattern);
+
+    end = strchr(start, '"');
+    if (!end) {
+        return ERROR_GENERAL;
+    }
+
+    len = (size_t)(end - start);
+    if (len >= out_size) {
+        len = out_size - 1;
+    }
+    memcpy(out, start, len);
+    out[len] = '\0';
+    return SUCCESS;
+}
+
+static int load_reboot_info_json(const char *path, RebootInfo *info)
+{
+    FILE *fp;
+    char buf[2048];
+    size_t n;
+
+    if (!path || !info) {
+        return ERROR_GENERAL;
+    }
+
+    fp = fopen(path, "r");
+    if (!fp) {
+        RDK_LOG(RDK_LOG_ERROR, "LOG.RDK.REBOOTINFO", "Failed to open reboot info json %s: %s\n", path, strerror(errno));
+        return ERROR_FILE_NOT_FOUND;
+    }
+
+    n = fread(buf, 1, sizeof(buf) - 1, fp);
+    fclose(fp);
+    buf[n] = '\0';
+
+    if (extract_json_value(buf, "timestamp", info->timestamp, sizeof(info->timestamp)) != SUCCESS ||
+        extract_json_value(buf, "source", info->source, sizeof(info->source)) != SUCCESS ||
+        extract_json_value(buf, "reason", info->reason, sizeof(info->reason)) != SUCCESS ||
+        extract_json_value(buf, "customReason", info->customReason, sizeof(info->customReason)) != SUCCESS ||
+        extract_json_value(buf, "otherReason", info->otherReason, sizeof(info->otherReason)) != SUCCESS) {
+        RDK_LOG(RDK_LOG_ERROR, "LOG.RDK.REBOOTINFO", "Failed to parse reboot info json from %s\n", path);
+        return ERROR_PARSE_FAILED;
+    }
+
+    return SUCCESS;
+}
+
+int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fallbackInfo)
+{
+    FILE *fp;
+    RebootInfo parsedInfo;
+    const RebootInfo *infoToWrite = fallbackInfo;
+
+    memset(&parsedInfo, 0, sizeof(parsedInfo));
+
+    if ((!infoToWrite || infoToWrite->source[0] == '\0' || infoToWrite->timestamp[0] == '\0') && jsonPath) {
+        if (load_reboot_info_json(jsonPath, &parsedInfo) == SUCCESS) {
+            infoToWrite = &parsedInfo;
+        }
+    }
+
+    if (!infoToWrite || infoToWrite->source[0] == '\0' || infoToWrite->timestamp[0] == '\0') {
+        return ERROR_GENERAL;
+    }
+
+    fp = fopen(REBOOT_INFO_LOG_FILE, "a");
+    if (!fp) {
+        RDK_LOG(RDK_LOG_ERROR, "LOG.RDK.REBOOTINFO", "Failed to open %s for PreviousReboot fields: %s\n", REBOOT_INFO_LOG_FILE, strerror(errno));
+        return ERROR_GENERAL;
+    }
+
+    fprintf(fp, "PreviousRebootInitiatedBy: %s\n", infoToWrite->source);
+    fprintf(fp, "PreviousRebootTime: %s\n", infoToWrite->timestamp);
+    fprintf(fp, "PreviousCustomReason: %s\n", infoToWrite->customReason);
+    fprintf(fp, "PreviousOtherReason: %s\n", infoToWrite->otherReason);
+    fflush(fp);
+    fclose(fp);
+
+    RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Updated PreviousReboot* fields in %s\n", REBOOT_INFO_LOG_FILE);
+    return SUCCESS;
+}

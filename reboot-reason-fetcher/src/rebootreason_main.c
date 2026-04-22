@@ -171,6 +171,10 @@ int main(void)
         }
     }
 
+    if (update_previous_reboot_log_fields(has_reboot_info ? PREVIOUS_REBOOT_INFO_FILE : NULL, &rebootInfo) != SUCCESS) {
+        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Skipping PreviousReboot* update in %s due to missing reboot info fields\n", REBOOT_INFO_LOG_FILE);
+    }
+
     if (!has_reboot_info) {
         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Persisting reboot information \n");
         if (write_reboot_info(PREVIOUS_REBOOT_INFO_FILE, &rebootInfo) != SUCCESS) {
