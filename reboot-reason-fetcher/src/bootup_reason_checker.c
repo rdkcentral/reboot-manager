@@ -344,13 +344,112 @@ static int load_reboot_info_json(const char *path, RebootInfo *info)
     return SUCCESS;
 }
 
+static void format_iso8601_ms(char *out, size_t out_len)
+{
+    struct timespec ts;
+    struct tm tm_utc;
+
+    if (!out || out_len == 0) {
+        return;
+    }
+
+    if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
+        out[0] = '\0';
+        return;
+    }
+
+    gmtime_r(&ts.tv_sec, &tm_utc);
+    snprintf(out, out_len,
+             "%04d-%02d-%02dT%02d:%02d:%02d.%03ldZ",
+             tm_utc.tm_year + 1900,
+             tm_utc.tm_mon + 1,
+             tm_utc.tm_mday,
+             tm_utc.tm_hour,
+             tm_utc.tm_min,
+             tm_utc.tm_sec,
+             ts.tv_nsec / 1000000L);
+}
+
+static int write_previous_line(FILE *fp, const char *key, const char *value)
+{
+    char ts[64];
+
+    if (!fp || !key || !value) {
+        return ERROR_GENERAL;
+    }
+
+    format_iso8601_ms(ts, sizeof(ts));
+    if (ts[0] == '\0') {
+        return ERROR_GENERAL;
+    }
+
+    fprintf(fp, "%s %s: %s\n", ts, key, value);
+    return SUCCESS;
+}
+
+static int load_previous_reboot_reason_line(char *out, size_t out_len)
+{
+    char prev_log_path[MAX_PATH_LENGTH] = {0};
+    FILE *fp;
+    char line[MAX_BUFFER_SIZE];
+
+    if (!out || out_len == 0) {
+        return ERROR_GENERAL;
+    }
+    out[0] = '\0';
+
+    if (find_previous_reboot_log(prev_log_path, sizeof(prev_log_path)) != SUCCESS) {
+        return ERROR_FILE_NOT_FOUND;
+    }
+
+    fp = fopen(prev_log_path, "r");
+    if (!fp) {
+        return ERROR_FILE_NOT_FOUND;
+    }
+
+    while (fgets(line, sizeof(line), fp)) {
+        char *trimmed = line;
+        while (*trimmed == ' ' || *trimmed == '\t') {
+            trimmed++;
+        }
+
+        if (strstr(trimmed, "PreviousRebootReason:")) {
+            continue;
+        }
+
+        if (strncmp(trimmed, "RebootReason:", strlen("RebootReason:")) == 0) {
+            size_t len;
+            char *end;
+
+            strncpy(out, trimmed, out_len - 1);
+            out[out_len - 1] = '\0';
+
+            len = strlen(out);
+            if (len > 0) {
+                end = out + len - 1;
+                while (end >= out && (*end == '\n' || *end == '\r')) {
+                    *end-- = '\0';
+                }
+            }
+            fclose(fp);
+            return SUCCESS;
+        }
+    }
+
+    fclose(fp);
+    return ERROR_FILE_NOT_FOUND;
+}
+
 int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fallbackInfo)
 {
     FILE *fp;
     RebootInfo parsedInfo;
+    RebootInfo emptyInfo;
     const RebootInfo *infoToWrite = fallbackInfo;
+    char previousReason[MAX_BUFFER_SIZE] = {0};
 
     memset(&parsedInfo, 0, sizeof(parsedInfo));
+    memset(&emptyInfo, 0, sizeof(emptyInfo));
 
     if ((!infoToWrite || infoToWrite->source[0] == '\0' || infoToWrite->timestamp[0] == '\0') && jsonPath) {
         if (load_reboot_info_json(jsonPath, &parsedInfo) == SUCCESS) {
@@ -358,23 +457,29 @@ int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fa
         }
     }
 
-    if (!infoToWrite || infoToWrite->source[0] == '\0' || infoToWrite->timestamp[0] == '\0') {
-        return ERROR_GENERAL;
+    if (!infoToWrite) {
+        infoToWrite = &emptyInfo;
     }
 
-    fp = fopen(REBOOT_INFO_LOG_FILE, "a");
+    if (load_previous_reboot_reason_line(previousReason, sizeof(previousReason)) != SUCCESS) {
+        previousReason[0] = '\0';
+    }
+
+    fp = fopen(REBOOT_INFO_LOG_FILE, "w");
     if (!fp) {
         RDK_LOG(RDK_LOG_ERROR, "LOG.RDK.REBOOTINFO", "Failed to open %s for PreviousReboot fields: %s\n", REBOOT_INFO_LOG_FILE, strerror(errno));
         return ERROR_GENERAL;
     }
 
-    fprintf(fp, "PreviousRebootInitiatedBy: %s\n", infoToWrite->source);
-    fprintf(fp, "PreviousRebootTime: %s\n", infoToWrite->timestamp);
-    fprintf(fp, "PreviousCustomReason: %s\n", infoToWrite->customReason);
-    fprintf(fp, "PreviousOtherReason: %s\n", infoToWrite->otherReason);
+    (void)write_previous_line(fp, "PreviousRebootReason", previousReason);
+    (void)write_previous_line(fp, "PreviousRebootInitiatedBy", infoToWrite->source);
+    (void)write_previous_line(fp, "PreviousRebootTime", infoToWrite->timestamp);
+    (void)write_previous_line(fp, "PreviousCustomReason", infoToWrite->customReason);
+    (void)write_previous_line(fp, "PreviousOtherReason", infoToWrite->otherReason);
     fflush(fp);
     fclose(fp);
 
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Updated PreviousReboot* fields in %s\n", REBOOT_INFO_LOG_FILE);
     return SUCCESS;
 }
+
