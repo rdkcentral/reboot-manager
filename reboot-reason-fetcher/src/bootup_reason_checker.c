@@ -19,11 +19,15 @@
 ##########################################################################
 */
 
+#define _DEFAULT_SOURCE
+#define _POSIX_C_SOURCE 200809L
 #include "update-reboot-info.h"
 #include "rdk_logger.h"
 #include <errno.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <time.h>
+#include <sys/time.h>
 
 static int logfile_path_check(char *dst, size_t dst_len, const char *left, const char *right)
 {
@@ -346,19 +350,25 @@ static int load_reboot_info_json(const char *path, RebootInfo *info)
 
 static void format_iso8601_ms(char *out, size_t out_len)
 {
-    struct timespec ts;
+    struct timeval tv;
     struct tm tm_utc;
+    struct tm *tm_result;
 
     if (!out || out_len == 0) {
         return;
     }
 
-    if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
+    if (gettimeofday(&tv, NULL) != 0) {
         out[0] = '\0';
         return;
     }
 
-    gmtime_r(&ts.tv_sec, &tm_utc);
+    tm_result = gmtime_r(&tv.tv_sec, &tm_utc);
+    if (!tm_result) {
+        out[0] = '\0';
+        return;
+    }
+
     snprintf(out, out_len,
              "%04d-%02d-%02dT%02d:%02d:%02d.%03ldZ",
              tm_utc.tm_year + 1900,
@@ -367,23 +377,21 @@ static void format_iso8601_ms(char *out, size_t out_len)
              tm_utc.tm_hour,
              tm_utc.tm_min,
              tm_utc.tm_sec,
-             ts.tv_nsec / 1000000L);
+             (long)(tv.tv_usec / 1000L));
 }
 
 static int write_previous_line(FILE *fp, const char *key, const char *value)
 {
     char ts[64];
 
-    if (!fp || !key || !value) {
+    if (!fp || !key) {
         return ERROR_GENERAL;
     }
 
     format_iso8601_ms(ts, sizeof(ts));
-    if (ts[0] == '\0') {
-        return ERROR_GENERAL;
-    }
 
-    fprintf(fp, "%s %s: %s\n", ts, key, value);
+    /* Always write the line; use empty timestamp if formatting failed */
+    fprintf(fp, "%s %s: %s\n", ts, key, value ? value : "");
     return SUCCESS;
 }
 
@@ -482,4 +490,6 @@ int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fa
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Updated PreviousReboot* fields in %s\n", REBOOT_INFO_LOG_FILE);
     return SUCCESS;
 }
+
+
 
