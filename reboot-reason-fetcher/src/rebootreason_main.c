@@ -138,14 +138,6 @@ int main(void)
     else {
         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Deriving reboot reason from legacy sources \n");
 
-        char prev_log_path[MAX_PATH_LENGTH] = {0};
-	if (find_previous_reboot_log(prev_log_path, sizeof(prev_log_path)) == SUCCESS) {
-            if (parse_legacy_log(prev_log_path, &rebootInfo) != SUCCESS) {
-                 RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Parse of previous reboot log failed, will derive from hardware/panic \n");
-            }
-	} else {
-            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","No previous reboot log found, will derive from hardware/panic \n");
-	}
 
         if (rebootInfo.timestamp[0] == '\0') {
             get_current_timestamp(rebootInfo.timestamp, sizeof(rebootInfo.timestamp));
@@ -157,12 +149,8 @@ int main(void)
         RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Checking firmware failures \n");
         check_firmware_failure(&ctx, &fwFailure);
 
-        if (rebootInfo.customReason[0] == '\0' || rebootInfo.source[0] == '\0') {
-            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Getting hardware reboot reason \n");
-            get_hardware_reason(&ctx, &hwReason, &rebootInfo);
-        } else {
-            memset(&hwReason, 0, sizeof(HardwareReason));
-        }
+        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Getting hardware reboot reason for current boot \n");
+        get_hardware_reason(&ctx, &hwReason, &rebootInfo);
 
         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Classifying reboot reason \n");
         if (classify_reboot_reason(&rebootInfo, &ctx, &hwReason, &panicInfo, &fwFailure) != SUCCESS) {

@@ -29,6 +29,42 @@
 #include <time.h>
 #include <sys/time.h>
 
+/*
+ * extract_json_value - Extract a JSON value for a given key from a string buffer.
+ * Format: "key":"value"
+ */
+static int extract_json_value(const char *buf, const char *key, char *out, size_t outsz)
+{
+    char pattern[128];
+    const char *p;
+    const char *q;
+    size_t len;
+
+    if (!buf || !key || !out || outsz == 0) {
+        return -1;
+    }
+
+    snprintf(pattern, sizeof(pattern), "\"%s\":\"", key);
+    p = strstr(buf, pattern);
+    if (!p) {
+        return -1;
+    }
+
+    p += strlen(pattern);
+    q = strchr(p, '"');
+    if (!q) {
+        return -1;
+    }
+
+    len = (size_t)(q - p);
+    if (len >= outsz) {
+        len = outsz - 1;
+    }
+    memcpy(out, p, len);
+    out[len] = '\0';
+    return 0;
+}
+
 static int logfile_path_check(char *dst, size_t dst_len, const char *left, const char *right)
 {
     size_t left_len;
@@ -387,19 +423,45 @@ static int load_previous_reboot_reason_line(char *out, size_t out_len)
 int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fallbackInfo)
 {
     FILE *fp;
-    char prev_log_path[MAX_PATH_LENGTH] = {0};
-    RebootInfo infoFromLog;
-    const RebootInfo *infoToWrite = &infoFromLog;
+    FILE *json_fp;
+    RebootInfo infoToUse;
+    char buf[MAX_BUFFER_SIZE] = {0};
     char previousReason[MAX_BUFFER_SIZE] = {0};
 
-    (void)jsonPath;
-    (void)fallbackInfo;
-    memset(&infoFromLog, 0, sizeof(infoFromLog));
+    (void)fallbackInfo;  /* Not used - Previous* fields should contain PREVIOUS boot info, not current */
+    memset(&infoToUse, 0, sizeof(RebootInfo));
 
-    if (find_previous_reboot_log(prev_log_path, sizeof(prev_log_path)) == SUCCESS) {
-        if (parse_legacy_log(prev_log_path, &infoFromLog) != SUCCESS) {
-            memset(&infoFromLog, 0, sizeof(infoFromLog));
+    // jsonPath should point to the JSON file containing PREVIOUS boot info (from reboot.info renamed to previousreboot.info)
+    // If jsonPath is NULL, it means no reboot.info file existed, so there's no "previous" reboot info to record.
+    // In that case, we write empty Previous* fields (software reboot scenario).
+    
+    if (jsonPath && access(jsonPath, F_OK) == 0) {
+        RDK_LOG(RDK_LOG_DEBUG, "LOG.RDK.REBOOTINFO", "Reading previous boot info from JSON: %s\n", jsonPath);
+        json_fp = fopen(jsonPath, "r");
+        if (json_fp) {
+            size_t n = fread(buf, 1, sizeof(buf) - 1, json_fp);
+            fclose(json_fp);
+            buf[n] = '\0';
+            
+            // Extract JSON values from PREVIOUS boot's reboot info
+            extract_json_value(buf, "timestamp", infoToUse.timestamp, sizeof(infoToUse.timestamp));
+            extract_json_value(buf, "source", infoToUse.source, sizeof(infoToUse.source));
+            extract_json_value(buf, "reason", infoToUse.reason, sizeof(infoToUse.reason));
+            extract_json_value(buf, "customReason", infoToUse.customReason, sizeof(infoToUse.customReason));
+            extract_json_value(buf, "otherReason", infoToUse.otherReason, sizeof(infoToUse.otherReason));
+            
+            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Loaded previous boot info - Source: %s, Reason: %s\n", 
+                    infoToUse.source, infoToUse.reason);
         }
+    } else if (jsonPath == NULL) {
+        RDK_LOG(RDK_LOG_DEBUG, "LOG.RDK.REBOOTINFO", "No reboot.info file existed (hardware/software reset) - leaving Previous* empty\n");
+        // When jsonPath is NULL (no reboot.info), just leave infoToUse empty.
+        // The shell script reboot-checker.sh already populated rebootInfo.log with Previous* fields
+        // from the previous boot's current fields. We don't need to read legacy logs here.
+        // If Previous* fields exist, update_previous_reboot_log_fields will be called by the shell anyway.
+    } else {
+        RDK_LOG(RDK_LOG_DEBUG, "LOG.RDK.REBOOTINFO", "Previous reboot JSON file not accessible: %s\n", jsonPath);
+        // Leave infoToUse empty
     }
 
     if (load_previous_reboot_reason_line(previousReason, sizeof(previousReason)) != SUCCESS) {
@@ -413,10 +475,10 @@ int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fa
     }
 
     (void)write_previous_line(fp, "PreviousRebootReason", previousReason);
-    (void)write_previous_line(fp, "PreviousRebootInitiatedBy", infoToWrite->source);
-    (void)write_previous_line(fp, "PreviousRebootTime", infoToWrite->timestamp);
-    (void)write_previous_line(fp, "PreviousCustomReason", infoToWrite->customReason);
-    (void)write_previous_line(fp, "PreviousOtherReason", infoToWrite->otherReason);
+    (void)write_previous_line(fp, "PreviousRebootInitiatedBy", infoToUse.source);
+    (void)write_previous_line(fp, "PreviousRebootTime", infoToUse.timestamp);
+    (void)write_previous_line(fp, "PreviousCustomReason", infoToUse.customReason);
+    (void)write_previous_line(fp, "PreviousOtherReason", infoToUse.otherReason);
     fflush(fp);
     fclose(fp);
 
