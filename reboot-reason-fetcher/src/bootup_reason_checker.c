@@ -284,70 +284,6 @@ int parse_legacy_log(const char *logPath, RebootInfo *info)
     return SUCCESS;
 }
 
-static int extract_json_value(const char *json, const char *key, char *out, size_t out_size)
-{
-    char pattern[64];
-    const char *start;
-    const char *end;
-    size_t len;
-
-    if (!json || !key || !out || out_size == 0) {
-        return ERROR_GENERAL;
-    }
-
-    snprintf(pattern, sizeof(pattern), "\"%s\":\"", key);
-    start = strstr(json, pattern);
-    if (!start) {
-        return ERROR_GENERAL;
-    }
-    start += strlen(pattern);
-
-    end = strchr(start, '"');
-    if (!end) {
-        return ERROR_GENERAL;
-    }
-
-    len = (size_t)(end - start);
-    if (len >= out_size) {
-        len = out_size - 1;
-    }
-    memcpy(out, start, len);
-    out[len] = '\0';
-    return SUCCESS;
-}
-
-static int load_reboot_info_json(const char *path, RebootInfo *info)
-{
-    FILE *fp;
-    char buf[2048];
-    size_t n;
-
-    if (!path || !info) {
-        return ERROR_GENERAL;
-    }
-
-    fp = fopen(path, "r");
-    if (!fp) {
-        RDK_LOG(RDK_LOG_ERROR, "LOG.RDK.REBOOTINFO", "Failed to open reboot info json %s: %s\n", path, strerror(errno));
-        return ERROR_FILE_NOT_FOUND;
-    }
-
-    n = fread(buf, 1, sizeof(buf) - 1, fp);
-    fclose(fp);
-    buf[n] = '\0';
-
-    if (extract_json_value(buf, "timestamp", info->timestamp, sizeof(info->timestamp)) != SUCCESS ||
-        extract_json_value(buf, "source", info->source, sizeof(info->source)) != SUCCESS ||
-        extract_json_value(buf, "reason", info->reason, sizeof(info->reason)) != SUCCESS ||
-        extract_json_value(buf, "customReason", info->customReason, sizeof(info->customReason)) != SUCCESS ||
-        extract_json_value(buf, "otherReason", info->otherReason, sizeof(info->otherReason)) != SUCCESS) {
-        RDK_LOG(RDK_LOG_ERROR, "LOG.RDK.REBOOTINFO", "Failed to parse reboot info json from %s\n", path);
-        return ERROR_PARSE_FAILED;
-    }
-
-    return SUCCESS;
-}
-
 static void format_iso8601_ms(char *out, size_t out_len)
 {
     struct timeval tv;
@@ -451,22 +387,19 @@ static int load_previous_reboot_reason_line(char *out, size_t out_len)
 int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fallbackInfo)
 {
     FILE *fp;
-    RebootInfo parsedInfo;
-    RebootInfo emptyInfo;
-    const RebootInfo *infoToWrite = fallbackInfo;
+    char prev_log_path[MAX_PATH_LENGTH] = {0};
+    RebootInfo infoFromLog;
+    const RebootInfo *infoToWrite = &infoFromLog;
     char previousReason[MAX_BUFFER_SIZE] = {0};
 
-    memset(&parsedInfo, 0, sizeof(parsedInfo));
-    memset(&emptyInfo, 0, sizeof(emptyInfo));
+    (void)jsonPath;
+    (void)fallbackInfo;
+    memset(&infoFromLog, 0, sizeof(infoFromLog));
 
-    if ((!infoToWrite || infoToWrite->source[0] == '\0' || infoToWrite->timestamp[0] == '\0') && jsonPath) {
-        if (load_reboot_info_json(jsonPath, &parsedInfo) == SUCCESS) {
-            infoToWrite = &parsedInfo;
+    if (find_previous_reboot_log(prev_log_path, sizeof(prev_log_path)) == SUCCESS) {
+        if (parse_legacy_log(prev_log_path, &infoFromLog) != SUCCESS) {
+            memset(&infoFromLog, 0, sizeof(infoFromLog));
         }
-    }
-
-    if (!infoToWrite) {
-        infoToWrite = &emptyInfo;
     }
 
     if (load_previous_reboot_reason_line(previousReason, sizeof(previousReason)) != SUCCESS) {
@@ -490,6 +423,3 @@ int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fa
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Updated PreviousReboot* fields in %s\n", REBOOT_INFO_LOG_FILE);
     return SUCCESS;
 }
-
-
-
