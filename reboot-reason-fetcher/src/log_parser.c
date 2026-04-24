@@ -106,8 +106,6 @@ void free_env_context(EnvContext *ctx)
 
 int update_reboot_info(const EnvContext *ctx)
 {
-    const char *REBOOT_INFO_FLAG = "/tmp/rebootInfo_Updated";
-    
     if (!ctx) return 0;
     if (access(STT_FLAG, F_OK) != 0) {
         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","STT flag missing; skip update\n");
