@@ -325,7 +325,26 @@ void cleanup_services(void)
             }
         }
     }
-    
+    /* Bluetooth services stop */
+    const char *bt_enabled = getenv("BLUETOOTH_ENABLED");
+    if (bt_enabled && strcmp(bt_enabled, "true") == 0) {
+        const char *services[] = {"ctrlm-main", "btmgr", "bluetooth", "bt-hciuart", "btmac-preset", "bt", "syslog-ng"};
+        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Shutting down the bluetooth and syslog-ng services gracefully\n");
+        for (size_t i = 0; i < sizeof(services)/sizeof(services[0]); ++i) {
+            int active = v_secure_system("systemctl --quiet is-active %s", services[i]);
+            if (active == 0) {
+                int rc = v_secure_system("systemctl stop %s", services[i]);
+                if (rc == 0) {
+                  RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","%s service stopped successfully\n", services[i]);
+                }
+                else {
+                  RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Failed to stop %s service\n", services[i]);
+                }
+            } else {
+                RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","%s service is not active\n", services[i]);
+            }
+        }
+    }
     RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Start the sync\n");
     (void)sync();
     usleep(200000);
