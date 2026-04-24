@@ -346,7 +346,13 @@ int main(int argc, char **argv)
     }
 
     snprintf(reason_str, sizeof(reason_str), "PreviousRebootInfo:%s,%s,%s,%s\n", ts, custom_reason, source ? source : "", reboot_reason);
-    write_rebootinfo_log(PARODUS_REBOOT_INFO_FILE, reason_str);
+    FILE *parodus_fp = fopen(PARODUS_REBOOT_INFO_FILE, "w");
+    if (parodus_fp) {
+        fputs(reason_str, parodus_fp);
+        fclose(parodus_fp);
+    } else {
+        RDK_LOG(RDK_LOG_ERROR, "LOG.RDK.REBOOTINFO", "Failed to open %s for writing (errno=%d)\n", PARODUS_REBOOT_INFO_FILE, errno);
+    }
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Updated Reboot Reason information in %s and %s\n", REBOOT_INFO_FILE, PARODUS_REBOOT_INFO_FILE);
 
     proceed_reboot = handle_cyclic_reboot(source, reboot_reason, custom_reason, other_reason);
