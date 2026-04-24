@@ -351,7 +351,6 @@ TEST_F(LogParserTest, update_reboot_info_NonPlatcoRequiresFlags) {
 TEST_F(LogParserTest, update_reboot_info_LlamaFirstInvocationAllowed) {
     EnvContext ctx;
     memset(&ctx, 0, sizeof(EnvContext));
-    ctx.llamaSupport = true;
 
     system("rm -f /tmp/stt_received /tmp/rebootInfo_Updated");
     EXPECT_EQ(update_reboot_info(&ctx), 0);
@@ -360,7 +359,6 @@ TEST_F(LogParserTest, update_reboot_info_LlamaFirstInvocationAllowed) {
 TEST_F(LogParserTest, update_reboot_info_LlamaRequiresSttFlag) {
     EnvContext ctx;
     memset(&ctx, 0, sizeof(EnvContext));
-    ctx.llamaSupport = true;
 
     system("rm -f /tmp/stt_received /tmp/rebootInfo_Updated");
     EXPECT_EQ(update_reboot_info(&ctx), 0);

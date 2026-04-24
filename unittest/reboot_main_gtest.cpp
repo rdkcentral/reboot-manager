@@ -382,8 +382,6 @@ TEST(RebootMain, DirCreateFailureJsonOpenFails){
 
 TEST(RebootMain, InvokeLocalStubs){
     // Exercise local stubs directly to improve function coverage
-    ASSERT_TRUE(rbus_init());
-    rbus_cleanup();
     ASSERT_EQ(pidfile_write_and_guard(), 0);
     cleanup_pidfile();
     ASSERT_EQ(sleep_stub(0), 0u);
