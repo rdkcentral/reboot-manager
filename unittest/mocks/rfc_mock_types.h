@@ -1,3 +1,6 @@
+#ifndef RFC_MOCK_TYPES_H
+#define RFC_MOCK_TYPES_H
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -40,3 +43,5 @@ WDMP_STATUS setRFCParameter(char *pcCallerID, const char *paramName,
 #ifdef __cplusplus
 }
 #endif
+
+#endif /* RFC_MOCK_TYPES_H */
