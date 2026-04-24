@@ -23,7 +23,7 @@ COMMON_LDADD = -lgtest -lgmock -lpthread -lgcov
 COMMON_CFLAGS = -fprofile-arcs -ftest-coverage
 COMMON_CXXFLAGS = -fprofile-arcs -ftest-coverage -fpermissive -Wno-implicit-function-declaration
 
-reboot_utils_gtest_SOURCES = utils_gtest.cpp $(top_srcdir)/../reboot-helper/src/utils.c mocks/rdk_logger_stub.c
+reboot_utils_gtest_SOURCES = utils_gtest.cpp $(top_srcdir)/../reboot-helper/src/utils.c mocks/rdk_logger_stub.c mocks/rfcapi_stub.c
 reboot_utils_gtest_CPPFLAGS = $(COMMON_CPPFLAGS)
 reboot_utils_gtest_LDADD = $(COMMON_LDADD)
 reboot_utils_gtest_CXXFLAGS = $(COMMON_CXXFLAGS)
