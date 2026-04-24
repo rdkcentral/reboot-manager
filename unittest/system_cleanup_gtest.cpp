@@ -21,6 +21,7 @@ static std::vector<std::string> g_cmds;
 extern "C" int v_secure_system(const char* fmt, ...){
     std::string cmd = fmt ? std::string(fmt) : std::string();
     g_cmds.push_back(cmd.empty() ? "call" : cmd);
+    return 0;
 }
 
 TEST(SystemCleanup, PidfileWriteAndGuardAndCleanup){

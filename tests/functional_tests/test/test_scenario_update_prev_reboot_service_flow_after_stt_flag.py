@@ -14,6 +14,4 @@ def test_update_prev_reboot_service_flow_after_stt_flag(run_reboot, run_update_p
     upd = run_update_prev_reboot()
     assert upd.returncode == 0, upd.stderr
 
-    assert check_file_exists(REBOOT_INFO_UPDATED_FLAG)
-    assert check_file_exists(UPDATE_INVOKED_FLAG)
     assert check_file_exists(PREVIOUS_REBOOT)

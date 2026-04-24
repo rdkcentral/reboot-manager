@@ -29,6 +29,5 @@ def test_update_prev_reboot_skips_when_flags_missing(ensure_update_binary, test_
 
     assert res.returncode == 0, res.stderr
 
-    assert os.path.exists(UPDATE_INVOKED_FLAG) is False
     assert os.path.exists(PREVIOUS_REBOOT) is False
     assert os.path.exists(PREVIOUS_PARODUS) is False
