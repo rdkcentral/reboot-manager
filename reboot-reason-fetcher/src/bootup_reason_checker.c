@@ -389,6 +389,11 @@ static int load_previous_reboot_reason_line(char *out, size_t out_len)
 
     while (fgets(line, sizeof(line), fp)) {
         char *trimmed = line;
+        char *reason_pos = NULL;
+        char *value = NULL;
+        size_t len;
+        char *end;
+
         while (*trimmed == ' ' || *trimmed == '\t') {
             trimmed++;
         }
@@ -398,22 +403,32 @@ static int load_previous_reboot_reason_line(char *out, size_t out_len)
         }
 
         if (strncmp(trimmed, "RebootReason:", strlen("RebootReason:")) == 0) {
-            size_t len;
-            char *end;
-
-            strncpy(out, trimmed, out_len - 1);
-            out[out_len - 1] = '\0';
-
-            len = strlen(out);
-            if (len > 0) {
-                end = out + len - 1;
-                while (end >= out && (*end == '\n' || *end == '\r')) {
-                    *end-- = '\0';
-                }
-            }
-            fclose(fp);
-            return SUCCESS;
+            reason_pos = trimmed;
+        } else {
+            reason_pos = strstr(trimmed, "RebootReason:");
         }
+
+        if (!reason_pos) {
+            continue;
+        }
+
+        value = reason_pos + strlen("RebootReason:");
+        while (*value == ' ' || *value == '\t') {
+            value++;
+        }
+
+        snprintf(out, out_len, "RebootReason: %s", value);
+
+        len = strlen(out);
+        if (len > 0) {
+            end = out + len - 1;
+            while (end >= out && (*end == '\n' || *end == '\r')) {
+                *end-- = '\0';
+            }
+        }
+
+        fclose(fp);
+        return SUCCESS;
     }
 
     fclose(fp);
@@ -427,14 +442,15 @@ int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fa
     RebootInfo infoToUse;
     char buf[MAX_BUFFER_SIZE] = {0};
     char previousReason[MAX_BUFFER_SIZE] = {0};
+    char prev_log_path[MAX_PATH_LENGTH] = {0};
+    bool loaded_previous_info = false;
 
     (void)fallbackInfo;  /* Not used - Previous* fields should contain PREVIOUS boot info, not current */
     memset(&infoToUse, 0, sizeof(RebootInfo));
 
     // jsonPath should point to the JSON file containing PREVIOUS boot info (from reboot.info renamed to previousreboot.info)
-    // If jsonPath is NULL, it means no reboot.info file existed, so there's no "previous" reboot info to record.
-    // In that case, we write empty Previous* fields (software reboot scenario).
-    
+    // When JSON is missing/unreadable, fall back to legacy reboot log parsing to preserve shell-script behavior.
+
     if (jsonPath && access(jsonPath, F_OK) == 0) {
         RDK_LOG(RDK_LOG_DEBUG, "LOG.RDK.REBOOTINFO", "Reading previous boot info from JSON: %s\n", jsonPath);
         json_fp = fopen(jsonPath, "r");
@@ -442,26 +458,37 @@ int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fa
             size_t n = fread(buf, 1, sizeof(buf) - 1, json_fp);
             fclose(json_fp);
             buf[n] = '\0';
-            
+
             // Extract JSON values from PREVIOUS boot's reboot info
             extract_json_value(buf, "timestamp", infoToUse.timestamp, sizeof(infoToUse.timestamp));
             extract_json_value(buf, "source", infoToUse.source, sizeof(infoToUse.source));
             extract_json_value(buf, "reason", infoToUse.reason, sizeof(infoToUse.reason));
             extract_json_value(buf, "customReason", infoToUse.customReason, sizeof(infoToUse.customReason));
             extract_json_value(buf, "otherReason", infoToUse.otherReason, sizeof(infoToUse.otherReason));
-            
-            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Loaded previous boot info - Source: %s, Reason: %s\n", 
+
+            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Loaded previous boot info - Source: %s, Reason: %s\n",
                     infoToUse.source, infoToUse.reason);
+            loaded_previous_info = true;
+        } else {
+            RDK_LOG(RDK_LOG_WARN, "LOG.RDK.REBOOTINFO", "Failed to open previous reboot JSON file: %s\n", jsonPath);
         }
     } else if (jsonPath == NULL) {
-        RDK_LOG(RDK_LOG_DEBUG, "LOG.RDK.REBOOTINFO", "No reboot.info file existed (hardware/software reset) - leaving Previous* empty\n");
-        // When jsonPath is NULL (no reboot.info), just leave infoToUse empty.
-        // The shell script reboot-checker.sh already populated rebootInfo.log with Previous* fields
-        // from the previous boot's current fields. We don't need to read legacy logs here.
-        // If Previous* fields exist, update_previous_reboot_log_fields will be called by the shell anyway.
+        RDK_LOG(RDK_LOG_DEBUG, "LOG.RDK.REBOOTINFO", "No reboot.info file existed - trying legacy reboot log fallback\n");
     } else {
-        RDK_LOG(RDK_LOG_DEBUG, "LOG.RDK.REBOOTINFO", "Previous reboot JSON file not accessible: %s\n", jsonPath);
-        // Leave infoToUse empty
+        RDK_LOG(RDK_LOG_DEBUG, "LOG.RDK.REBOOTINFO", "Previous reboot JSON file not accessible: %s, trying legacy reboot log fallback\n", jsonPath);
+    }
+
+    if (!loaded_previous_info) {
+        if (find_previous_reboot_log(prev_log_path, sizeof(prev_log_path)) == SUCCESS) {
+            if (parse_legacy_log(prev_log_path, &infoToUse) == SUCCESS) {
+                loaded_previous_info = true;
+                RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Loaded previous boot info from legacy log: %s\n", prev_log_path);
+            } else {
+                RDK_LOG(RDK_LOG_WARN, "LOG.RDK.REBOOTINFO", "Failed to parse legacy reboot log: %s\n", prev_log_path);
+            }
+        } else {
+            RDK_LOG(RDK_LOG_DEBUG, "LOG.RDK.REBOOTINFO", "No previous reboot log available for fallback\n");
+        }
     }
 
     if (load_previous_reboot_reason_line(previousReason, sizeof(previousReason)) != SUCCESS) {

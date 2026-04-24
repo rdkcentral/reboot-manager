@@ -23,7 +23,8 @@ typedef enum {
 	WDMP_SUCCESS          = 0,
 	WDMP_FAILURE          = 1,
 	WDMP_ERR_NOT_EXIST    = 2,
-	WDMP_ERR_INVALID_PARAM = 3
+	WDMP_ERR_INVALID_PARAM = 3,
+	WDMP_ERR_DEFAULT_VALUE = 4
 } WDMP_STATUS;
 
 typedef struct {

@@ -77,7 +77,7 @@ void t2_event_s(const char* marker, const char* val){ (void)marker; (void)val; }
 void t2_init(const char* client){ (void)client; }
 static bool g_notif_called=false;
 static bool g_mng_enable=true;
-static bool g_rbus_get_ok=true;
+static bool g_rfc_get_ok=true;
 static bool g_det_enable=true; static int g_duration=10; static bool g_reboot_stop_enable=false;
 
 WDMP_STATUS getRFCParameter(char* /*callerID*/, const char* paramName, RFC_ParamData_t* param) {
