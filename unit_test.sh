@@ -29,7 +29,6 @@ make -j$(nproc || echo 2)
 fail=0
 for test in \
   ./reboot_utils_gtest \
-  ./reboot_rbus_gtest \
   ./reboot_cyclic_gtest \
   ./reboot_system_gtest \
   ./reboot_main_gtest \

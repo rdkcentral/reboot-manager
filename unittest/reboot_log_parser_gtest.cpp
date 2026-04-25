@@ -15,8 +15,6 @@ static std::unordered_map<std::string, std::string> g_mock_path_map;
 static char g_soc_value[64] = {0};
 static char g_build_type_value[64] = {0};
 static char g_device_type_value[64] = {0};
-static char g_platco_value[16] = {0};
-static char g_llama_value[16] = {0};
 static char g_stt_value[16] = {0};
 
 extern "C" {
@@ -37,10 +35,6 @@ extern "C" {
                 selected = g_build_type_value;
             } else if (strcmp(key, "DEVICE_TYPE") == 0 && g_device_type_value[0] != '\0') {
                 selected = g_device_type_value;
-            } else if (strcmp(key, "PLATCO_SUPPORT") == 0 && g_platco_value[0] != '\0') {
-                selected = g_platco_value;
-            } else if (strcmp(key, "LLAMA_SUPPORT") == 0 && g_llama_value[0] != '\0') {
-                selected = g_llama_value;
             } else if (strcmp(key, "REBOOT_INFO_STT_SUPPORT") == 0 && g_stt_value[0] != '\0') {
                 selected = g_stt_value;
             }
@@ -130,8 +124,6 @@ protected:
         memset(g_soc_value, 0, sizeof(g_soc_value));
         memset(g_build_type_value, 0, sizeof(g_build_type_value));
         memset(g_device_type_value, 0, sizeof(g_device_type_value));
-        memset(g_platco_value, 0, sizeof(g_platco_value));
-        memset(g_llama_value, 0, sizeof(g_llama_value));
         memset(g_stt_value, 0, sizeof(g_stt_value));
     }
 
@@ -202,9 +194,7 @@ TEST_F(LogParserTest, parse_device_properties_Success) {
     createTestLogFile("/tmp/reboot_test/device.properties",
                       "SOC=BRCM\n"
                       "BUILD_TYPE=prod\n"
-                      "DEVICE_TYPE=stb\n"
-                      "PLATCO_SUPPORT=true\n"
-                      "LLAMA_SUPPORT=false\n");
+                      "DEVICE_TYPE=stb\n");
 
     // Since parse_device_properties reads from /etc/device.properties,
     // we test the fallback parsing path
@@ -218,8 +208,6 @@ TEST_F(LogParserTest, parse_device_properties_InitializesDefaults) {
 
     int result = parse_device_properties(&ctx);
     EXPECT_EQ(result, SUCCESS);
-    EXPECT_FALSE(ctx.platcoSupport);
-    EXPECT_FALSE(ctx.llamaSupport);
     EXPECT_FALSE(ctx.rebootInfoSttSupport);
 }
 
@@ -231,8 +219,6 @@ TEST_F(LogParserTest, parse_device_properties_UsesMockPropertyValues) {
     strncpy(g_soc_value, "BRCM", sizeof(g_soc_value) - 1);
     strncpy(g_build_type_value, "prod", sizeof(g_build_type_value) - 1);
     strncpy(g_device_type_value, "stb", sizeof(g_device_type_value) - 1);
-    strncpy(g_platco_value, "true", sizeof(g_platco_value) - 1);
-    strncpy(g_llama_value, "false", sizeof(g_llama_value) - 1);
     strncpy(g_stt_value, "true", sizeof(g_stt_value) - 1);
 
     int result = parse_device_properties(&ctx);
@@ -240,8 +226,6 @@ TEST_F(LogParserTest, parse_device_properties_UsesMockPropertyValues) {
     EXPECT_STREQ(ctx.soc, "BRCM");
     EXPECT_STREQ(ctx.buildType, "prod");
     EXPECT_STREQ(ctx.device_type, "stb");
-    EXPECT_TRUE(ctx.platcoSupport);
-    EXPECT_FALSE(ctx.llamaSupport);
     EXPECT_TRUE(ctx.rebootInfoSttSupport);
 }
 
@@ -252,14 +236,10 @@ TEST_F(LogParserTest, parse_device_properties_UppercaseTrueValues) {
     g_mock_props_enabled = true;
     strncpy(g_soc_value, "RTK", sizeof(g_soc_value) - 1);
     strncpy(g_device_type_value, "stb", sizeof(g_device_type_value) - 1);
-    strncpy(g_platco_value, "TRUE", sizeof(g_platco_value) - 1);
-    strncpy(g_llama_value, "TRUE", sizeof(g_llama_value) - 1);
     strncpy(g_stt_value, "TRUE", sizeof(g_stt_value) - 1);
 
     int result = parse_device_properties(&ctx);
     EXPECT_EQ(result, SUCCESS);
-    EXPECT_TRUE(ctx.platcoSupport);
-    EXPECT_TRUE(ctx.llamaSupport);
     EXPECT_TRUE(ctx.rebootInfoSttSupport);
 }
 
@@ -321,50 +301,37 @@ TEST_F(LogParserTest, update_reboot_info_NullContext) {
     EXPECT_EQ(update_reboot_info(nullptr), 0);
 }
 
-TEST_F(LogParserTest, update_reboot_info_PlatcoFirstInvocation) {
+TEST_F(LogParserTest, update_reboot_info_PlatcoWithoutSttFlag) {
     EnvContext ctx;
     memset(&ctx, 0, sizeof(EnvContext));
-    ctx.platcoSupport = true;
 
-    // Remove the invoked flag
-    system("rm -f /tmp/Update_rebootInfo_invoked");
+    system("rm -f /tmp/stt_received");
 
-    // Should allow update on first invocation
+    // Should block update without STT flag
     EXPECT_EQ(update_reboot_info(&ctx), 0);
 }
 
-TEST_F(LogParserTest, update_reboot_info_RequiresFlagsAfterFirstInvoke) {
+TEST_F(LogParserTest, update_reboot_info_RequiresSttFlag) {
     EnvContext ctx;
     memset(&ctx, 0, sizeof(EnvContext));
-    ctx.platcoSupport = true;
+    // Remove flags
+    system("rm -f /tmp/stt_received");
 
-    // Create invoked flag
-    createTestLogFile("/tmp/Update_rebootInfo_invoked", "1\n");
-
-    // Remove other flags
-    system("rm -f /tmp/stt_received /tmp/rebootInfo_Updated");
-
-    // Should block update without required flags
+    // Should block update without STT flag
     EXPECT_EQ(update_reboot_info(&ctx), 0);
-
-    // Clean up
-    system("rm -f /tmp/Update_rebootInfo_invoked");
 }
 
 TEST_F(LogParserTest, update_reboot_info_AllowsWithFlags) {
     EnvContext ctx;
     memset(&ctx, 0, sizeof(EnvContext));
-    ctx.platcoSupport = true;
 
-    // Create all required flags
-    createTestLogFile("/tmp/Update_rebootInfo_invoked", "1\n");
+    // Create required flags
     createTestLogFile("/tmp/stt_received", "1\n");
-    createTestLogFile("/tmp/rebootInfo_Updated", "1\n");
 
     EXPECT_EQ(update_reboot_info(&ctx), 1);
 
     // Clean up
-    system("rm -f /tmp/Update_rebootInfo_invoked /tmp/stt_received /tmp/rebootInfo_Updated");
+    system("rm -f /tmp/stt_received");
 }
 
 TEST_F(LogParserTest, update_reboot_info_NonPlatcoRequiresFlags) {
@@ -384,18 +351,15 @@ TEST_F(LogParserTest, update_reboot_info_NonPlatcoRequiresFlags) {
 TEST_F(LogParserTest, update_reboot_info_LlamaFirstInvocationAllowed) {
     EnvContext ctx;
     memset(&ctx, 0, sizeof(EnvContext));
-    ctx.llamaSupport = true;
 
-    system("rm -f /tmp/Update_rebootInfo_invoked");
+    system("rm -f /tmp/stt_received /tmp/rebootInfo_Updated");
     EXPECT_EQ(update_reboot_info(&ctx), 0);
 }
 
-TEST_F(LogParserTest, update_reboot_info_LlamaInvokedNeedsFlags) {
+TEST_F(LogParserTest, update_reboot_info_LlamaRequiresSttFlag) {
     EnvContext ctx;
     memset(&ctx, 0, sizeof(EnvContext));
-    ctx.llamaSupport = true;
 
-    createTestLogFile("/tmp/Update_rebootInfo_invoked", "1\n");
     system("rm -f /tmp/stt_received /tmp/rebootInfo_Updated");
     EXPECT_EQ(update_reboot_info(&ctx), 0);
 
@@ -403,7 +367,7 @@ TEST_F(LogParserTest, update_reboot_info_LlamaInvokedNeedsFlags) {
     createTestLogFile("/tmp/rebootInfo_Updated", "1\n");
     EXPECT_EQ(update_reboot_info(&ctx), 1);
 
-    system("rm -f /tmp/Update_rebootInfo_invoked /tmp/stt_received /tmp/rebootInfo_Updated");
+    system("rm -f /tmp/stt_received /tmp/rebootInfo_Updated");
 }
 
 // Tests for parse_legacy_log
@@ -739,6 +703,162 @@ TEST_F(LogParserTest, get_hardware_reason_brcm_OpenFailsReturnsErrorGeneral) {
     EXPECT_EQ(hw.mappedReason[0], '\0');
 }
 
+// ============================================================
+// Tests for find_previous_reboot_log
+// ============================================================
+
+TEST_F(LogParserTest, find_previous_reboot_log_NullParameters) {
+    char buf[256];
+    EXPECT_EQ(find_previous_reboot_log(nullptr, sizeof(buf)), ERROR_GENERAL);
+    EXPECT_EQ(find_previous_reboot_log(buf, 0),              ERROR_GENERAL);
+}
+
+TEST_F(LogParserTest, find_previous_reboot_log_NoLogsReturnsNotFound) {
+    // Point LOG_PATH at an empty directory — no PreviousLogs at all
+    setenv("LOG_PATH", "/tmp/reboot_test/nologs", 1);
+    char out[256] = {0};
+    int rc = find_previous_reboot_log(out, sizeof(out));
+    EXPECT_EQ(rc, ERROR_FILE_NOT_FOUND);
+    EXPECT_EQ(out[0], '\0');
+    unsetenv("LOG_PATH");
+}
+
+TEST_F(LogParserTest, find_previous_reboot_log_TimestampedSubdir) {
+    // Build: /tmp/reboot_test/logs/PreviousLogs/20260101_120000/last_reboot
+    //                                                           /rebootInfo.log
+    system("mkdir -p /tmp/reboot_test/logs/PreviousLogs/20260101_120000");
+    createTestLogFile("/tmp/reboot_test/logs/PreviousLogs/20260101_120000/last_reboot", "");
+    createTestLogFile("/tmp/reboot_test/logs/PreviousLogs/20260101_120000/rebootInfo.log",
+                      "RebootInitiatedBy: Servicemanager\n");
+    setenv("LOG_PATH", "/tmp/reboot_test/logs", 1);
+    char out[512] = {0};
+    int rc = find_previous_reboot_log(out, sizeof(out));
+    EXPECT_EQ(rc, SUCCESS);
+    EXPECT_STRNE(out, "");
+    EXPECT_NE(strstr(out, "rebootInfo.log"), nullptr);
+    unsetenv("LOG_PATH");
+}
+
+TEST_F(LogParserTest, find_previous_reboot_log_FlatFallback) {
+    // No timestamped sub-dir, but flat PreviousLogs/rebootInfo.log exists
+    system("mkdir -p /tmp/reboot_test/logs/PreviousLogs");
+    createTestLogFile("/tmp/reboot_test/logs/PreviousLogs/rebootInfo.log",
+                      "RebootInitiatedBy: WebPA\n");
+    setenv("LOG_PATH", "/tmp/reboot_test/logs", 1);
+    char out[512] = {0};
+    int rc = find_previous_reboot_log(out, sizeof(out));
+    EXPECT_EQ(rc, SUCCESS);
+    EXPECT_STREQ(out, "/tmp/reboot_test/logs/PreviousLogs/rebootInfo.log");
+    unsetenv("LOG_PATH");
+}
+
+TEST_F(LogParserTest, find_previous_reboot_log_Bak1Preferred) {
+    // Both flat rebootInfo.log and bak1_rebootInfo.log exist — bak1 preferred
+    system("mkdir -p /tmp/reboot_test/logs/PreviousLogs");
+    createTestLogFile("/tmp/reboot_test/logs/PreviousLogs/rebootInfo.log",     "old\n");
+    createTestLogFile("/tmp/reboot_test/logs/PreviousLogs/bak1_rebootInfo.log","newer\n");
+    setenv("LOG_PATH", "/tmp/reboot_test/logs", 1);
+    char out[512] = {0};
+    int rc = find_previous_reboot_log(out, sizeof(out));
+    EXPECT_EQ(rc, SUCCESS);
+    EXPECT_STREQ(out, "/tmp/reboot_test/logs/PreviousLogs/bak1_rebootInfo.log");
+    unsetenv("LOG_PATH");
+}
+
+TEST_F(LogParserTest, find_previous_reboot_log_Bak2WhenBak1Missing) {
+    system("mkdir -p /tmp/reboot_test/logs/PreviousLogs");
+    createTestLogFile("/tmp/reboot_test/logs/PreviousLogs/rebootInfo.log",     "old\n");
+    createTestLogFile("/tmp/reboot_test/logs/PreviousLogs/bak2_rebootInfo.log","bak2\n");
+    setenv("LOG_PATH", "/tmp/reboot_test/logs", 1);
+    char out[512] = {0};
+    int rc = find_previous_reboot_log(out, sizeof(out));
+    EXPECT_EQ(rc, SUCCESS);
+    EXPECT_STREQ(out, "/tmp/reboot_test/logs/PreviousLogs/bak2_rebootInfo.log");
+    unsetenv("LOG_PATH");
+}
+
+// ============================================================
+// Tests for parse_legacy_log — raw-field (non-Previous-prefixed) parsing
+// ============================================================
+
+TEST_F(LogParserTest, parse_legacy_log_RawFields) {
+    const char *testFile = "/tmp/reboot_test/raw_reboot.log";
+    createTestLogFile(testFile,
+                      "Thu Jan  1 12:00:00 UTC 2026 RebootReason: MAINTENANCE_REBOOT\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 RebootInitiatedBy: Servicemanager\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 RebootTime: Thu Jan  1 12:00:00 UTC 2026\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 CustomReason: MAINTENANCE_REBOOT\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 OtherReason: Scheduled maintenance\n");
+
+    RebootInfo info;
+    memset(&info, 0, sizeof(RebootInfo));
+    int result = parse_legacy_log(testFile, &info);
+    EXPECT_EQ(result, SUCCESS);
+    EXPECT_STREQ(info.source, "Servicemanager");
+    EXPECT_STREQ(info.customReason, "MAINTENANCE_REBOOT");
+    EXPECT_STREQ(info.otherReason, "Scheduled maintenance");
+}
+
+TEST_F(LogParserTest, parse_legacy_log_HalSysReboot) {
+    // When RebootInitiatedBy is HAL_SYS_Reboot, real initiator and reason
+    // are extracted from the "Triggered from" RebootReason line.
+    const char *testFile = "/tmp/reboot_test/hal_sys_reboot.log";
+    createTestLogFile(testFile,
+                      "Thu Jan  1 12:00:00 UTC 2026 RebootReason: Triggered from WebPA FIRMWARE_FAILURE (XRE)\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 RebootInitiatedBy: HAL_SYS_Reboot\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 RebootTime: Thu Jan  1 12:00:00 UTC 2026\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 CustomReason: FIRMWARE_FAILURE\n");
+
+    RebootInfo info;
+    memset(&info, 0, sizeof(RebootInfo));
+    int result = parse_legacy_log(testFile, &info);
+    EXPECT_EQ(result, SUCCESS);
+    // Initiator should be unwrapped from "Triggered from WebPA ..."
+    EXPECT_STREQ(info.source, "WebPA");
+    // OtherReason should be the text between initiator and '('
+    EXPECT_STREQ(info.otherReason, "FIRMWARE_FAILURE");
+    EXPECT_STREQ(info.customReason, "FIRMWARE_FAILURE");
+}
+
+TEST_F(LogParserTest, parse_legacy_log_HalSysReboot_NoTriggerLine) {
+    // HAL_SYS_Reboot but no matching Triggered-from RebootReason line
+    // source stays as HAL_SYS_Reboot, no crash
+    const char *testFile = "/tmp/reboot_test/hal_notrigger.log";
+    createTestLogFile(testFile,
+                      "Thu Jan  1 12:00:00 UTC 2026 RebootInitiatedBy: HAL_SYS_Reboot\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 CustomReason: UNKNOWN\n");
+
+    RebootInfo info;
+    memset(&info, 0, sizeof(RebootInfo));
+    int result = parse_legacy_log(testFile, &info);
+    EXPECT_EQ(result, SUCCESS);
+    EXPECT_STREQ(info.source, "HAL_SYS_Reboot");
+    EXPECT_STREQ(info.customReason, "UNKNOWN");
+}
+
+TEST_F(LogParserTest, parse_legacy_log_PreviousPrefixTakesPriority) {
+    // File contains both raw and Previous-prefixed fields;
+    // Previous-prefixed values must win.
+    const char *testFile = "/tmp/reboot_test/mixed_fields.log";
+    createTestLogFile(testFile,
+                      "Thu Jan  1 12:00:00 UTC 2026 RebootInitiatedBy: RawSource\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 PreviousRebootInitiatedBy: LegacySource\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 RebootTime: 2026-01-01 12:00:00 UTC\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 PreviousRebootTime: 2025-12-31 08:00:00 UTC\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 CustomReason: RawCustom\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 PreviousCustomReason: LegacyCustom\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 PreviousOtherReason: LegacyOther\n");
+
+    RebootInfo info;
+    memset(&info, 0, sizeof(RebootInfo));
+    int result = parse_legacy_log(testFile, &info);
+    EXPECT_EQ(result, SUCCESS);
+    EXPECT_STREQ(info.source,       "LegacySource");
+    EXPECT_STREQ(info.timestamp,    "2025-12-31 08:00:00 UTC");
+    EXPECT_STREQ(info.customReason, "LegacyCustom");
+    EXPECT_STREQ(info.otherReason,  "LegacyOther");
+}
+
 GTEST_API_ int main(int argc, char *argv[]) {
     char testresults_fullfilepath[GTEST_REPORT_FILEPATH_SIZE];
 
@@ -752,4 +872,5 @@ GTEST_API_ int main(int argc, char *argv[]) {
     cout << "Starting REBOOT_LOG_PARSER GTEST ===================>" << endl;
     return RUN_ALL_TESTS();
 }
+
 

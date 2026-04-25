@@ -29,7 +29,6 @@
 #include <signal.h>
 #include "reboot.h"
 #include "secure_wrapper.h"
-#include "rebootmgr_rbus_interface.h"
 #include "rdk_logger.h"
 #include <fcntl.h>
 #include <errno.h>

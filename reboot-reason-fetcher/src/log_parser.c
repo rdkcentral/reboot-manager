@@ -14,8 +14,6 @@ int parse_device_properties(EnvContext *ctx)
         return ERROR_GENERAL;
     }
     memset(ctx, 0, sizeof(EnvContext));
-    ctx->platcoSupport = false;
-    ctx->llamaSupport = false;
     ctx->rebootInfoSttSupport = false;
     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Parsing device properties using common_utilities\n");
     if (getDevicePropertyData("SOC", buffer, sizeof(buffer)) == UTILS_SUCCESS) {
@@ -49,12 +47,6 @@ int parse_device_properties(EnvContext *ctx)
         }
         memcpy(ctx->device_type, buffer, len);
         ctx->device_type[len] = '\0';
-    }
-    if (getDevicePropertyData("PLATCO_SUPPORT", buffer, sizeof(buffer)) == UTILS_SUCCESS) {
-        ctx->platcoSupport = (strcasecmp(buffer, "true") == 0);
-    }
-    if (getDevicePropertyData("LLAMA_SUPPORT", buffer, sizeof(buffer)) == UTILS_SUCCESS) {
-        ctx->llamaSupport = (strcasecmp(buffer, "true") == 0);
     }
     if (getDevicePropertyData("REBOOT_INFO_STT_SUPPORT", buffer, sizeof(buffer)) == UTILS_SUCCESS) {
         ctx->rebootInfoSttSupport = (strcasecmp(buffer, "true") == 0);
@@ -101,7 +93,7 @@ int parse_device_properties(EnvContext *ctx)
         }
     }
     RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Device properties parsed - SOC: %s, RDK_PROFILE: %s, BuildType: %s, DeviceType: %s\n", ctx->soc, ctx->rdkProfile, ctx->buildType, ctx->device_type);
-    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Support flags - PLATCO: %d, LLAMA: %d, STT: %d\n", ctx->platcoSupport, ctx->llamaSupport, ctx->rebootInfoSttSupport);
+    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Support flags - STT: %d\n",ctx->rebootInfoSttSupport);
     return SUCCESS;
 }
 
@@ -114,11 +106,9 @@ void free_env_context(EnvContext *ctx)
 
 int update_reboot_info(const EnvContext *ctx)
 {
-    const char *REBOOT_INFO_FLAG = "/tmp/rebootInfo_Updated";
-    
     if (!ctx) return 0;
-    if (access(STT_FLAG, F_OK) != 0 || access(REBOOT_INFO_FLAG, F_OK) != 0) {
-        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","STT or RebootInfo flag missing; skip update\n");
+    if (access(STT_FLAG, F_OK) != 0) {
+        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","STT flag missing; skip update\n");
         return 0;
     }
     return 1;
@@ -145,67 +135,6 @@ int get_hardware_reason(const EnvContext *ctx, HardwareReason *hwReason, RebootI
         strcpy(hwReason->mappedReason, "UNKNOWN");
     }
 
-    return SUCCESS;
-}
-
-static void getVal(const char *line, const char *prefix, char *output, size_t output_size)
-{
-    const char *value = line + strlen(prefix);
-    while (*value && (*value == ' ' || *value == '\t')) {
-        value++;
-    }
-    strncpy(output, value, output_size - 1);
-    output[output_size - 1] = '\0';
-    char *end = output + strlen(output) - 1;
-    while (end >= output && (*end == ' ' || *end == '\t' || *end == '\n' || *end == '\r')) {
-        *end = '\0';
-        end--;
-    }
-}
-
-int parse_legacy_log(const char *logPath, RebootInfo *info)
-{
-    FILE *fp = NULL;
-    char line[MAX_BUFFER_SIZE];
-    int found_fields = 0;
-    if (!logPath || !info) {
-        RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Invalid parameters for parse_legacy_log\n");
-        return ERROR_GENERAL;
-    }
-    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Parsing legacy log: %s\n", logPath);
-    fp = fopen(logPath, "r");
-    if (!fp) {
-        RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to open legacy log %s: %s\n", logPath, strerror(errno));
-        return ERROR_FILE_NOT_FOUND;
-    }
-     while (fgets(line, sizeof(line), fp)) {
-        if (strstr(line, "PreviousRebootInitiatedBy:")) {
-            getVal(strstr(line, "PreviousRebootInitiatedBy:"), "PreviousRebootInitiatedBy:", info->source, sizeof(info->source));
-            found_fields++;
-        }
-        else if (strstr(line, "PreviousRebootTime:")) {
-            getVal(strstr(line, "PreviousRebootTime:"), "PreviousRebootTime:", info->timestamp, sizeof(info->timestamp));
-            found_fields++;
-        }
-        else if (strstr(line, "PreviousCustomReason:")) {
-            getVal(strstr(line, "PreviousCustomReason:"), "PreviousCustomReason:", info->customReason, sizeof(info->customReason));
-            found_fields++;
-        }
-        else if (strstr(line, "PreviousOtherReason:")) {
-            getVal(strstr(line, "PreviousOtherReason:"), "PreviousOtherReason:", info->otherReason, sizeof(info->otherReason));
-            found_fields++;
-        }
-        if (found_fields >= 4) {
-            break;
-        }
-    }
-    fclose(fp);
-    if (found_fields == 0) {
-        RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","No reboot info fields found in legacy log\n");
-        return FAILURE;
-    }
-    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Parsed legacy log - Found %d fields\n", found_fields);
-    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Timestamp: %s, Source: %s, Reason: %s\n", info->timestamp, info->source, info->reason);
     return SUCCESS;
 }
 

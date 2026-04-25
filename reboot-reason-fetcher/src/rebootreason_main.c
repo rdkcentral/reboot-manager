@@ -1,6 +1,9 @@
 #include "update-reboot-info.h"
 #include "rdk_logger.h"
 
+int find_previous_reboot_log(char *out_path, size_t len);
+int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fallbackInfo);
+
 void t2CountNotify(char *marker, int val) {
 #ifdef T2_EVENT_ENABLED
     t2_event_d(marker, val);
@@ -135,9 +138,6 @@ int main(void)
     else {
         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Deriving reboot reason from legacy sources \n");
 
-        if (parse_legacy_log(REBOOT_INFO_LOG_FILE, &rebootInfo) != SUCCESS) {
-            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","No legacy log found or parse failed, will derive from hardware/panic \n");
-        }
 
         if (rebootInfo.timestamp[0] == '\0') {
             get_current_timestamp(rebootInfo.timestamp, sizeof(rebootInfo.timestamp));
@@ -149,12 +149,8 @@ int main(void)
         RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Checking firmware failures \n");
         check_firmware_failure(&ctx, &fwFailure);
 
-        if (rebootInfo.customReason[0] == '\0' || rebootInfo.source[0] == '\0') {
-            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Getting hardware reboot reason \n");
-            get_hardware_reason(&ctx, &hwReason, &rebootInfo);
-        } else {
-            memset(&hwReason, 0, sizeof(HardwareReason));
-        }
+        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Getting hardware reboot reason for current boot \n");
+        get_hardware_reason(&ctx, &hwReason, &rebootInfo);
 
         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Classifying reboot reason \n");
         if (classify_reboot_reason(&rebootInfo, &ctx, &hwReason, &panicInfo, &fwFailure) != SUCCESS) {
@@ -162,6 +158,10 @@ int main(void)
             ret = ERROR_GENERAL;
             goto cleanup;
         }
+    }
+
+    if (update_previous_reboot_log_fields(has_reboot_info ? PREVIOUS_REBOOT_INFO_FILE : NULL, &rebootInfo) != SUCCESS) {
+        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Skipping PreviousReboot* update in %s due to missing reboot info fields\n", REBOOT_INFO_LOG_FILE);
     }
 
     if (!has_reboot_info) {
@@ -181,12 +181,6 @@ int main(void)
     }
     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Copying keypress info \n");
     copy_keypress_info(KEYPRESS_INFO_FILE, PREVIOUS_KEYPRESS_INFO_FILE);
-    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Creating invocation flag\n");
-    FILE *flag_fp = fopen(UPDATE_REBOOT_INFO_INVOKED_FLAG, "w");
-    if (flag_fp) {
-        fprintf(flag_fp, "1\n");
-        fclose(flag_fp);
-    }
 
     RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Reboot reason processing completed successfully \n");
 
