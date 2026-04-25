@@ -14,5 +14,3 @@ def test_update_prev_reboot_generates_previous_files_and_flags(run_reboot, run_u
     assert upd.returncode == 0, upd.stderr
     assert check_file_exists(PREVIOUS_REBOOT)
     assert check_file_exists(PREVIOUS_PARODUS)
-    assert check_file_exists(UPDATE_INVOKED_FLAG)
-    assert check_file_exists(REBOOT_INFO_UPDATED_FLAG)

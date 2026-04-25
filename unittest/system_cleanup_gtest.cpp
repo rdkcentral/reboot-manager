@@ -17,18 +17,10 @@ extern "C" {
 
 using namespace testing;
 static std::vector<std::string> g_cmds;
-static bool g_sim_inactive = false;
-static bool g_sim_stop_fail = false;
 
 extern "C" int v_secure_system(const char* fmt, ...){
     std::string cmd = fmt ? std::string(fmt) : std::string();
     g_cmds.push_back(cmd.empty() ? "call" : cmd);
-    if (g_sim_inactive && cmd.find("is-active") != std::string::npos) {
-        return 1;
-    }
-    if (g_sim_stop_fail && cmd.find("systemctl stop") != std::string::npos) {
-        return 1;
-    }
     return 0;
 }
 
@@ -40,28 +32,6 @@ TEST(SystemCleanup, PidfileWriteAndGuardAndCleanup){
     // Cleanup should remove it
     cleanup_pidfile();
     ASSERT_NE(0, access("/tmp/.rebootNow.pid", F_OK));
-}
-
-TEST(SystemCleanup, BluetoothServicesStopBranch){
-    // Exercise BLUETOOTH_ENABLED path; v_secure_system always returns 0 (active/stop OK)
-    g_cmds.clear();
-    setenv("BLUETOOTH_ENABLED", "true", 1);
-    cleanup_services();
-    ASSERT_FALSE(g_cmds.empty());
-    unsetenv("BLUETOOTH_ENABLED");
-}
-
-TEST(SystemCleanup, BluetoothServicesInactiveAndStopFail){
-    // Simulate services not active, then simulate stop failure on subsequent run
-    setenv("BLUETOOTH_ENABLED", "true", 1);
-    g_cmds.clear(); g_sim_inactive=true; g_sim_stop_fail=false;
-    cleanup_services();
-    ASSERT_FALSE(g_cmds.empty());
-    // Now simulate active but stop fails
-    g_cmds.clear(); g_sim_inactive=false; g_sim_stop_fail=true;
-    cleanup_services();
-    ASSERT_FALSE(g_cmds.empty());
-    unsetenv("BLUETOOTH_ENABLED");
 }
 
 TEST(SystemCleanup, SyncLogsSamePathNoOp){

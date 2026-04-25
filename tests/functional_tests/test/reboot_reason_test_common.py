@@ -10,8 +10,6 @@ PREVIOUS_REBOOT = "/opt/secure/reboot/previousreboot.info"
 HARDPOWER_INFO = "/opt/secure/reboot/hardpower.info"
 REBOOT_INFO = "/opt/secure/reboot/reboot.info"
 PARODUS_REBOOT_INFO = "/opt/secure/reboot/parodusreboot.info"
-UPDATE_INVOKED_FLAG = "/tmp/Update_rebootInfo_invoked"
-REBOOT_INFO_UPDATED_FLAG = "/tmp/rebootInfo_Updated"
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 HEADER_PATH = os.path.join(REPO_ROOT, "reboot-reason-fetcher", "include", "update-reboot-info.h")
 
@@ -48,8 +46,6 @@ __all__ = [
     "HARDPOWER_INFO",
     "REBOOT_INFO",
     "PARODUS_REBOOT_INFO",
-    "UPDATE_INVOKED_FLAG",
-    "REBOOT_INFO_UPDATED_FLAG",
     "REPO_ROOT",
     "HEADER_PATH",
     "APP_TRIGGERED_REASONS",

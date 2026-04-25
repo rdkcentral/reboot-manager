@@ -21,7 +21,7 @@ static bool g_reboot_stop_enable = false;
 
 extern "C" {
 
-bool rbus_get_bool_param(const char* name, bool* value)
+bool rfc_get_bool_param(const char* name, bool* value)
 {
     if (std::string(name).find("RebootStop.Detection") != std::string::npos)
     {
@@ -36,7 +36,7 @@ bool rbus_get_bool_param(const char* name, bool* value)
     return false;
 }
 
-bool rbus_get_int_param(const char* name, int* value)
+bool rfc_get_int_param(const char* name, int* value)
 {
     if (std::string(name).find("RebootStop.Duration") != std::string::npos)
     {
@@ -46,7 +46,7 @@ bool rbus_get_int_param(const char* name, int* value)
     return false;
 }
 
-bool rbus_set_bool_param(const char* name, bool value)
+bool rfc_set_bool_param(const char* name, bool value)
 {
     if (std::string(name).find("RebootStop.Enable") != std::string::npos)
     {
