@@ -92,7 +92,7 @@ setPreviousRebootInfo()
     echo "}" >> $PREVIOUS_REBOOT_INFO_FILE
 
     rebootLog "Updating previous reboot reason in $PARODUS_LOG"
-    existing_reboot_info=$(grep "PreviousRebootInfo" "$PARODUS_LOG" 2>/dev/null 2>/dev/null | tail -1)
+    existing_reboot_info=$(grep "PreviousRebootInfo" "$PARODUS_LOG" 2>/dev/null | tail -1)
 
     if [ -z "$existing_reboot_info" ]; then
         echo "$(/bin/timestamp): $0: Updating previous reboot info to Parodus" >> "$PARODUS_LOG"
