@@ -25,8 +25,8 @@ if [ -f /lib/rdk/t2Shared_api.sh ]; then
 fi
 
 # Define logfiles and flags
-REBOOT_INFO_LOG_FILE="/opt/logs/rebootInfo.log"
-KERNEL_LOG_FILE="/opt/logs/messages.txt"
+REBOOT_INFO_LOG_FILE="/opt/logs/unified-logging.txt"
+KERNEL_LOG_FILE="/opt/logs/unified-logging.txt"
 UIMGR_LOG_FILE="/opt/logs/PreviousLogs/uimgr_log.txt"
 OCAPRI_LOG_FILE="/opt/logs/PreviousLogs/ocapri_log.txt"
 ECM_CRASH_LOG_FILE="/opt/logs/PreviousLogs/messages-ecm.txt"
@@ -53,7 +53,7 @@ STT_FLAG="/tmp/stt_received"
 REBOOT_INFO_FLAG="/tmp/rebootInfo_Updated"
 UPDATE_REBOOT_INFO_INVOKED_FLAG="/tmp/Update_rebootInfo_invoked"
 LOCK_DIR="/tmp/rebootInfo.lock"
-PARODUS_LOG="/opt/logs/parodus.log"
+PARODUS_LOG="/opt/logs/unified-logging.txt"
 
 #Use log framework to pring timestamp and source script name
 rebootLog()
@@ -376,7 +376,7 @@ if [ "$RDK_PROFILE" = "TV" ]; then
         oopsDumpCheck
         kernel_crash=$?
         if [ $kernel_crash -eq 1 ];then
-            echo "`/bin/timestamp` PreviousRebootReason: kernel_panic!" >> $KERNEL_LOG_FILE
+            echo "`/bin/timestamp` PreviousRebootReason: kernel_panic!" | systemd-cat -t update_previous_reboot_info
         else
             if [ -f /lib/rdk/get-reboot-reason.sh ]; then
                 sh /lib/rdk/get-reboot-reason.sh >> $KERNEL_LOG_FILE
@@ -396,7 +396,7 @@ if [ -f "$REBOOT_INFO_FILE" ];then
     if [ -f "$PARODUS_REBOOT_INFO_FILE" ];then
        rebootLog "New $PARODUS_REBOOT_INFO_FILE file found, updating parodus logfile..."
        rebootinfo=`cat $PARODUS_REBOOT_INFO_FILE`
-       echo "`/bin/timestamp` $0: $rebootinfo" >> $PARODUS_LOG
+       echo "`/bin/timestamp` $0: $rebootinfo" | systemd-cat -t update_previous_reboot_info
        mv $PARODUS_REBOOT_INFO_FILE $PREVIOUS_PARODUSREBOOT_INFO_FILE
     fi   
 else
