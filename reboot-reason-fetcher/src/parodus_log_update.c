@@ -79,13 +79,11 @@ int update_parodus_log(const RebootInfo *info)
         return ERROR_GENERAL;
     }
     fprintf(fp, "%s: %s: Updating previous reboot info to Parodus\n", timestamp, "update_previous_reboot_info");
-    fprintf(fp, "%s: %s: PreviousRebootInfo:%s,%s,%s,%s\n",
-            timestamp,
-            "update_previous_reboot_info",
+    fprintf(fp, "PreviousRebootInfo:%s,%s,%s,%s\n",
             info->timestamp,
-            info->reason,
             info->customReason,
-            info->source);
+            info->source,
+	    info->reason);
     fflush(fp);
     fclose(fp);
     RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Parodus log updated with reboot info:\n");
@@ -157,9 +155,9 @@ int handle_parodus_reboot_file(const RebootInfo *info, const char *destPath)
     }
     fprintf(out, "PreviousRebootInfo:%s,%s,%s,%s\n",
             info->timestamp,
-            info->reason,
             info->customReason,
-            info->source);
+            info->source,
+	    info->reason);
     fflush(out);
     fclose(out);
     (void)unlink(PARODUS_REBOOT_INFO_FILE);

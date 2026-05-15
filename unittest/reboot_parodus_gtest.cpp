@@ -49,7 +49,7 @@ TEST(ParodusSmokeTest, handle_parodus_reboot_file_FallbackWritesDest) {
     buf[n] = '\0';
     fclose(fp);
 
-    EXPECT_NE(strstr(buf, "PreviousRebootInfo:2026-03-10T12:00:00Z,APP_TRIGGERED,Servicemanager,Servicemanager"), nullptr);
+    EXPECT_NE(strstr(buf, "PreviousRebootInfo:2026-03-10T12:00:00Z,Servicemanager,Servicemanager,APP_TRIGGERED"), nullptr);
     remove(destPath);
 }
 
@@ -238,7 +238,7 @@ TEST(ParodusSmokeTest, update_parodus_log_WritesWhenNoPreviousInfo) {
     size_t n = fread(buf, 1, sizeof(buf) - 1, fp);
     buf[n] = '\0';
     fclose(fp);
-    EXPECT_NE(strstr(buf, "PreviousRebootInfo:2026-03-10T22:00:00Z,WATCHDOG_TIMER_RESET,Hardware Register - WATCHDOG,WatchDog"), nullptr);
+    EXPECT_NE(strstr(buf, "PreviousRebootInfo:2026-03-10T22:00:00Z,Hardware Register - WATCHDOG,WatchDog,WATCHDOG_TIMER_RESET"), nullptr);
 }
 
 TEST(ParodusSmokeTest, handle_parodus_reboot_file_EmptyInputFilePath) {
@@ -316,7 +316,7 @@ TEST(ParodusSmokeTest, handle_parodus_reboot_file_InputPathOpenFailsThenFallback
     buf[n] = '\0';
     fclose(fp);
 
-    const char* expectedFallback = "PreviousRebootInfo:2026-03-10T23:10:00Z,SOFTWARE_MASTER_RESET,SOFTWARE_MASTER_RESET,SoftwareReboot";
+    const char* expectedFallback = "PreviousRebootInfo:2026-03-10T23:10:00Z,SOFTWARE_MASTER_RESET,SoftwareReboot,SOFTWARE_MASTER_RESET";
     bool fallbackWritten = (strstr(buf, expectedFallback) != nullptr);
     bool emptyCopied = (buf[0] == '\0');
     EXPECT_TRUE(fallbackWritten || emptyCopied);

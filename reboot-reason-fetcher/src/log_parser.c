@@ -108,7 +108,7 @@ int update_reboot_info(const EnvContext *ctx)
 {
     if (!ctx) return 0;
     if (access(STT_FLAG, F_OK) != 0) {
-        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","STT flag missing; skip update\n");
+        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","STT flag missing; skip update\n");
         return 0;
     }
     return 1;
