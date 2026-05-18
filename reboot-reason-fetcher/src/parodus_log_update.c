@@ -79,7 +79,9 @@ int update_parodus_log(const RebootInfo *info)
         return ERROR_GENERAL;
     }
     fprintf(fp, "%s: %s: Updating previous reboot info to Parodus\n", timestamp, "update_previous_reboot_info");
-    fprintf(fp, "PreviousRebootInfo:%s,%s,%s,%s\n",
+    fprintf(fp, "%s %s: PreviousRebootInfo:%s,%s,%s,%s\n",
+            timestamp,
+	    "update_previous_reboot_info",
             info->timestamp,
             info->customReason,
             info->source,
