@@ -150,7 +150,7 @@ int main(void)
         check_firmware_failure(&ctx, &fwFailure);
 
         RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Getting hardware reboot reason for current boot \n");
-        get_hardware_reason(&ctx, &hwReason, &rebootInfo);
+        get_hardware_reason(&ctx, &hwReason);
 
         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Classifying reboot reason \n");
         if (classify_reboot_reason(&rebootInfo, &ctx, &hwReason, &panicInfo, &fwFailure) != SUCCESS) {

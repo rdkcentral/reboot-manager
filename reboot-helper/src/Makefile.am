@@ -32,14 +32,14 @@ librebootnow_la_SOURCES = \
       cyclic_reboot.c \
       utils.c
 
-librebootnow_la_LIBADD = -lfwutils -lrdkloggers -lrfcapi -lsecure_wrapper
+librebootnow_la_LIBADD = -lfwutils -lrdkloggers -lrfcapi -lsecure_wrapper -lrebootreason
 
 # CLI wrapper binary
 bin_PROGRAMS = rebootnow
 rebootnow_SOURCES = reboot_main.c
 rebootnow_LDADD = librebootnow.la
 
-AM_LDFLAGS = -lrdkloggers -lfwutils -lrfcapi -lsecure_wrapper
+AM_LDFLAGS = -lrdkloggers -lfwutils -lrfcapi -lsecure_wrapper #-lrebootreason
 
 bin_PROGRAMS += update-prev-reboot-info
 update_prev_reboot_info_SOURCES = \

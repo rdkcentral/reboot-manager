@@ -118,7 +118,7 @@ int acquire_lock(const char *lockDir);
 int release_lock(const char *lockDir);
 int parse_device_properties(EnvContext *ctx);
 void free_env_context(EnvContext *ctx);
-int get_hardware_reason(const EnvContext *ctx, HardwareReason *hwReason, RebootInfo *info);
+int get_hardware_reason(const EnvContext *ctx, HardwareReason *hwReason);
 int read_brcm_previous_reboot_reason(HardwareReason *hw);
 int detect_kernel_panic(const EnvContext *ctx, PanicInfo *panicInfo);
 int check_firmware_failure(const EnvContext *ctx, FirmwareFailure *fwFailure);
