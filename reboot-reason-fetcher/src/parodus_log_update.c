@@ -66,21 +66,6 @@ int update_parodus_log(const RebootInfo *info)
         return ERROR_GENERAL;
     }
     RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Updating Parodus log \n");
-    fp = fopen(PARODUS_LOG, "r");
-    if (fp) {
-        while (fgets(line, sizeof(line), fp)) {
-            if (strstr(line, "PreviousRebootInfo")) {
-                logVal = true;
-                RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","PreviousRebootInfo already exists in Parodus log \n");
-                break;
-            }
-        }
-        fclose(fp);
-    }
-    if (logVal) {
-        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Parodus log already contains reboot info, skipping update \n");
-        return SUCCESS;
-    }
     get_timestamp_string(timestamp, sizeof(timestamp));
     fp = fopen(PARODUS_LOG, "a");
     if (!fp) {
