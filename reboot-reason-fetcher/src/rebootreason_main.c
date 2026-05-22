@@ -98,6 +98,7 @@ int main(void)
         return ERROR_LOCK_FAILED;
     }
     lock_acquired = true;
+    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Acquired rebootInfo lock\n");
     
     RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Loading environment context \n");
     if (parse_device_properties(&ctx) != SUCCESS) {
@@ -106,8 +107,9 @@ int main(void)
         goto cleanup;
     }
 
-    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Checking flags to update reboot reason \n");
+    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Checking /tmp/stt_received and /tmp/rebootInfo_Updated flag to update the reboot reason\n");
     if (!update_reboot_info(&ctx)) {
+        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Exiting since /tmp/stt_received or /tmp/rebootInfo_Updated flag is not available\n");
         ret = SUCCESS;
         goto cleanup;
     }
@@ -124,7 +126,7 @@ int main(void)
 
     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Checking for new reboot.info file \n");
     if (access(REBOOT_INFO_FILE, F_OK) == 0) {
-        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","New %s file found, Creating previous reboot info file...\n",REBOOT_INFO_FILE);
+        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","New %s file found, Creating previous reboot info file...\n",REBOOT_INFO_FILE);
         log_reason(REBOOT_INFO_FILE);
         if (rename(REBOOT_INFO_FILE, PREVIOUS_REBOOT_INFO_FILE) != 0) {
             RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Failed to rename reboot.info: %s\n", strerror(errno));
@@ -132,6 +134,7 @@ int main(void)
             has_reboot_info = true;
         }
 	if (access(PARODUS_REBOOT_INFO_FILE, F_OK) == 0) {
+            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","New %s file found, updating parodus logfile...\n", PARODUS_REBOOT_INFO_FILE);
             handle_parodus_reboot_file(&rebootInfo, PREVIOUS_PARODUSREBOOT_INFO_FILE);
 	}
     }
@@ -162,6 +165,8 @@ int main(void)
 
     if (update_previous_reboot_log_fields(has_reboot_info ? PREVIOUS_REBOOT_INFO_FILE : NULL, &rebootInfo) != SUCCESS) {
         RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Skipping PreviousReboot* update in %s due to missing reboot info fields\n", REBOOT_INFO_LOG_FILE);
+    } else if (has_reboot_info) {
+        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Get previous reboot reason from %s - prevrebootreason: %s\n", PREVIOUS_REBOOT_INFO_FILE, rebootInfo.reason);
     }
 
     if (!has_reboot_info) {
@@ -180,13 +185,16 @@ int main(void)
         }
     }
     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Copying keypress info \n");
+    if (access(KEYPRESS_INFO_FILE, F_OK) != 0) {
+        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Unable to find the %s file\n", KEYPRESS_INFO_FILE);
+    }
     copy_keypress_info(KEYPRESS_INFO_FILE, PREVIOUS_KEYPRESS_INFO_FILE);
 
-    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Reboot reason processing completed successfully \n");
+    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","End of Reboot Reason \n");
 
   cleanup:
     if (lock_acquired) {
-        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Releasing lock \n");
+        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Releasing rebootInfo lock\n");
         if (release_lock(LOCK_DIR) != SUCCESS) {
             RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Failed to release lock \n");
             if (ret == SUCCESS) {
@@ -195,6 +203,6 @@ int main(void)
         }
     }
 
-    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Reboot Reason Update completed with status: %d \n", ret);
+    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Reboot Reason Update completed with status: %d \n", ret);
     return ret;
 }

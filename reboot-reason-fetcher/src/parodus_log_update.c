@@ -9,9 +9,18 @@
 
 static void get_timestamp_string(char *buffer, size_t size)
 {
-    time_t now = time(NULL);
-    struct tm *tm_info = localtime(&now);
-    strftime(buffer, size, "%y%m%d-%H:%M:%S", tm_info);
+    struct timespec ts;
+    struct tm tm_info;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    gmtime_r(&ts.tv_sec, &tm_info);
+    snprintf(buffer, size, "%04d-%02d-%02dT%02d:%02d:%02d.%03ldZ",
+             tm_info.tm_year + 1900,
+             tm_info.tm_mon + 1,
+             tm_info.tm_mday,
+             tm_info.tm_hour,
+             tm_info.tm_min,
+             tm_info.tm_sec,
+             ts.tv_nsec / 1000000);
 }
 
 int append_kernel_reason(const EnvContext *ctx, const RebootInfo *info)
@@ -50,38 +59,21 @@ int update_parodus_log(const RebootInfo *info)
 {
     FILE *fp = NULL;
     char timestamp[MAX_TIMESTAMP_LENGTH];
-    char line[MAX_BUFFER_SIZE];
-    bool logVal = false;
     if (!info) {
         RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Invalid parameters for update_parodus_log \n");
         return ERROR_GENERAL;
     }
     RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Updating Parodus log \n");
-    fp = fopen(PARODUS_LOG, "r");
-    if (fp) {
-        while (fgets(line, sizeof(line), fp)) {
-            if (strstr(line, "PreviousRebootInfo")) {
-                logVal = true;
-                RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","PreviousRebootInfo already exists in Parodus log \n");
-                break;
-            }
-        }
-        fclose(fp);
-    }
-    if (logVal) {
-        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Parodus log already contains reboot info, skipping update \n");
-        return SUCCESS;
-    }
     get_timestamp_string(timestamp, sizeof(timestamp));
     fp = fopen(PARODUS_LOG, "a");
     if (!fp) {
         RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to open Parodus log %s: %s\n", PARODUS_LOG, strerror(errno));
         return ERROR_GENERAL;
     }
-    fprintf(fp, "%s: %s: Updating previous reboot info to Parodus\n", timestamp, "update_previous_reboot_info");
-    fprintf(fp, "%s: %s: PreviousRebootInfo:%s,%s,%s,%s\n",
+    fprintf(fp, "%s %s: Updating previous reboot info to Parodus\n", timestamp, "update_previous_reboot_info");
+    fprintf(fp, "%s %s: PreviousRebootInfo:%s,%s,%s,%s\n",
             timestamp,
-            "update_previous_reboot_info",
+	    "update_previous_reboot_info",
             info->timestamp,
             info->reason,
             info->customReason,
@@ -157,7 +149,7 @@ int handle_parodus_reboot_file(const RebootInfo *info, const char *destPath)
     }
     fprintf(out, "PreviousRebootInfo:%s,%s,%s,%s\n",
             info->timestamp,
-            info->reason,
+	    info->reason,
             info->customReason,
             info->source);
     fflush(out);
