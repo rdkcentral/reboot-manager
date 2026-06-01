@@ -447,11 +447,12 @@ int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fa
     char prev_log_path[MAX_PATH_LENGTH] = {0};
     bool loaded_previous_info = false;
 
-    (void)fallbackInfo;  /* Not used - Previous* fields should contain PREVIOUS boot info, not current */
     memset(&infoToUse, 0, sizeof(RebootInfo));
 
     // jsonPath should point to the JSON file containing PREVIOUS boot info (from reboot.info renamed to previousreboot.info)
     // When JSON is missing/unreadable, fall back to legacy reboot log parsing to preserve shell-script behavior.
+    // When jsonPath is NULL (no reboot.info existed, i.e. hard-power/hardware reboot), use fallbackInfo
+    // which contains the freshly classified reason (e.g. POWER_ON_RESET) instead of stale legacy data.
 
     if (jsonPath && access(jsonPath, F_OK) == 0) {
         RDK_LOG(RDK_LOG_DEBUG, "LOG.RDK.REBOOTINFO", "Reading previous boot info from JSON: %s\n", jsonPath);
@@ -474,8 +475,13 @@ int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fa
         } else {
             RDK_LOG(RDK_LOG_WARN, "LOG.RDK.REBOOTINFO", "Failed to open previous reboot JSON file: %s\n", jsonPath);
         }
+    } else if (jsonPath == NULL && fallbackInfo) {
+        RDK_LOG(RDK_LOG_DEBUG, "LOG.RDK.REBOOTINFO", "No reboot.info file existed - using classified reboot info (source=%s, reason=%s)\n",
+                fallbackInfo->source, fallbackInfo->reason);
+        memcpy(&infoToUse, fallbackInfo, sizeof(RebootInfo));
+        loaded_previous_info = true;
     } else if (jsonPath == NULL) {
-        RDK_LOG(RDK_LOG_DEBUG, "LOG.RDK.REBOOTINFO", "No reboot.info file existed - trying legacy reboot log fallback\n");
+        RDK_LOG(RDK_LOG_DEBUG, "LOG.RDK.REBOOTINFO", "No reboot.info file existed and no fallback info available - trying legacy reboot log\n");
     } else {
         RDK_LOG(RDK_LOG_DEBUG, "LOG.RDK.REBOOTINFO", "Previous reboot JSON file not accessible: %s, trying legacy reboot log fallback\n", jsonPath);
     }

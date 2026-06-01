@@ -130,8 +130,8 @@ int handle_parodus_reboot_file(const RebootInfo *info, const char *destPath)
             get_timestamp_string(ts, sizeof(ts));
             FILE *logfp = fopen(PARODUS_LOG, "a");
             if (logfp) {
-                fprintf(logfp, "%s: %s: Updating previous reboot info to Parodus\n", ts, "update_previous_reboot_info");
-                fprintf(logfp, "%s: %s: %s\n", ts, "update_previous_reboot_info", buf);
+                fprintf(logfp, "%s %s: Updating previous reboot info to Parodus\n", ts, "update_previous_reboot_info");
+                fprintf(logfp, "%s %s: %s\n", ts, "update_previous_reboot_info", buf);
                 fflush(logfp);
                 fclose(logfp);
             } else {
