@@ -44,8 +44,6 @@ static const char *REBOOTNOW_FLAG = "/opt/secure/reboot/rebootNow";
 static const char *PREVIOUS_REBOOT_INFO_FILE = "/opt/secure/reboot/previousreboot.info";
 static const char *MAINTENANCE_REBOOT_FLAG = "/opt/secure/reboot/maintenance_reboot";
 
-#define MAINTENANCE_REBOOT_REASON_KEY "RebootReason="
-
 static const char *APP_TRIGGERED_REASONS[] = {
     "Servicemanager", "systemservice_legacy", "WarehouseReset", "WarehouseService",
     "HrvInitWHReset", "HrvColdInitReset", "HtmlDiagnostics", "InstallTDK", "StartTDK",
