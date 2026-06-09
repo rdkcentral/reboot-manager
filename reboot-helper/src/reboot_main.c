@@ -42,8 +42,7 @@ static const char *REBOOT_INFO_FILE = "/opt/secure/reboot/reboot.info";
 static const char *PARODUS_REBOOT_INFO_FILE = "/opt/secure/reboot/parodusreboot.info";
 static const char *REBOOTNOW_FLAG = "/opt/secure/reboot/rebootNow";
 static const char *PREVIOUS_REBOOT_INFO_FILE = "/opt/secure/reboot/previousreboot.info";
-static const char *MAINTENANCE_MGR_RECORD_FILE = "/opt/maintenance_mgr_record.conf";
-static const char *MAINTENANCE_MGR_RECORD_FILE_TMP = "/opt/maintenance_mgr_record.conf.tmp";
+static const char *MAINTENANCE_REBOOT_FLAG = "/opt/secure/reboot/maintenance_reboot";
 
 #define MAINTENANCE_REBOOT_REASON_KEY "RebootReason="
 
@@ -99,51 +98,25 @@ static int check_string_value(const char *const *list, size_t n, const char *nee
     return 0;
 }
 
-static int write_maintenance_reboot_reason(const char *reboot_reason)
+static int update_maintenance_reboot_flag(const char *reboot_reason)
 {
-    FILE *input = NULL;
-    FILE *output = NULL;
-    char line[512];
-    int key_written = 0;
-    const size_t reboot_reason_key_len = strlen(MAINTENANCE_REBOOT_REASON_KEY);
-
     if (!reboot_reason || reboot_reason[0] == '\0') {
         return -1;
     }
 
-    input = fopen(MAINTENANCE_MGR_RECORD_FILE, "r");
-    output = fopen(MAINTENANCE_MGR_RECORD_FILE_TMP, "w");
-    if (!output) {
-        if (input) {
-            fclose(input);
+    if (strcmp(reboot_reason, "MAINTENANCE_REBOOT") == 0) {
+        FILE *flag = fopen(MAINTENANCE_REBOOT_FLAG, "w");
+        if (!flag) {
+            RDK_LOG(RDK_LOG_ERROR, "LOG.RDK.REBOOTINFO", "Failed to create %s (errno=%d)\n", MAINTENANCE_REBOOT_FLAG, errno);
+            return -1;
         }
-        RDK_LOG(RDK_LOG_ERROR, "LOG.RDK.REBOOTINFO", "Failed to open %s for writing (errno=%d)\n", MAINTENANCE_MGR_RECORD_FILE_TMP, errno);
-        return -1;
-    }
 
-    if (input) {
-        while (fgets(line, sizeof(line), input) != NULL) {
-            if (strncmp(line, MAINTENANCE_REBOOT_REASON_KEY, reboot_reason_key_len) == 0) {
-                fprintf(output, "%s%s\n", MAINTENANCE_REBOOT_REASON_KEY, reboot_reason);
-                key_written = 1;
-            } else {
-                fputs(line, output);
-            }
+        fclose(flag);
+        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Created maintenance reboot flag %s\n", MAINTENANCE_REBOOT_FLAG);
+    } else {
+        if (unlink(MAINTENANCE_REBOOT_FLAG) == 0) {
+            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Cleared stale maintenance reboot flag %s\n", MAINTENANCE_REBOOT_FLAG);
         }
-        fclose(input);
-    }
-
-    if (!key_written) {
-        fprintf(output, "%s%s\n", MAINTENANCE_REBOOT_REASON_KEY, reboot_reason);
-    }
-
-    fflush(output);
-    fclose(output);
-
-    if (rename(MAINTENANCE_MGR_RECORD_FILE_TMP, MAINTENANCE_MGR_RECORD_FILE) != 0) {
-        unlink(MAINTENANCE_MGR_RECORD_FILE_TMP);
-        RDK_LOG(RDK_LOG_ERROR, "LOG.RDK.REBOOTINFO", "Failed to update %s (errno=%d)\n", MAINTENANCE_MGR_RECORD_FILE, errno);
-        return -1;
     }
 
     return 0;
@@ -430,8 +403,8 @@ int main(int argc, char **argv)
         return 0; /* exit without performing immediate reboot */
     }
 
-    if (write_maintenance_reboot_reason(reboot_reason) != 0) {
-        RDK_LOG(RDK_LOG_ERROR, "LOG.RDK.REBOOTINFO", "Failed to persist reboot reason in %s\n", MAINTENANCE_MGR_RECORD_FILE);
+    if (update_maintenance_reboot_flag(reboot_reason) != 0) {
+        RDK_LOG(RDK_LOG_ERROR, "LOG.RDK.REBOOTINFO", "Failed to update maintenance reboot flag %s\n", MAINTENANCE_REBOOT_FLAG);
     }
 
     if (rfc_get_bool_param(RFC_MNG_NOTIFY, &mng_notify_enable))
