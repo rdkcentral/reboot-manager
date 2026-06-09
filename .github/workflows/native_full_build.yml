@@ -2,7 +2,7 @@ name: Build RebootManager Component in Native Environment
 
 on:
  pull_request:
-   branches: [ develop ]
+   branches: [ develop, feature/nativeBuild ]
    paths: ['**/*.c', '**/*.cpp', '**/*.cc', '**/*.cxx', '**/*.h', '**/*.hpp']
 
 jobs:
