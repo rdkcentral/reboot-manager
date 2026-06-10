@@ -8,8 +8,8 @@ on:
      contents: read
      issues: write
 jobs:
-  execute-unit-code-coverage-report-on-release:
-    name: Test coverage report for release
+  execute-unit-code-coverage-report-on-pr:
+    name: Test coverage report for pull request
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/rdkcentral/docker-rdk-ci:latest
