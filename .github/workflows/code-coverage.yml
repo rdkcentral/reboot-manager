@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [ develop, main ]
 
+  permissions:
+     contents: read
+     issues: write
 jobs:
   execute-unit-code-coverage-report-on-release:
     name: Test coverage report for release
@@ -13,13 +16,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Run unit tests with coverage flags enabled
         run: |
           sh unit_test.sh --enable-cov
 
-      - name: Caculate the code coverage summary
+      - name: Calculate the code coverage summary
         run: |
           cd ./unittest
           lcov --list coverage.info | grep "Lines\|Total" > /tmp/coverage_summary.txt
