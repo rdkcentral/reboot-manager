@@ -4,9 +4,9 @@ on:
   pull_request:
     branches: [ develop, main ]
 
-  permissions:
-     contents: read
-     issues: write
+permissions:
+  contents: read
+  issues: write
 jobs:
   execute-unit-code-coverage-report-on-pr:
     name: Test coverage report for pull request
