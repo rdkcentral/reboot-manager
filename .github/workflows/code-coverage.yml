@@ -39,12 +39,12 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: 
-                    '## Code Coverage Summary \n' +
-                    ' ' +
-                    '```' +
-                    lcov_result + 
-                    '```'
+              body: `## Code Coverage Summary
+
+\`\`\`
+${lcov_result}
+\`\`\`
+`
             });
 
       - name: Generate the html report
