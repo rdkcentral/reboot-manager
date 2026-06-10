@@ -42,6 +42,7 @@ static const char *REBOOT_INFO_FILE = "/opt/secure/reboot/reboot.info";
 static const char *PARODUS_REBOOT_INFO_FILE = "/opt/secure/reboot/parodusreboot.info";
 static const char *REBOOTNOW_FLAG = "/opt/secure/reboot/rebootNow";
 static const char *PREVIOUS_REBOOT_INFO_FILE = "/opt/secure/reboot/previousreboot.info";
+static const char *MAINTENANCE_REBOOT_FLAG = "/opt/secure/reboot/maintenance_reboot";
 
 static const char *APP_TRIGGERED_REASONS[] = {
     "Servicemanager", "systemservice_legacy", "WarehouseReset", "WarehouseService",
@@ -92,6 +93,30 @@ static int check_string_value(const char *const *list, size_t n, const char *nee
             return 1;
         }
     }
+    return 0;
+}
+
+static int update_maintenance_reboot_flag(const char *reboot_reason)
+{
+    if (!reboot_reason || reboot_reason[0] == '\0') {
+        return -1;
+    }
+
+    if (strcmp(reboot_reason, "MAINTENANCE_REBOOT") == 0) {
+        FILE *flag = fopen(MAINTENANCE_REBOOT_FLAG, "w");
+        if (!flag) {
+            RDK_LOG(RDK_LOG_ERROR, "LOG.RDK.REBOOTINFO", "Failed to create %s (errno=%d)\n", MAINTENANCE_REBOOT_FLAG, errno);
+            return -1;
+        }
+
+        fclose(flag);
+        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Created maintenance reboot flag %s\n", MAINTENANCE_REBOOT_FLAG);
+    } else {
+        if (unlink(MAINTENANCE_REBOOT_FLAG) == 0) {
+            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Cleared stale maintenance reboot flag %s\n", MAINTENANCE_REBOOT_FLAG);
+        }
+    }
+
     return 0;
 }
 
@@ -374,6 +399,10 @@ int main(int argc, char **argv)
 
     if (proceed_reboot == 0) {
         return 0; /* exit without performing immediate reboot */
+    }
+
+    if (update_maintenance_reboot_flag(reboot_reason) != 0) {
+        RDK_LOG(RDK_LOG_ERROR, "LOG.RDK.REBOOTINFO", "Failed to update maintenance reboot flag %s\n", MAINTENANCE_REBOOT_FLAG);
     }
 
     if (rfc_get_bool_param(RFC_MNG_NOTIFY, &mng_notify_enable))
