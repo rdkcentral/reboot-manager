@@ -45,11 +45,10 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: `## Code Coverage Summary
-
-\`\`\`
-${lcov_result}
-\`\`\`
-`
+                    \`\`\`
+                     ${lcov_result}
+                     \`\`\`
+                     `
             });
 
       - name: Generate the html report
