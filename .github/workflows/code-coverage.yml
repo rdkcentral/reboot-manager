@@ -1,0 +1,69 @@
+name: Code Coverage
+
+on:
+  pull_request:
+    branches: [ develop, main ]
+
+jobs:
+  execute-unit-code-coverage-report-on-pr:
+    name: Test coverage report for pull request
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull test container image
+        run: docker pull ghcr.io/rdkcentral/docker-device-mgt-service-test/native-platform:latest
+
+      - name: Start test container
+        run: |
+          docker run -d --name native-platform -v ${{ github.workspace }}:/mnt/L1_CONTAINER_SHARED_VOLUME ghcr.io/rdkcentral/docker-device-mgt-service-test/native-platform:latest
+
+      - name: Run unit tests with coverage flags enabled and Calculate the code coverage summary
+        run: |
+          docker exec -i native-platform /bin/bash -c "
+            cd /mnt/L1_CONTAINER_SHARED_VOLUME/unittest &&
+            sh unit_test.sh --enable-cov &&
+            lcov --capture --directory . --output-file /mnt/L1_CONTAINER_SHARED_VOLUME/coverage.info &&
+            lcov --list /mnt/L1_CONTAINER_SHARED_VOLUME/coverage.info | grep 'Lines\|Total' > /tmp/coverage_summary.txt
+          "
+      - name: Copy coverage summary to runner
+        run: docker cp native-platform:/tmp/coverage_summary.txt /tmp/
+
+      - name: Update the coverage report to Pull request using actions
+        uses: actions/github-script@v4
+        with:
+          script: |
+            const fs = require('fs');
+            const lcov_result = fs.readFileSync('/tmp/coverage_summary.txt', 'utf8');
+          
+            github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## Code Coverage Summary
+                    \`\`\`
+                     ${lcov_result}
+                     \`\`\`
+                     `
+            });
+
+      - name: Generate the html report
+        run: docker exec -i native-platform /bin/bash -c " genhtml /mnt/L1_CONTAINER_SHARED_VOLUME/coverage.info --output-directory /tmp/coverage_report"
+
+      - name: Copy html report to runner
+        run: docker cp native-platform:/tmp/coverage_report /tmp/
+
+      - name: Upload the coverage report to Pull request using actions
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: /tmp/coverage_report
