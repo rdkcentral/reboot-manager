@@ -114,6 +114,9 @@ static int update_maintenance_reboot_flag(const char *reboot_reason)
     } else {
         if (unlink(MAINTENANCE_REBOOT_FLAG) == 0) {
             RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Cleared stale maintenance reboot flag %s\n", MAINTENANCE_REBOOT_FLAG);
+        } else if (errno != ENOENT) {
+            RDK_LOG(RDK_LOG_ERROR, "LOG.RDK.REBOOTINFO", "Failed to remove stale maintenance reboot flag %s (errno=%d)\n", MAINTENANCE_REBOOT_FLAG, errno);
+            return -1;
         }
     }
 
