@@ -262,6 +262,36 @@ TEST(RebootMain, MaintenanceTriggeredCategorization){
     ASSERT_NE(content.find("\"reason\":\"MAINTENANCE_REBOOT\""), std::string::npos);
 }
 
+TEST(RebootMain, ProceedMaintenanceReasonCreatesMaintenanceFlag){
+    g_handle_decision = 1;
+    g_cmds.clear();
+    system("mkdir -p /opt/secure/reboot");
+    remove("/opt/secure/reboot/maintenance_reboot");
+
+    reset_getopt_state();
+    const char* argv[] = { "rebootnow", "-s", "HtmlDiagnostics", "-r", "MAINTENANCE_REBOOT", "-o", "User requested reboot" };
+    int rc = reboot_main_entry(7, (char**)argv);
+    ASSERT_EQ(rc, 0);
+    ASSERT_EQ(0, access("/opt/secure/reboot/maintenance_reboot", F_OK));
+}
+
+TEST(RebootMain, ProceedNonMaintenanceReasonClearsMaintenanceFlag){
+    g_handle_decision = 1;
+    g_cmds.clear();
+    system("mkdir -p /opt/secure/reboot");
+
+    std::ofstream stale("/opt/secure/reboot/maintenance_reboot");
+    stale << "1";
+    stale.close();
+    ASSERT_EQ(0, access("/opt/secure/reboot/maintenance_reboot", F_OK));
+
+    reset_getopt_state();
+    const char* argv[] = { "rebootnow", "-s", "HtmlDiagnostics", "-o", "User requested reboot" };
+    int rc = reboot_main_entry(5, (char**)argv);
+    ASSERT_EQ(rc, 0);
+    ASSERT_NE(0, access("/opt/secure/reboot/maintenance_reboot", F_OK));
+}
+
 TEST(RebootMain, UnknownSourceCategorization){
     g_handle_decision = 0;
     system("mkdir -p /opt/secure/reboot");
