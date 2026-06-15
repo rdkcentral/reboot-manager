@@ -273,7 +273,7 @@ TEST(RebootMain, ProceedMaintenanceReasonCreatesMaintenanceFlag){
     int rc = reboot_main_entry(7, (char**)argv);
     ASSERT_EQ(rc, 0);
     ASSERT_EQ(0, access("/opt/secure/reboot/maintenance_reboot", F_OK));
-}
+    ASSERT_EQ(0, remove("/opt/secure/reboot/maintenance_reboot"));
 
 TEST(RebootMain, ProceedNonMaintenanceReasonClearsMaintenanceFlag){
     g_handle_decision = 1;
