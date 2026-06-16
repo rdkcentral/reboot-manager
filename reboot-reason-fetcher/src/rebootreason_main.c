@@ -27,9 +27,6 @@
  *  Any path change MUST be coordinated with the uploadstblogs repository. */
 #define PATH_FLAG_INVOCATION        "/tmp/Update_rebootInfo_invoked"
 
-int find_previous_reboot_log(char *out_path, size_t len);
-int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fallbackInfo);
-
 void t2CountNotify(char *marker, int val) {
 #ifdef T2_EVENT_ENABLED
     t2_event_d(marker, val);
