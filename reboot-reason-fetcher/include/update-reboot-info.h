@@ -142,4 +142,27 @@ int parse_legacy_log(const char *logPath, RebootInfo *info);
 int update_reboot_info(const EnvContext *ctx);
 int find_previous_reboot_log(char *out_path, size_t len);
 int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fallbackInfo);
+
+/** Sentinel written by dcm-agent backup_logs on successful completion.
+ *  Reboot-manager waits for this before reading /opt/logs/PreviousLogs/ to
+ *  ensure the directory is fully populated before deriving the reboot reason.
+ *  Cross-repo interface: also defined in dcm-agent backup_logs/include/backup_logs.h
+ *  and telemetry source/dcautil/dcautil.h.
+ *  Any path change MUST be coordinated with both repositories. */
+#define BACKUP_LOGS_DONE_FLAG      "/tmp/.backup_logs_done"
+/** Directory and filename split required by inotify_add_watch(). */
+#define BACKUP_LOGS_DONE_DIR       "/tmp"
+#define BACKUP_LOGS_DONE_FILENAME  ".backup_logs_done"
+
+#ifdef GTEST_ENABLE
+#  define BACKUP_LOGS_SYNC_TIMEOUT_S  2u
+#else
+#  define BACKUP_LOGS_SYNC_TIMEOUT_S  60u
+#endif
+
+/** Sentinel written on successful invocation.
+ *  Cross-repo interface: consumed by uploadstblogs reboot_setup().
+ *  Any path change MUST be coordinated with the uploadstblogs repository. */
+#define PATH_FLAG_INVOCATION        "/tmp/Update_rebootInfo_invoked"
+
 #endif /* UPDATE_REBOOT_INFO_H */
