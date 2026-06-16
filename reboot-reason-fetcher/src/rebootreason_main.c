@@ -202,7 +202,17 @@ int main(void)
             }
         }
     }
-
+    /* Write invocation sentinel so uploadstblogs can proceed */
+    {
+        int sentinel_fd = open(PATH_FLAG_INVOCATION, O_CREAT | O_WRONLY, 0644);
+        if (sentinel_fd >= 0) {
+            close(sentinel_fd);
+            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "[%s:%d] Invocation sentinel written: %s\n", __FUNCTION__, __LINE__, PATH_FLAG_INVOCATION);
+        } else {
+            RDK_LOG(RDK_LOG_WARN, "LOG.RDK.REBOOTINFO", "[%s:%d] Failed to write invocation sentinel %s: %s\n", __FUNCTION__, __LINE__, PATH_FLAG_INVOCATION, strerror(errno));
+        }
+    }
     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Reboot Reason Update completed with status: %d \n", ret);
+	
     return ret;
 }
