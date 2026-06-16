@@ -1,5 +1,6 @@
 #include "update-reboot-info.h"
 #include "rdk_logger.h"
+#define PATH_FLAG_INVOCATION          "/tmp/Update_rebootInfo_invoked"
 
 int find_previous_reboot_log(char *out_path, size_t len);
 int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fallbackInfo);
