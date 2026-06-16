@@ -4,6 +4,8 @@
 #include <limits.h>
 #include <sys/select.h>
 #include <sys/inotify.h>
+int find_previous_reboot_log(char *out_path, size_t len);
+int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fallbackInfo);
 
 /** Sentinel written by dcm-agent backup_logs on successful completion.
  *  Reboot-manager waits for this before reading /opt/logs/PreviousLogs/ to
@@ -68,9 +70,6 @@ static int poll_for_sentinel(const char *path, unsigned int timeout_s,
 
     return (access(path, F_OK) == 0) ? 0 : -1;
 }
-
-int find_previous_reboot_log(char *out_path, size_t len);
-int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fallbackInfo);
 
 /**
  * wait_for_backup_logs_done - inotify-based wait for backup_logs completion sentinel.
