@@ -31,8 +31,8 @@ git clone https://github.com/rdkcentral/rdk_logger.git
 cp rdk_logger/include/rdk_logger.h /usr/local/include/.
 
 mkdir -p m4
-automake --add-missing
-autoreconf --install
+libtoolize --force --copy || true
+autoreconf -fi
 export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 export LDFLAGS="-L/usr/local/lib -lpthread -lrdkloggers -lrbus -lsecure_wrapper"
 
