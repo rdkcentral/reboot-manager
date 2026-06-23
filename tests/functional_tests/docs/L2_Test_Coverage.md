@@ -1,34 +1,26 @@
 # L2 Test Coverage Summary
 
-## Function Coverage Snapshot
-
+```
 - Total source functions (approx): ~97
 - Functions with direct L2 coverage (approx): ~34
 - Functions with indirect L2 coverage (approx): ~17
 - Functions with no L2 coverage (approx): ~46
-
-## L2 Test and Scenario Inventory
 
 - Active L2 test functions: 17
 - Disabled L2 test functions: 0
 - Active feature scenarios: 5
 - Proposed new test scenarios: 24
 
-### Proposed Scenario Priority Split
-
 - High priority: 10
 - Medium priority: 9
 - Low priority: 5
 
-## Test File Status
-
 - Test files active: 17
 - Test files disabled (commented out): 0
 
-## Coverage Goals
-
 - Estimated current L2 functional coverage: ~53%
 - Target L2 functional coverage: ~80%
+```
 
 ## Revalidated Baseline (2026-06-11)
 
