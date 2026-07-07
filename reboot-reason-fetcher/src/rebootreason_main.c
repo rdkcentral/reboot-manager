@@ -146,46 +146,23 @@ int main(void)
             get_current_timestamp(rebootInfo.timestamp, sizeof(rebootInfo.timestamp));
         }
 
-	bool log_fallback_used = false;
-        if (access(REBOOT_INFO_LOG_FILE, F_OK) == 0) {
-            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Found %s, attempting rebootInfo.log fallback\n", REBOOT_INFO_LOG_FILE);
-            RebootInfo logInfo;
-            memset(&logInfo, 0, sizeof(logInfo));
-            if (parse_legacy_log(REBOOT_INFO_LOG_FILE, &logInfo) == SUCCESS && logInfo.source[0] != '\0') {
-                RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","rebootInfo.log fallback: source=%s, customReason=%s\n", logInfo.source, logInfo.customReason);
-                /* Preserve timestamp from logInfo if available, else keep current */
-                if (logInfo.timestamp[0] != '\0') {
-                    strncpy(rebootInfo.timestamp, logInfo.timestamp, sizeof(rebootInfo.timestamp) - 1);
-                    rebootInfo.timestamp[sizeof(rebootInfo.timestamp) - 1] = '\0';
-                }
-                strncpy(rebootInfo.source, logInfo.source, sizeof(rebootInfo.source) - 1);
-                rebootInfo.source[sizeof(rebootInfo.source) - 1] = '\0';
-                strncpy(rebootInfo.customReason, logInfo.customReason, sizeof(rebootInfo.customReason) - 1);
-                rebootInfo.customReason[sizeof(rebootInfo.customReason) - 1] = '\0';
-                strncpy(rebootInfo.otherReason, logInfo.otherReason, sizeof(rebootInfo.otherReason) - 1);
-                rebootInfo.otherReason[sizeof(rebootInfo.otherReason) - 1] = '\0';
 
-                /* Classify from the parsed source, matching shell script logic */
-                if (is_app_triggered(rebootInfo.source)) {
-                    strcpy(rebootInfo.reason, "APP_TRIGGERED");
-                    /* MAINTENANCE_REBOOT override when customReason says so */
-                    if (strcmp(rebootInfo.customReason, "MAINTENANCE_REBOOT") == 0) {
-                        strcpy(rebootInfo.reason, "MAINTENANCE_REBOOT");
-                    }
-                } else if (is_ops_triggered(rebootInfo.source)) {
-                    strcpy(rebootInfo.reason, "OPS_TRIGGERED");
-                } else if (is_maintenance_triggered(rebootInfo.source)) {
-                    strcpy(rebootInfo.reason, "MAINTENANCE_REBOOT");
-                } else {
-                    strcpy(rebootInfo.reason, "FIRMWARE_FAILURE");
-                }
-                log_fallback_used = true;
-                RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Classified from rebootInfo.log: reason=%s\n", rebootInfo.reason);
-            } else {
-                RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","rebootInfo.log present but PreviousRebootInitiatedBy is empty, falling through to hardware detection\n");
+        bool log_fallback_used = false;
+        RebootInfo logInfo;
+        memset(&logInfo, 0, sizeof(logInfo));
+        if (parse_legacy_log(REBOOT_INFO_LOG_FILE, &logInfo) == SUCCESS && logInfo.source[0] != '\0') {
+            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","rebootInfo.log fallback: source=%s, customReason=%s\n", logInfo.source, logInfo.customReason);
+            if (logInfo.timestamp[0] != '\0') {
+                strncpy(rebootInfo.timestamp, logInfo.timestamp, sizeof(rebootInfo.timestamp) - 1);
+                rebootInfo.timestamp[sizeof(rebootInfo.timestamp) - 1] = '\0';
             }
-        } else {
-            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","%s not found, falling through to hardware detection\n", REBOOT_INFO_LOG_FILE);
+            strncpy(rebootInfo.source, logInfo.source, sizeof(rebootInfo.source) - 1);
+            rebootInfo.source[sizeof(rebootInfo.source) - 1] = '\0';
+            strncpy(rebootInfo.customReason, logInfo.customReason, sizeof(rebootInfo.customReason) - 1);
+            rebootInfo.customReason[sizeof(rebootInfo.customReason) - 1] = '\0';
+            strncpy(rebootInfo.otherReason, logInfo.otherReason, sizeof(rebootInfo.otherReason) - 1);
+            rebootInfo.otherReason[sizeof(rebootInfo.otherReason) - 1] = '\0';
+            log_fallback_used = true;
         }
 
         if (!log_fallback_used) {
@@ -197,13 +174,16 @@ int main(void)
 
             RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Getting hardware reboot reason for current boot \n");
             get_hardware_reason(&ctx, &hwReason, &rebootInfo);
+        }
 
-            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Classifying reboot reason \n");
-            if (classify_reboot_reason(&rebootInfo, &ctx, &hwReason, &panicInfo, &fwFailure) != SUCCESS) {
-                RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to classify reboot reason \n");
-                ret = ERROR_GENERAL;
-                goto cleanup;
-            }
+        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Classifying reboot reason \n");
+        if (classify_reboot_reason(&rebootInfo, &ctx,
+                                   log_fallback_used ? NULL : &hwReason,
+                                   log_fallback_used ? NULL : &panicInfo,
+                                   log_fallback_used ? NULL : &fwFailure) != SUCCESS) {
+            RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to classify reboot reason \n");
+            ret = ERROR_GENERAL;
+            goto cleanup;
         }
     }
 
