@@ -559,6 +559,10 @@ int classify_reboot_reason(RebootInfo *info, const EnvContext *ctx, const Hardwa
             RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Source-based classification: MAINTENANCE_REBOOT from source %s\n", info->source);
             return SUCCESS;
         }
+	/* Unrecognized non-empty source defaults to FIRMWARE_FAILURE */
+        strcpy(info->reason, "FIRMWARE_FAILURE");
+        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Source-based classification: FIRMWARE_FAILURE (unrecognized source %s)\n", info->source);
+        return SUCCESS;
     }
     if (info->source[0] == '\0') {
         strcpy(info->source, "Unknown");
