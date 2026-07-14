@@ -58,7 +58,7 @@ void t2ValNotify( char *marker, char *val )
  * A post-watch re-check after inotify_add_watch closes the race window between
  * the initial access() fast-path and the watch becoming active.
  *
- * Proceeds without waiting if inotify_init or inotify_add_watch fails (missing kernel support, resource exhaustion, etc.).
+ * Proceeds without waiting if inotify_init1 or inotify_add_watch fails (missing kernel support, resource exhaustion, etc.).
  *
  * This is a **soft gate**: on timeout the caller logs a warning and continues
  * so that reboot-manager always produces previousreboot.info, even if
