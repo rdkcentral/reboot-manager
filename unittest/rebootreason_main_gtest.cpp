@@ -1,18 +1,3 @@
-/**
- * GTest suite for wait_for_backup_logs_done() covering all execution paths.
- *
- * Uses ld --wrap to intercept inotify_init1, inotify_add_watch, clock_gettime,
- * and access so that error/race paths can be exercised deterministically.
- *
- * Paths covered:
- *  1. Fast path: sentinel already present
- *  2. inotify_init1 failure
- *  3. inotify_add_watch failure
- *  4. Race resolution: sentinel appears between initial access and re-check
- *  5. clock_gettime failure after watch setup
- *  6. Sentinel detected via inotify event (thread creates file)
- *  7. Timeout expires (sentinel never created)
- */
 #include <gtest/gtest.h>
 #include <thread>
 #include <chrono>
