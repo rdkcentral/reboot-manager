@@ -211,7 +211,7 @@ static void log_reason(const char *path)
     }
     fclose(fp);
 }
-
+#ifndef GTEST_ENABLE
 int main(void)
 {
     EnvContext ctx;
@@ -368,3 +368,4 @@ int main(void)
     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Reboot Reason Update completed with status: %d \n", ret);
     return ret;
 }
+#endif
