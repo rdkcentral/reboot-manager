@@ -328,17 +328,6 @@ int main(void)
         }
     }
 
-	{
-            struct timespec cl_ts;
-            clock_gettime(CLOCK_MONOTONIC, &cl_ts);
-            long el_sec  = (long)(cl_ts.tv_sec  - rr_start_time.tv_sec);
-            long el_msec = (cl_ts.tv_nsec - rr_start_time.tv_nsec) / 1000000L;
-            if (el_msec < 0) { el_sec--; el_msec += 1000L; }
-            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO",
-                    "[%s:%d] Reboot reason classified: %s  (elapsed since start: %lds %ldms)\n",
-                    __FUNCTION__, __LINE__, rebootInfo.reason, el_sec, el_msec);
-    }
-
     if (update_previous_reboot_log_fields(has_reboot_info ? PREVIOUS_REBOOT_INFO_FILE : NULL, &rebootInfo) != SUCCESS) {
         RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Skipping PreviousReboot* update in %s due to missing reboot info fields\n", REBOOT_INFO_LOG_FILE);
     } else if (has_reboot_info) {
@@ -389,15 +378,5 @@ int main(void)
         }
     }
     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Reboot Reason Update completed with status: %d \n", ret);
-	{
-        struct timespec end_ts;
-        clock_gettime(CLOCK_MONOTONIC, &end_ts);
-        long el_sec  = (long)(end_ts.tv_sec  - rr_start_time.tv_sec);
-        long el_msec = (end_ts.tv_nsec - rr_start_time.tv_nsec) / 1000000L;
-        if (el_msec < 0) { el_sec--; el_msec += 1000L; }
-        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO",
-                "[%s:%d] Reboot Reason Update completed with status: %d  (total elapsed: %lds %ldms)\n",
-                __FUNCTION__, __LINE__, ret, el_sec, el_msec);
-    }	
     return ret;
 }
