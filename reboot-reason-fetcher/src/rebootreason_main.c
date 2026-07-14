@@ -242,19 +242,6 @@ int main(void)
 #endif
     RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Start of Reboot Reason \n");
 
-	/* Record monotonic start time for elapsed-time measurements */
-    struct timespec rr_start_time;
-    clock_gettime(CLOCK_MONOTONIC, &rr_start_time);
-    {
-        time_t now_wall = time(NULL);
-        struct tm *tm_info = localtime(&now_wall);
-        char wall_ts[32];
-        strftime(wall_ts, sizeof(wall_ts), "%Y-%m-%dT%H:%M:%S", tm_info);
-        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO",
-                "[%s:%d] reboot-reason-fetcher start wall-clock time: %s\n",
-                __FUNCTION__, __LINE__, wall_ts);
-    }
-
     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Acquiring rebootInfo lock\n");
     if (acquire_lock(LOCK_DIR) != SUCCESS) {
         RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Failed to acquire lock, another instance may be running \n");
