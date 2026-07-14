@@ -222,7 +222,7 @@ int main(void)
     int ret = SUCCESS;
     bool has_reboot_info = false;
     bool lock_acquired = false;
-    
+
     rdk_logger_ext_config_t config = {
         .pModuleName = "LOG.RDK.REBOOTINFO",     /* Module name */
         .loglevel = RDK_LOG_INFO,                 /* Default log level */
