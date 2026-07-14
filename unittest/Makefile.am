@@ -75,7 +75,7 @@ rebootreason_main_gtest_CPPFLAGS = $(COMMON_CPPFLAGS)
 rebootreason_main_gtest_LDADD = $(COMMON_LDADD)
 rebootreason_main_gtest_LDFLAGS = -Wl,--wrap=inotify_init1,--wrap=inotify_add_watch,--wrap=clock_gettime,--wrap=access
 rebootreason_main_gtest_CXXFLAGS = $(COMMON_CXXFLAGS)
-rebootreason_main_gtest_CFLAGS = $(COMMON_CFLAGS)
+rebootreason_main_gtest_CFLAGS = $(COMMON_CFLAGS) -DGTEST_ENABLE
 
 reboot_log_parser_gtest_CPPFLAGS = $(COMMON_CPPFLAGS)
 reboot_log_parser_gtest_LDADD = $(COMMON_LDADD) -ldl
