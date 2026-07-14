@@ -49,29 +49,6 @@ void t2ValNotify( char *marker, char *val )
 }
 
 /**
- * poll_for_sentinel - busy-wait until a file appears or timeout expires.
- * Returns 0 when the file exists, -1 on timeout.
- */
-static int poll_for_sentinel(const char *path, unsigned int timeout_s,
-                             unsigned int interval_s)
-{
-    struct timespec start, now;
-
-    if (clock_gettime(CLOCK_MONOTONIC, &start) != 0) {
-        return (access(path, F_OK) == 0) ? 0 : -1;
-    }
-    do {
-        if (access(path, F_OK) == 0) {
-            return 0;
-        }
-        sleep(interval_s);
-        clock_gettime(CLOCK_MONOTONIC, &now);
-    } while ((now.tv_sec - start.tv_sec) < (time_t)timeout_s);
-
-    return (access(path, F_OK) == 0) ? 0 : -1;
-}
-
-/**
  * wait_for_backup_logs_done - inotify-based wait for backup_logs completion sentinel.
  *
  * Blocks until BACKUP_LOGS_DONE_FLAG (/tmp/.backup_logs_done) is created or
@@ -88,7 +65,7 @@ static int poll_for_sentinel(const char *path, unsigned int timeout_s,
  * so that reboot-manager always produces previousreboot.info, even if
  * PreviousLogs/ is not yet fully populated.
  */
-static void wait_for_backup_logs_done(void)
+void wait_for_backup_logs_done(void)
 {
     /* Fast path: sentinel already written by backup_logs */
     if (access(BACKUP_LOGS_DONE_FLAG, F_OK) == 0) {
@@ -108,7 +85,6 @@ static void wait_for_backup_logs_done(void)
         RDK_LOG(RDK_LOG_WARN, "LOG.RDK.REBOOTINFO",
                 "[%s:%d] inotify_init1 failed (errno=%d); falling back to polling\n",
                 __FUNCTION__, __LINE__, errno);
-        goto fallback_poll;
     }
 
     {
@@ -119,7 +95,6 @@ static void wait_for_backup_logs_done(void)
                     "[%s:%d] inotify_add_watch on %s failed (errno=%d); falling back to polling\n",
                     __FUNCTION__, __LINE__, BACKUP_LOGS_DONE_DIR, errno);
             close(ifd);
-            goto fallback_poll;
         }
 
         /* Re-check after watch is set — closes race between access() and add_watch */
@@ -139,7 +114,6 @@ static void wait_for_backup_logs_done(void)
                     __FUNCTION__, __LINE__, errno);
             inotify_rm_watch(ifd, wd);
             close(ifd);
-            goto fallback_poll;
         }
         deadline.tv_sec += (time_t)BACKUP_LOGS_SYNC_TIMEOUT_S;
 
@@ -195,21 +169,6 @@ static void wait_for_backup_logs_done(void)
                     __FUNCTION__, __LINE__, BACKUP_LOGS_SYNC_TIMEOUT_S);
         }
         return;
-    }
-
-fallback_poll:
-    {
-        if (poll_for_sentinel(BACKUP_LOGS_DONE_FLAG,
-                              BACKUP_LOGS_SYNC_TIMEOUT_S, 1u) == 0) {
-            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO",
-                    "[%s:%d] backup_logs sentinel detected (poll)\n",
-                    __FUNCTION__, __LINE__);
-        } else {
-            RDK_LOG(RDK_LOG_WARN, "LOG.RDK.REBOOTINFO",
-                    "[%s:%d] backup_logs sentinel absent after %us (poll); "
-                    "PreviousLogs/ may be incomplete\n",
-                    __FUNCTION__, __LINE__, BACKUP_LOGS_SYNC_TIMEOUT_S);
-        }
     }
 }
 
