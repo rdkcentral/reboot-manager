@@ -110,7 +110,7 @@ void wait_for_backup_logs_done(void)
         struct timespec deadline;
         if (clock_gettime(CLOCK_MONOTONIC, &deadline) != 0) {
             RDK_LOG(RDK_LOG_WARN, "LOG.RDK.REBOOTINFO",
-                    "[%s:%d] clock_gettime failed (errno=%d); falling back to polling\n",
+                    "[%s:%d] clock_gettime failed (errno=%d) \n",
                     __FUNCTION__, __LINE__, errno);
             inotify_rm_watch(ifd, wd);
             close(ifd);
