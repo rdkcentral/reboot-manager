@@ -585,22 +585,5 @@ int classify_reboot_reason(RebootInfo *info, const EnvContext *ctx, const Hardwa
             RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Reboot reason classified as UNKNOWN\n");
         }
     }
-    if (ctx && (strcmp(ctx->soc, "RTK") == 0 || strcmp(ctx->soc, "REALTEK") == 0)) {
-        if (info->reason[0] != '\0') {
-            char lower[MAX_REASON_LENGTH];
-            size_t len = strlen(info->reason);
-            for (size_t i = 0; i < len && i < sizeof(lower) - 1; i++) {
-                lower[i] = tolower((unsigned char)info->reason[i]);
-            }
-            lower[(len < sizeof(lower) - 1) ? len : (sizeof(lower) - 1)] = '\0';
-            FILE *klog = fopen("/opt/logs/messages.txt", "a");
-            if (klog) {
-                fprintf(klog, "PreviousRebootReason: %s\n", lower);
-                fflush(klog);
-                fclose(klog);
-                RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Annotated kernel log with PreviousRebootReason: %s\n", lower);
-            }
-        }
-    }
     return SUCCESS;
 }

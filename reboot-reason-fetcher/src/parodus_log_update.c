@@ -59,7 +59,6 @@ int update_parodus_log(const RebootInfo *info)
 {
     FILE *fp = NULL;
     char timestamp[MAX_TIMESTAMP_LENGTH];
-
     if (!info) {
         RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Invalid parameters for update_parodus_log \n");
         return ERROR_GENERAL;
