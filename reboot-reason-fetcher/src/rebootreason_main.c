@@ -83,8 +83,9 @@ void wait_for_backup_logs_done(void)
     int ifd = inotify_init1(IN_CLOEXEC);
     if (ifd < 0) {
         RDK_LOG(RDK_LOG_WARN, "LOG.RDK.REBOOTINFO",
-                "[%s:%d] inotify_init1 failed (errno=%d); falling back to polling\n",
+                "[%s:%d] inotify_init1 failed (errno=%d); proceeding without waiting\n",
                 __FUNCTION__, __LINE__, errno);
+        return;
     }
 
     {
@@ -92,9 +93,10 @@ void wait_for_backup_logs_done(void)
                                    IN_CREATE | IN_MOVED_TO);
         if (wd < 0) {
             RDK_LOG(RDK_LOG_WARN, "LOG.RDK.REBOOTINFO",
-                    "[%s:%d] inotify_add_watch on %s failed (errno=%d); falling back to polling\n",
+                    "[%s:%d] inotify_add_watch on %s failed (errno=%d); proceeding without waiting\n",
                     __FUNCTION__, __LINE__, BACKUP_LOGS_DONE_DIR, errno);
             close(ifd);
+            return;
         }
 
         /* Re-check after watch is set — closes race between access() and add_watch */
@@ -110,10 +112,11 @@ void wait_for_backup_logs_done(void)
         struct timespec deadline;
         if (clock_gettime(CLOCK_MONOTONIC, &deadline) != 0) {
             RDK_LOG(RDK_LOG_WARN, "LOG.RDK.REBOOTINFO",
-                    "[%s:%d] clock_gettime failed (errno=%d) \n",
+                    "[%s:%d] clock_gettime failed (errno=%d); proceeding without waiting\n",
                     __FUNCTION__, __LINE__, errno);
             inotify_rm_watch(ifd, wd);
             close(ifd);
+            return;
         }
         deadline.tv_sec += (time_t)BACKUP_LOGS_SYNC_TIMEOUT_S;
 
@@ -171,7 +174,6 @@ void wait_for_backup_logs_done(void)
         return;
     }
 }
-
 
 static void get_current_timestamp(char *buffer, size_t size)
 {
