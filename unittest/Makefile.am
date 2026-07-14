@@ -53,6 +53,7 @@ reboot_main_gtest_SOURCES = reboot_main_gtest.cpp \
         mocks/rdk_logger_stub.c
 
 rebootreason_main_gtest_SOURCES = rebootreason_main_gtest.cpp mocks/mock_reboot_utils.cpp \
+                                  $(top_srcdir)/../reboot-reason-fetcher/src/rebootreason_main.c \
                                   mocks/rdk_logger_stub.c
 reboot_log_parser_gtest_SOURCES = reboot_log_parser_gtest.cpp $(top_srcdir)/../reboot-reason-fetcher/src/log_parser.c \
 				  $(top_srcdir)/../reboot-reason-fetcher/src/bootup_reason_checker.c \
@@ -72,6 +73,7 @@ reboot_main_gtest_CXXFLAGS = $(COMMON_CXXFLAGS)
 reboot_main_gtest_CFLAGS = $(COMMON_CFLAGS)
 rebootreason_main_gtest_CPPFLAGS = $(COMMON_CPPFLAGS)
 rebootreason_main_gtest_LDADD = $(COMMON_LDADD)
+rebootreason_main_gtest_LDFLAGS = -Wl,--wrap=inotify_init1,--wrap=inotify_add_watch,--wrap=clock_gettime,--wrap=access
 rebootreason_main_gtest_CXXFLAGS = $(COMMON_CXXFLAGS)
 rebootreason_main_gtest_CFLAGS = $(COMMON_CFLAGS)
 
