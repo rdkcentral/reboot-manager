@@ -48,42 +48,19 @@ void t2ValNotify( char *marker, char *val )
 #endif
 }
 
-/**
- * wait_for_backup_logs_done - inotify-based wait for backup_logs completion sentinel.
- *
- * Blocks until BACKUP_LOGS_DONE_FLAG (/tmp/.backup_logs_done) is created or
- * BACKUP_LOGS_SYNC_TIMEOUT_S seconds elapse.  Uses inotify so the process wakes
- * immediately when the file appears rather than burning CPU on a spin-poll.
- *
- * A post-watch re-check after inotify_add_watch closes the race window between
- * the initial access() fast-path and the watch becoming active.
- *
- * Proceeds without waiting if inotify_init1 or inotify_add_watch fails (missing kernel support, resource exhaustion, etc.).
- *
- * This is a **soft gate**: on timeout the caller logs a warning and continues
- * so that reboot-manager always produces previousreboot.info, even if
- * PreviousLogs/ is not yet fully populated.
- */
 void wait_for_backup_logs_done(void)
 {
     /* Fast path: sentinel already written by backup_logs */
     if (access(BACKUP_LOGS_DONE_FLAG, F_OK) == 0) {
-        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO",
-                "[%s:%d] backup_logs sentinel already present\n",
-                __FUNCTION__, __LINE__);
+        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "[%s:%d] backup_logs sentinel already present\n", __FUNCTION__, __LINE__);
         return;
     }
 
-    RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO",
-            "[%s:%d] Waiting up to %us for backup_logs sentinel %s\n",
-            __FUNCTION__, __LINE__,
-            BACKUP_LOGS_SYNC_TIMEOUT_S, BACKUP_LOGS_DONE_FLAG);
+    RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "[%s:%d] Waiting up to %us for backup_logs sentinel %s\n", __FUNCTION__, __LINE__, BACKUP_LOGS_SYNC_TIMEOUT_S, BACKUP_LOGS_DONE_FLAG);
 
     int ifd = inotify_init1(IN_CLOEXEC);
     if (ifd < 0) {
-        RDK_LOG(RDK_LOG_WARN, "LOG.RDK.REBOOTINFO",
-                "[%s:%d] inotify_init1 failed (errno=%d); proceeding without waiting\n",
-                __FUNCTION__, __LINE__, errno);
+        RDK_LOG(RDK_LOG_WARN, "LOG.RDK.REBOOTINFO", "[%s:%d] inotify_init1 failed (errno=%d); proceeding without waiting\n", __FUNCTION__, __LINE__, errno);
         return;
     }
 
@@ -91,18 +68,14 @@ void wait_for_backup_logs_done(void)
         int wd = inotify_add_watch(ifd, BACKUP_LOGS_DONE_DIR,
                                    IN_CREATE | IN_MOVED_TO);
         if (wd < 0) {
-            RDK_LOG(RDK_LOG_WARN, "LOG.RDK.REBOOTINFO",
-                    "[%s:%d] inotify_add_watch on %s failed (errno=%d); proceeding without waiting\n",
-                    __FUNCTION__, __LINE__, BACKUP_LOGS_DONE_DIR, errno);
+            RDK_LOG(RDK_LOG_WARN, "LOG.RDK.REBOOTINFO", "[%s:%d] inotify_add_watch on %s failed (errno=%d); proceeding without waiting\n", __FUNCTION__, __LINE__, BACKUP_LOGS_DONE_DIR, errno);
             close(ifd);
             return;
         }
 
         /* Re-check after watch is set — closes race between access() and add_watch */
         if (access(BACKUP_LOGS_DONE_FLAG, F_OK) == 0) {
-            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO",
-                    "[%s:%d] backup_logs sentinel detected (race resolved)\n",
-                    __FUNCTION__, __LINE__);
+            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "[%s:%d] backup_logs sentinel detected (race resolved)\n", __FUNCTION__, __LINE__);
             inotify_rm_watch(ifd, wd);
             close(ifd);
             return;
@@ -110,9 +83,7 @@ void wait_for_backup_logs_done(void)
 
         struct timespec deadline;
         if (clock_gettime(CLOCK_MONOTONIC, &deadline) != 0) {
-            RDK_LOG(RDK_LOG_WARN, "LOG.RDK.REBOOTINFO",
-                    "[%s:%d] clock_gettime failed (errno=%d); proceeding without waiting\n",
-                    __FUNCTION__, __LINE__, errno);
+            RDK_LOG(RDK_LOG_WARN, "LOG.RDK.REBOOTINFO", "[%s:%d] clock_gettime failed (errno=%d); proceeding without waiting\n", __FUNCTION__, __LINE__, errno);
             inotify_rm_watch(ifd, wd);
             close(ifd);
             return;
@@ -161,14 +132,9 @@ void wait_for_backup_logs_done(void)
         close(ifd);
 
         if (found) {
-            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO",
-                    "[%s:%d] backup_logs sentinel detected\n",
-                    __FUNCTION__, __LINE__);
+            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "[%s:%d] backup_logs sentinel detected\n", __FUNCTION__, __LINE__);
         } else {
-            RDK_LOG(RDK_LOG_WARN, "LOG.RDK.REBOOTINFO",
-                    "[%s:%d] backup_logs sentinel absent after %us; "
-                    "PreviousLogs/ may be incomplete\n",
-                    __FUNCTION__, __LINE__, BACKUP_LOGS_SYNC_TIMEOUT_S);
+            RDK_LOG(RDK_LOG_WARN, "LOG.RDK.REBOOTINFO", "[%s:%d] backup_logs sentinel absent after %us; PreviousLogs/ may be incomplete\n", __FUNCTION__, __LINE__, BACKUP_LOGS_SYNC_TIMEOUT_S);
         }
         return;
     }
