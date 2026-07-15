@@ -48,7 +48,7 @@ void t2ValNotify( char *marker, char *val )
 #endif
 }
 
-void wait_for_backup_logs_done(void)
+static void wait_for_backup_logs_done(void)
 {
     /* Fast path: sentinel already written by backup_logs */
     if (access(BACKUP_LOGS_DONE_FLAG, F_OK) == 0) {
@@ -333,5 +333,12 @@ int main(void)
     }
     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Reboot Reason Update completed with status: %d \n", ret);
     return ret;
+}
+#endif
+
+#ifdef GTEST_ENABLE
+void (*get_wait_for_backup_logs_done(void))(void)
+{
+    return &wait_for_backup_logs_done;
 }
 #endif
