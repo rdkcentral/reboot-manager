@@ -9,7 +9,7 @@
 
 extern "C" {
     #include "update-reboot-info.h"
-    void wait_for_backup_logs_done(void);
+    void (*get_wait_for_backup_logs_done(void))(void);
 }
 
 #define GTEST_DEFAULT_RESULT_FILEPATH "/tmp/Gtest_Report/"
@@ -109,7 +109,7 @@ protected:
 TEST_F(WaitForBackupLogsDoneTest, FastPath_SentinelAlreadyPresent)
 {
     create_sentinel();
-    wait_for_backup_logs_done();
+    get_wait_for_backup_logs_done()();
     SUCCEED();
 }
 
@@ -117,7 +117,7 @@ TEST_F(WaitForBackupLogsDoneTest, FastPath_SentinelAlreadyPresent)
 TEST_F(WaitForBackupLogsDoneTest, InotifyInit1Fails)
 {
     g_fail_inotify_init1 = true;
-    wait_for_backup_logs_done();
+    get_wait_for_backup_logs_done()();
     SUCCEED();
 }
 
@@ -125,7 +125,7 @@ TEST_F(WaitForBackupLogsDoneTest, InotifyInit1Fails)
 TEST_F(WaitForBackupLogsDoneTest, InotifyAddWatchFails)
 {
     g_fail_inotify_add_watch = true;
-    wait_for_backup_logs_done();
+    get_wait_for_backup_logs_done()();
     SUCCEED();
 }
 
@@ -135,7 +135,7 @@ TEST_F(WaitForBackupLogsDoneTest, RaceResolution_SentinelAppearsAfterWatch)
 {
     create_sentinel();
     g_access_sentinel_fail_count = 1;
-    wait_for_backup_logs_done();
+    get_wait_for_backup_logs_done()();
     SUCCEED();
 }
 
@@ -145,7 +145,7 @@ TEST_F(WaitForBackupLogsDoneTest, ClockGetTimeFails)
 {
     g_access_sentinel_fail_count = 2;
     g_fail_clock_gettime = true;
-    wait_for_backup_logs_done();
+    get_wait_for_backup_logs_done()();
     SUCCEED();
 }
 
@@ -160,7 +160,7 @@ TEST_F(WaitForBackupLogsDoneTest, SentinelDetectedViaInotify)
         create_sentinel();
     });
 
-    wait_for_backup_logs_done();
+    get_wait_for_backup_logs_done()();
     creator.join();
     SUCCEED();
 }
@@ -172,7 +172,7 @@ TEST_F(WaitForBackupLogsDoneTest, TimeoutExpires_SentinelNeverCreated)
     g_access_sentinel_fail_count = 2;
 
     auto start = std::chrono::steady_clock::now();
-    wait_for_backup_logs_done();
+    get_wait_for_backup_logs_done()();
     auto elapsed = std::chrono::steady_clock::now() - start;
 
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
