@@ -437,7 +437,7 @@ static int load_previous_reboot_reason_line(char *out, size_t out_len)
     return ERROR_FILE_NOT_FOUND;
 }
 
-int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fallbackInfo)
+int update_previous_reboot_log_fields(const char *jsonPath)
 {
     FILE *fp;
     FILE *json_fp;
