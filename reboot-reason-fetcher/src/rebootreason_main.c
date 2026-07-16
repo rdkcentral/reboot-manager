@@ -186,7 +186,13 @@ int main(void)
             rebootInfo.customReason[sizeof(rebootInfo.customReason) - 1] = '\0';
             strncpy(rebootInfo.otherReason, logInfo.otherReason, sizeof(rebootInfo.otherReason) - 1);
             rebootInfo.otherReason[sizeof(rebootInfo.otherReason) - 1] = '\0';
-            log_fallback_used = true;
+
+            const char hw_prefix[] = "Hardware Register - ";
+            if (strncmp(rebootInfo.customReason, hw_prefix, sizeof(hw_prefix) - 1) == 0) {
+                rebootInfo.customReason[0] = '\0';
+            } else {
+                log_fallback_used = true;
+            }
         }
 
         if (!log_fallback_used) {

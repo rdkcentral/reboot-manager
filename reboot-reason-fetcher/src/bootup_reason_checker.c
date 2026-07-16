@@ -446,7 +446,6 @@ int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fa
     char previousReason[MAX_BUFFER_SIZE] = {0};
     char prev_log_path[MAX_PATH_LENGTH] = {0};
     bool loaded_previous_info = false;
-    bool no_reboot_info = (jsonPath == NULL);
 
     memset(&infoToUse, 0, sizeof(RebootInfo));
 
