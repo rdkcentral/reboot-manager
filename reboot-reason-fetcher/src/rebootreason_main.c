@@ -3,7 +3,7 @@
 #include <ctype.h>
 
 int find_previous_reboot_log(char *out_path, size_t len);
-int update_previous_reboot_log_fields(const char *jsonPath);
+int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fallbackInfo);
 
 void t2CountNotify(char *marker, int val) {
 #ifdef T2_EVENT_ENABLED
@@ -218,7 +218,7 @@ int main(void)
     }
 
     update_kernel_log(&ctx, &rebootInfo);
-    if (update_previous_reboot_log_fields(has_reboot_info ? PREVIOUS_REBOOT_INFO_FILE : NULL) != SUCCESS) {
+    if (update_previous_reboot_log_fields(has_reboot_info ? PREVIOUS_REBOOT_INFO_FILE : NULL, &rebootInfo) != SUCCESS) {
         RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Skipping PreviousReboot* update in %s due to missing reboot info fields\n", REBOOT_INFO_LOG_FILE);
     } else if (has_reboot_info) {
         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Get previous reboot reason from %s - prevrebootreason: %s\n", PREVIOUS_REBOOT_INFO_FILE, rebootInfo.reason);

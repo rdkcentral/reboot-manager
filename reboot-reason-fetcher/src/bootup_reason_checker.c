@@ -437,7 +437,7 @@ static int load_previous_reboot_reason_line(char *out, size_t out_len)
     return ERROR_FILE_NOT_FOUND;
 }
 
-int update_previous_reboot_log_fields(const char *jsonPath)
+int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fallbackInfo)
 {
     FILE *fp;
     FILE *json_fp;
@@ -446,6 +446,7 @@ int update_previous_reboot_log_fields(const char *jsonPath)
     char previousReason[MAX_BUFFER_SIZE] = {0};
     char prev_log_path[MAX_PATH_LENGTH] = {0};
     bool loaded_previous_info = false;
+    bool no_reboot_info = (jsonPath == NULL);
 
     memset(&infoToUse, 0, sizeof(RebootInfo));
 
@@ -472,11 +473,12 @@ int update_previous_reboot_log_fields(const char *jsonPath)
         }
     } else if (jsonPath == NULL) {
         RDK_LOG(RDK_LOG_DEBUG, "LOG.RDK.REBOOTINFO", "No reboot.info file existed\n");
+	(void)fallbackInfo;
     } else {
         RDK_LOG(RDK_LOG_DEBUG, "LOG.RDK.REBOOTINFO", "Previous reboot JSON file not accessible: %s, trying legacy reboot log fallback\n", jsonPath);
     }
 
-    if (!loaded_previous_info) {
+    if (!loaded_previous_info && !no_reboot_info) {
         if (find_previous_reboot_log(prev_log_path, sizeof(prev_log_path)) == SUCCESS) {
             if (parse_legacy_log(prev_log_path, &infoToUse) == SUCCESS) {
                 loaded_previous_info = true;
@@ -489,7 +491,11 @@ int update_previous_reboot_log_fields(const char *jsonPath)
         }
     }
 
-    if (load_previous_reboot_reason_line(previousReason, sizeof(previousReason)) != SUCCESS) {
+    if (!no_reboot_info) {
+        if (load_previous_reboot_reason_line(previousReason, sizeof(previousReason)) != SUCCESS) {
+            previousReason[0] = '\0';
+        }
+    } else {
         previousReason[0] = '\0';
     }
 
