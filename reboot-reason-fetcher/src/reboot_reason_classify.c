@@ -542,10 +542,6 @@ int classify_reboot_reason(RebootInfo *info, const EnvContext *ctx, const Hardwa
     if (info->source[0] != '\0') {
         if (is_app_triggered(info->source)) {
             strcpy(info->reason, "APP_TRIGGERED");
-            /* MAINTENANCE_REBOOT override when customReason says so */
-            if (info->customReason[0] != '\0' && strcmp(info->customReason, "MAINTENANCE_REBOOT") == 0) {
-                strcpy(info->reason, "MAINTENANCE_REBOOT");
-            }
             RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Source-based classification: %s from source %s\n", info->reason, info->source);
             return SUCCESS;
         }
@@ -559,7 +555,7 @@ int classify_reboot_reason(RebootInfo *info, const EnvContext *ctx, const Hardwa
             RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Source-based classification: MAINTENANCE_REBOOT from source %s\n", info->source);
             return SUCCESS;
         }
-	/* Unrecognized non-empty source defaults to FIRMWARE_FAILURE */
+        /* Unrecognized non-empty source defaults to FIRMWARE_FAILURE */
         strcpy(info->reason, "FIRMWARE_FAILURE");
         RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Source-based classification: FIRMWARE_FAILURE (unrecognized source %s)\n", info->source);
         return SUCCESS;
