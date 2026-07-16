@@ -473,7 +473,7 @@ int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fa
         }
     } else if (jsonPath == NULL) {
         RDK_LOG(RDK_LOG_DEBUG, "LOG.RDK.REBOOTINFO", "No reboot.info file existed\n");
-	(void)fallbackInfo;
+        (void)fallbackInfo;
     } else {
         RDK_LOG(RDK_LOG_DEBUG, "LOG.RDK.REBOOTINFO", "Previous reboot JSON file not accessible: %s, trying legacy reboot log fallback\n", jsonPath);
     }
