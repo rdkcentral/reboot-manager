@@ -1,8 +1,33 @@
 #include "update-reboot-info.h"
 #include "rdk_logger.h"
-
+#include <fcntl.h>
+#include <limits.h>
+#include <sys/select.h>
+#include <sys/inotify.h>
 int find_previous_reboot_log(char *out_path, size_t len);
 int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fallbackInfo);
+
+/** Sentinel written by dcm-agent backup_logs on successful completion.
+ *  Reboot-manager waits for this before reading /opt/logs/PreviousLogs/ to
+ *  ensure the directory is fully populated before deriving the reboot reason.
+ *  Cross-repo interface: also defined in dcm-agent backup_logs/include/backup_logs.h
+ *  and telemetry source/dcautil/dcautil.h.
+ *  Any path change MUST be coordinated with both repositories. */
+#define BACKUP_LOGS_DONE_FLAG      "/tmp/.backup_logs_done"
+/** Directory and filename split required by inotify_add_watch(). */
+#define BACKUP_LOGS_DONE_DIR       "/tmp"
+#define BACKUP_LOGS_DONE_FILENAME  ".backup_logs_done"
+
+#ifdef GTEST_ENABLE
+#  define BACKUP_LOGS_SYNC_TIMEOUT_S  2u
+#else
+#  define BACKUP_LOGS_SYNC_TIMEOUT_S  60u
+#endif
+
+/** Sentinel written on successful invocation.
+ *  Cross-repo interface: consumed by uploadstblogs reboot_setup().
+ *  Any path change MUST be coordinated with the uploadstblogs repository. */
+#define PATH_FLAG_INVOCATION        "/tmp/Update_rebootInfo_invoked"
 
 void t2CountNotify(char *marker, int val) {
 #ifdef T2_EVENT_ENABLED
@@ -21,6 +46,98 @@ void t2ValNotify( char *marker, char *val )
     (void)marker;
     (void)val;
 #endif
+}
+
+void wait_for_backup_logs_done(void)
+{
+    /* Fast path: sentinel already written by backup_logs */
+    if (access(BACKUP_LOGS_DONE_FLAG, F_OK) == 0) {
+        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "[%s:%d] backup_logs sentinel already present\n", __FUNCTION__, __LINE__);
+        return;
+    }
+
+    RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "[%s:%d] Waiting up to %us for backup_logs sentinel %s\n", __FUNCTION__, __LINE__, BACKUP_LOGS_SYNC_TIMEOUT_S, BACKUP_LOGS_DONE_FLAG);
+
+    int ifd = inotify_init1(IN_CLOEXEC);
+    if (ifd < 0) {
+        RDK_LOG(RDK_LOG_WARN, "LOG.RDK.REBOOTINFO", "[%s:%d] inotify_init1 failed (errno=%d); proceeding without waiting\n", __FUNCTION__, __LINE__, errno);
+        return;
+    }
+
+    {
+        int wd = inotify_add_watch(ifd, BACKUP_LOGS_DONE_DIR,
+                                   IN_CREATE | IN_MOVED_TO);
+        if (wd < 0) {
+            RDK_LOG(RDK_LOG_WARN, "LOG.RDK.REBOOTINFO", "[%s:%d] inotify_add_watch on %s failed (errno=%d); proceeding without waiting\n", __FUNCTION__, __LINE__, BACKUP_LOGS_DONE_DIR, errno);
+            close(ifd);
+            return;
+        }
+
+        /* Re-check after watch is set — closes race between access() and add_watch */
+        if (access(BACKUP_LOGS_DONE_FLAG, F_OK) == 0) {
+            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "[%s:%d] backup_logs sentinel detected (race resolved)\n", __FUNCTION__, __LINE__);
+            inotify_rm_watch(ifd, wd);
+            close(ifd);
+            return;
+        }
+
+        struct timespec deadline;
+        if (clock_gettime(CLOCK_MONOTONIC, &deadline) != 0) {
+            RDK_LOG(RDK_LOG_WARN, "LOG.RDK.REBOOTINFO", "[%s:%d] clock_gettime failed (errno=%d); proceeding without waiting\n", __FUNCTION__, __LINE__, errno);
+            inotify_rm_watch(ifd, wd);
+            close(ifd);
+            return;
+        }
+        deadline.tv_sec += (time_t)BACKUP_LOGS_SYNC_TIMEOUT_S;
+
+        int found = 0;
+        char buf[sizeof(struct inotify_event) + NAME_MAX + 1];
+
+        while (!found) {
+            struct timespec now;
+            if (clock_gettime(CLOCK_MONOTONIC, &now) == 0 &&
+                now.tv_sec >= deadline.tv_sec) {
+                break; /* timeout */
+            }
+
+            struct timeval tv = {2, 0};
+            fd_set fds;
+            FD_ZERO(&fds);
+            FD_SET(ifd, &fds);
+
+            int ret = select(ifd + 1, &fds, NULL, NULL, &tv);
+            if (ret < 0) {
+                if (errno == EINTR) { continue; }
+                break;
+            }
+            if (ret == 0) { continue; } /* 2 s heartbeat — re-check deadline */
+
+            ssize_t len = read(ifd, buf, sizeof(buf));
+            if (len <= 0) { continue; }
+
+            ssize_t offset = 0;
+            while (offset < len) {
+                struct inotify_event *ev =
+                    (struct inotify_event *)(buf + offset);
+                if (ev->len > 0 &&
+                    strcmp(ev->name, BACKUP_LOGS_DONE_FILENAME) == 0) {
+                    found = 1;
+                    break;
+                }
+                offset += (ssize_t)(sizeof(struct inotify_event) + ev->len);
+            }
+        }
+
+        inotify_rm_watch(ifd, wd);
+        close(ifd);
+
+        if (found) {
+            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "[%s:%d] backup_logs sentinel detected\n", __FUNCTION__, __LINE__);
+        } else {
+            RDK_LOG(RDK_LOG_WARN, "LOG.RDK.REBOOTINFO", "[%s:%d] backup_logs sentinel absent after %us; PreviousLogs/ may be incomplete\n", __FUNCTION__, __LINE__, BACKUP_LOGS_SYNC_TIMEOUT_S);
+        }
+        return;
+    }
 }
 
 static void get_current_timestamp(char *buffer, size_t size)
@@ -60,7 +177,7 @@ static void log_reason(const char *path)
     }
     fclose(fp);
 }
-
+#ifndef GTEST_ENABLE
 int main(void)
 {
     EnvContext ctx;
@@ -140,8 +257,10 @@ int main(void)
     }
     else {
         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Deriving reboot reason from legacy sources \n");
-
-
+       
+        /* Soft gate: ensure backup_logs has finished populating PreviousLogs/
+         * before any of the legacy-source functions read from that directory. */
+        wait_for_backup_logs_done();
         if (rebootInfo.timestamp[0] == '\0') {
             get_current_timestamp(rebootInfo.timestamp, sizeof(rebootInfo.timestamp));
         }
@@ -202,7 +321,17 @@ int main(void)
             }
         }
     }
-
+    /* Write invocation sentinel so uploadstblogs can proceed */
+    {
+        int sentinel_fd = open(PATH_FLAG_INVOCATION, O_CREAT | O_WRONLY, 0644);
+        if (sentinel_fd >= 0) {
+            close(sentinel_fd);
+            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "[%s:%d] Invocation sentinel written: %s\n", __FUNCTION__, __LINE__, PATH_FLAG_INVOCATION);
+        } else {
+            RDK_LOG(RDK_LOG_WARN, "LOG.RDK.REBOOTINFO", "[%s:%d] Failed to write invocation sentinel %s: %s\n", __FUNCTION__, __LINE__, PATH_FLAG_INVOCATION, strerror(errno));
+        }
+    }
     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Reboot Reason Update completed with status: %d \n", ret);
     return ret;
 }
+#endif
