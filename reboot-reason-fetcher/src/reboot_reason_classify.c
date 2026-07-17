@@ -425,19 +425,20 @@ static void map_hardware_reason(const char *hwReason, RebootInfo *info)
 void update_kernel_log(const EnvContext *ctx, const RebootInfo *info)
 {
     if (!ctx || !info) {
-        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","RebootInfor not found\n");
+        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Invalid parameters for update_kernel_log\n");
         return;
     }
 
-    if (ctx && (strcmp(ctx->soc, "RTK") == 0 || strcmp(ctx->soc, "REALTEK") == 0)) {
+    if (strcmp(ctx->soc, "RTK") == 0 || strcmp(ctx->soc, "REALTEK") == 0) {
         if (info->reason[0] != '\0') {
             char lower[MAX_REASON_LENGTH];
             size_t len = strlen(info->reason);
-            for (size_t i = 0; i < len && i < sizeof(lower) - 1; i++) {
+	    size_t n = (len < sizeof(lower) - 1) ? len : (sizeof(lower) - 1);
+	    for (size_t i = 0; i < n; i++) {
                 lower[i] = tolower((unsigned char)info->reason[i]);
             }
-            lower[len] = '\0';
-            FILE *klog = fopen("/opt/logs/messages.txt", "a");
+	    lower[n] = '\0';
+            FILE *klog = fopen(KERNEL_LOG_FILE, "a");
             if (klog) {
                 fprintf(klog, "PreviousRebootReason: %s\n", lower);
                 fflush(klog);
