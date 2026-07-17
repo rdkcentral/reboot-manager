@@ -142,4 +142,5 @@ int parse_legacy_log(const char *logPath, RebootInfo *info);
 int update_reboot_info(const EnvContext *ctx);
 int find_previous_reboot_log(char *out_path, size_t len);
 int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fallbackInfo);
+void update_kernel_log(const EnvContext *ctx, const RebootInfo *info);
 #endif /* UPDATE_REBOOT_INFO_H */
