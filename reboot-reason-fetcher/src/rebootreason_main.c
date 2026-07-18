@@ -1,5 +1,6 @@
 #include "update-reboot-info.h"
 #include "rdk_logger.h"
+#include <ctype.h>
 
 int find_previous_reboot_log(char *out_path, size_t len);
 int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fallbackInfo);
@@ -59,6 +60,29 @@ static void log_reason(const char *path)
         RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "%s", buf);
     }
     fclose(fp);
+}
+
+void update_kernel_log(const EnvContext *ctx, const RebootInfo *info)
+{
+    if (!ctx || !info) return;
+    if (strcmp(ctx->soc, "RTK") != 0 && strcmp(ctx->soc, "REALTEK") != 0) return;
+    if (info->reason[0] == '\0') return;
+
+    char lower[MAX_REASON_LENGTH];
+    size_t len = strlen(info->reason);
+    for (size_t i = 0; i < len && i < sizeof(lower) - 1; i++) {
+        lower[i] = tolower((unsigned char)info->reason[i]);
+    }
+    lower[(len < sizeof(lower) - 1) ? len : (sizeof(lower) - 1)] = '\0';
+
+    FILE *klog = fopen("/opt/logs/messages.txt", "a");
+    if (klog) {
+        fprintf(klog, "PreviousRebootReason: %s\n", lower);
+        fflush(klog);
+        fclose(klog);
+        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO",
+                "Annotated kernel log with PreviousRebootReason: %s\n", lower);
+    }
 }
 
 int main(void)
@@ -146,17 +170,47 @@ int main(void)
             get_current_timestamp(rebootInfo.timestamp, sizeof(rebootInfo.timestamp));
         }
 
-        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Detecting kernel panic \n");
-        detect_kernel_panic(&ctx, &panicInfo);
 
-        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Checking firmware failures \n");
-        check_firmware_failure(&ctx, &fwFailure);
+        bool log_fallback_used = false;
+        RebootInfo logInfo;
+        memset(&logInfo, 0, sizeof(logInfo));
+        if (parse_legacy_log(REBOOT_INFO_LOG_FILE, &logInfo) == SUCCESS && logInfo.source[0] != '\0') {
+            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","rebootInfo.log fallback: source=%s, customReason=%s\n", logInfo.source, logInfo.customReason);
+            if (logInfo.timestamp[0] != '\0') {
+                strncpy(rebootInfo.timestamp, logInfo.timestamp, sizeof(rebootInfo.timestamp) - 1);
+                rebootInfo.timestamp[sizeof(rebootInfo.timestamp) - 1] = '\0';
+            }
+            strncpy(rebootInfo.source, logInfo.source, sizeof(rebootInfo.source) - 1);
+            rebootInfo.source[sizeof(rebootInfo.source) - 1] = '\0';
+            strncpy(rebootInfo.customReason, logInfo.customReason, sizeof(rebootInfo.customReason) - 1);
+            rebootInfo.customReason[sizeof(rebootInfo.customReason) - 1] = '\0';
+            strncpy(rebootInfo.otherReason, logInfo.otherReason, sizeof(rebootInfo.otherReason) - 1);
+            rebootInfo.otherReason[sizeof(rebootInfo.otherReason) - 1] = '\0';
 
-        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Getting hardware reboot reason for current boot \n");
-        get_hardware_reason(&ctx, &hwReason, &rebootInfo);
+            const char hw_prefix[] = "Hardware Register - ";
+            if (strncmp(rebootInfo.customReason, hw_prefix, sizeof(hw_prefix) - 1) == 0) {
+                rebootInfo.customReason[0] = '\0';
+            } else {
+                log_fallback_used = true;
+            }
+        }
+
+        if (!log_fallback_used) {
+            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Detecting kernel panic \n");
+            detect_kernel_panic(&ctx, &panicInfo);
+
+            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Checking firmware failures \n");
+            check_firmware_failure(&ctx, &fwFailure);
+
+            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Getting hardware reboot reason for current boot \n");
+            get_hardware_reason(&ctx, &hwReason, &rebootInfo);
+        }
 
         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Classifying reboot reason \n");
-        if (classify_reboot_reason(&rebootInfo, &ctx, &hwReason, &panicInfo, &fwFailure) != SUCCESS) {
+        if (classify_reboot_reason(&rebootInfo, &ctx,
+                                   log_fallback_used ? NULL : &hwReason,
+                                   log_fallback_used ? NULL : &panicInfo,
+                                   log_fallback_used ? NULL : &fwFailure) != SUCCESS) {
             RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to classify reboot reason \n");
             ret = ERROR_GENERAL;
             goto cleanup;
@@ -165,6 +219,7 @@ int main(void)
     // Updating messages.txt
     update_kernel_log(&ctx, &rebootInfo);
 
+    update_kernel_log(&ctx, &rebootInfo);
     if (update_previous_reboot_log_fields(has_reboot_info ? PREVIOUS_REBOOT_INFO_FILE : NULL, &rebootInfo) != SUCCESS) {
         RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Skipping PreviousReboot* update in %s due to missing reboot info fields\n", REBOOT_INFO_LOG_FILE);
     } else if (has_reboot_info) {

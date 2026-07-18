@@ -562,6 +562,31 @@ int classify_reboot_reason(RebootInfo *info, const EnvContext *ctx, const Hardwa
         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Classified hardware reason - Source: %s, Reason: %s\n", info->source, info->reason);
         return SUCCESS;
     }
+    /* Source-based classification: when the reboot initiator (source) is known
+     * (e.g. parsed from rebootInfo.log) but no customReason, kernel-panic, or
+     * hardware reason triggered a classification above, classify using the
+     * source field.  This classifies PreviousRebootInitiatedBy against APP/OPS/MAINTENANCE trigger lists. */
+    if (info->source[0] != '\0') {
+        if (is_app_triggered(info->source)) {
+            strcpy(info->reason, "APP_TRIGGERED");
+            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Source-based classification: %s from source %s\n", info->reason, info->source);
+            return SUCCESS;
+        }
+        if (is_ops_triggered(info->source)) {
+            strcpy(info->reason, "OPS_TRIGGERED");
+            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Source-based classification: OPS_TRIGGERED from source %s\n", info->source);
+            return SUCCESS;
+        }
+        if (is_maintenance_triggered(info->source)) {
+            strcpy(info->reason, "MAINTENANCE_REBOOT");
+            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Source-based classification: MAINTENANCE_REBOOT from source %s\n", info->source);
+            return SUCCESS;
+        }
+        /* Unrecognized non-empty source defaults to FIRMWARE_FAILURE */
+        strcpy(info->reason, "FIRMWARE_FAILURE");
+        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Source-based classification: FIRMWARE_FAILURE (unrecognized source %s)\n", info->source);
+        return SUCCESS;
+    }
     if (info->source[0] == '\0') {
         strcpy(info->source, "Unknown");
         strcpy(info->reason, "UNKNOWN");
