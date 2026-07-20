@@ -49,4 +49,5 @@ pytest --json-report --json-report-summary --json-report-file $RESULT_DIR/swrebo
 pytest --json-report --json-report-summary --json-report-file $RESULT_DIR/update_log_files.json tests/functional_tests/test/test_scenario_update_prev_reboot_generates_previous_files_and_flags.py
 pytest --json-report --json-report-summary --json-report-file $RESULT_DIR/stt_flag_test.json tests/functional_tests/test/test_scenario_update_prev_reboot_service_flow_after_stt_flag.py
 pytest --json-report --json-report-summary --json-report-file $RESULT_DIR/stt_flag_skip.json tests/functional_tests/test/test_scenario_update_prev_reboot_skips_when_flags_missing.py
+pytest --json-report --json-report-summary --json-report-file $RESULT_DIR/backup_logs_sync_sentinel.json tests/functional_tests/test/test_scenario_backup_logs_sync_and_invocation_sentinel.py
 
