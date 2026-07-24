@@ -7,6 +7,7 @@
 int find_previous_reboot_log(char *out_path, size_t len);
 int update_previous_reboot_log_fields(const char *jsonPath, const RebootInfo *fallbackInfo);
 
+// Test for native build
 /** Sentinel written by dcm-agent backup_logs on successful completion.
  *  Reboot-manager waits for this before reading /opt/logs/PreviousLogs/ to
  *  ensure the directory is fully populated before deriving the reboot reason.
