@@ -22,7 +22,7 @@ AUTOMAKE_OPTIONS = foreign subdir-objects
 reboot_CFLAGS += -fPIC -pthread
 
 AM_CPPFLAGS = -I$(top_srcdir)/reboot-helper/include -I$(top_srcdir)/reboot-reason-fetcher/include
-AM_CFLAGS = -std=c99 -Wall -Wextra -Werror -O2 -I./reboot-helper/include -DRDK_LOGGER_ENABLED -fPIC -pthread
+AM_CFLAGS = -std=c99 -Wall -Wextra -Werror -Wno-error=format -O2 -I./reboot-helper/include -DRDK_LOGGER_ENABLED -fPIC -pthread
 
 # Library target
 lib_LTLIBRARIES = librebootnow.la

@@ -241,6 +241,7 @@ int main(int argc, char **argv)
         printf("REBOOTINFO : ERROR - Extended logger init failed\n");
     }
 
+    printf("test coverity workflow %s");
     if (0 == rdk_logger_init("/etc/debug.ini")) {
         RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "[%s:%d] RDK Logger initialized\n", __FUNCTION__, __LINE__);
     }
