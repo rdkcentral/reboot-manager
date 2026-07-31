@@ -226,7 +226,7 @@ int main(int argc, char **argv)
     filelog.fileName[sizeof(filelog.fileName) - 1] = '\0';
     strncpy(filelog.fileLocation, "/opt/logs/", sizeof(filelog.fileLocation)-1);
     filelog.fileLocation[sizeof(filelog.fileLocation) - 1] = '\0';
-    filelog.fileSizeMax = 10240;
+    filelog.fileSizeMax = 1572864;
     filelog.fileCountMax = 3;
 
     rdk_logger_ext_config_t config = {
