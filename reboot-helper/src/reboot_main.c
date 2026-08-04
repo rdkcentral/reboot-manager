@@ -227,7 +227,7 @@ int main(int argc, char **argv)
     strncpy(filelog.fileLocation, "/opt/logs/", sizeof(filelog.fileLocation)-1);
     filelog.fileLocation[sizeof(filelog.fileLocation) - 1] = '\0';
     filelog.fileSizeMax = 1572864;
-    filelog.fileCountMax = 1;
+    filelog.fileCountMax = 0;
 
     rdk_logger_ext_config_t config = {
         .pModuleName = "LOG.RDK.REBOOTINFO",      /* Module name */
