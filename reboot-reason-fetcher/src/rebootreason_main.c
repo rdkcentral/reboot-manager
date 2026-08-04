@@ -189,12 +189,21 @@ int main(void)
     bool has_reboot_info = false;
     bool lock_acquired = false;
 
+	//RDK Logger Initialisation
+    rdk_LogOutput_File filelog;
+    strncpy(filelog.fileName, "rebootreason.log", sizeof(filelog.fileName)-1);
+    filelog.fileName[sizeof(filelog.fileName) - 1] = '\0';
+    strncpy(filelog.fileLocation, "/opt/logs/", sizeof(filelog.fileLocation)-1);
+    filelog.fileLocation[sizeof(filelog.fileLocation) - 1] = '\0';
+    filelog.fileSizeMax = 1572864;
+    filelog.fileCountMax = 0;
+
     rdk_logger_ext_config_t config = {
-        .pModuleName = "LOG.RDK.REBOOTINFO",     /* Module name */
+        .pModuleName = "LOG.RDK.REBOOTINFO",      /* Module name */
         .loglevel = RDK_LOG_INFO,                 /* Default log level */
-        .output = RDKLOG_OUTPUT_CONSOLE,          /* Output to console (stdout/stderr) */
+        .output = RDKLOG_OUTPUT_FILE,             /* Output to FILE*/
         .format = RDKLOG_FORMAT_WITH_TS,          /* Timestamped format */
-        .pFilePolicy = NULL                       /* Not using file output, so NULL */
+        .pFilePolicy = &filelog                   /* using file output*/
     };
 
     if (rdk_logger_ext_init(&config) != RDK_SUCCESS) {
