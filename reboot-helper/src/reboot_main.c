@@ -221,29 +221,29 @@ int main(int argc, char **argv)
     FILE *reboot_flag = NULL;
 
     //RDK Logger Initialisation
-/*    rdk_LogOutput_File filelog;
+    rdk_LogOutput_File filelog;
     strncpy(filelog.fileName, "rebootreason.log", sizeof(filelog.fileName)-1);
     filelog.fileName[sizeof(filelog.fileName) - 1] = '\0';
     strncpy(filelog.fileLocation, "/opt/logs/", sizeof(filelog.fileLocation)-1);
     filelog.fileLocation[sizeof(filelog.fileLocation) - 1] = '\0';
-    filelog.fileSizeMax = 10240;
-    filelog.fileCountMax = 3; */
+    //filelog.fileSizeMax = 10240;
+    //filelog.fileCountMax = 3;
 
-    //rdk_logger_ext_config_t config = {
-      //  .pModuleName = "LOG.RDK.REBOOTINFO",      /* Module name */
-       // .loglevel = RDK_LOG_INFO,                 /* Default log level */
-      //  .output = RDKLOG_OUTPUT_FILE,             /* Output to FILE*/
-      //  .format = RDKLOG_FORMAT_WITH_TS,          /* Timestamped format */
-      //  .pFilePolicy = &filelog                   /* using file output*/
-   // };
+    rdk_logger_ext_config_t config = {
+        .pModuleName = "LOG.RDK.REBOOTINFO",      /* Module name */
+        .loglevel = RDK_LOG_INFO,                 /* Default log level */
+        .output = RDKLOG_OUTPUT_FILE,             /* Output to FILE*/
+        .format = RDKLOG_FORMAT_WITH_TS,          /* Timestamped format */
+        .pFilePolicy = &filelog                   /* using file output*/
+    };
     
-    /*if (rdk_logger_ext_init(&config) != RDK_SUCCESS) {
+    if (rdk_logger_ext_init(&config) != RDK_SUCCESS) {
         printf("REBOOTINFO : ERROR - Extended logger init failed\n");
     }
 
     if (0 == rdk_logger_init("/etc/debug.ini")) {
         RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "[%s:%d] RDK Logger initialized\n", __FUNCTION__, __LINE__);
-    }*/
+    }
 
 #ifdef T2_EVENT_ENABLED
     t2_init("reboot-manager");
