@@ -222,12 +222,13 @@ int main(int argc, char **argv)
 
     //RDK Logger Initialisation
     rdk_LogOutput_File filelog;
+	memset(&filelog, 0, sizeof(filelog));
     strncpy(filelog.fileName, "rebootreason.log", sizeof(filelog.fileName)-1);
     filelog.fileName[sizeof(filelog.fileName) - 1] = '\0';
     strncpy(filelog.fileLocation, "/opt/logs/", sizeof(filelog.fileLocation)-1);
     filelog.fileLocation[sizeof(filelog.fileLocation) - 1] = '\0';
-    filelog.fileSizeMax = 10240;
-    filelog.fileCountMax = 3;
+    filelog.fileSizeMax = 0;
+    filelog.fileCountMax = 0;
 
     rdk_logger_ext_config_t config = {
         .pModuleName = "LOG.RDK.REBOOTINFO",      /* Module name */
