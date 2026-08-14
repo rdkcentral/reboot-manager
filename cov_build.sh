@@ -19,9 +19,6 @@
 
 WORKDIR=`pwd`
 
-apt-get update
-apt-get install -y libjsonrpccpp-dev
-
 cd $WORKDIR
 export INSTALL_DIR='/usr/local'
 export top_srcdir=`pwd`
@@ -30,8 +27,6 @@ export top_builddir=`pwd`
 git clone https://github.com/rdkcentral/rdk_logger.git
 cp rdk_logger/include/rdk_logger.h /usr/local/include/.
 
-mkdir -p m4
-libtoolize --force --copy || true
 autoreconf -fi
 export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 export LDFLAGS="-L/usr/local/lib -lpthread -lrdkloggers -lrbus -lsecure_wrapper"
