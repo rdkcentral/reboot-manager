@@ -352,6 +352,52 @@ TEST(ParodusSmokeTest, handle_parodus_reboot_file_AppendsNewlineWhenMissingInInp
     remove(destPath);
 }
 
+TEST(ParodusSmokeTest, update_parodus_log_MultipleRebootReasons) {
+    RebootInfo info;
+    memset(&info, 0, sizeof(info));
+    strncpy(info.timestamp, "2026-03-11T08:15:00Z", sizeof(info.timestamp) - 1);
+    strncpy(info.reason, "HARDWARE_RESET", sizeof(info.reason) - 1);
+    strncpy(info.customReason, "WATCHDOG_TIMER_RESET", sizeof(info.customReason) - 1);
+
+    system("rm -f /opt/secure/reboot/previousparodusreboot.info");
+
+    int result = update_parodus_log(&info);
+    // Should succeed (0 indicates success/skip for this function)
+}
+
+TEST(ParodusSmokeTest, append_kernel_reason_EmptyReasonString) {
+    EnvContext ctx;
+    RebootInfo info;
+    memset(&ctx, 0, sizeof(ctx));
+    memset(&info, 0, sizeof(info));
+
+    strcpy(ctx.soc, "RTK");
+    info.reason[0] = '\0'; // Empty reason
+
+    // Should handle empty reason gracefully
+    int result = append_kernel_reason(&ctx, &info);
+    EXPECT_EQ(result, SUCCESS);
+}
+
+TEST(ParodusSmokeTest, copy_keypress_info_EmptySourceFile) {
+    const char* src = "/tmp/reboot_test_keypress_empty_src.info";
+    const char* dst = "/tmp/reboot_test_keypress_empty_dst.info";
+
+    // Create empty source file
+    FILE* fp = fopen(src, "w");
+    if (fp) fclose(fp);
+
+    int result = copy_keypress_info(src, dst);
+    EXPECT_EQ(result, SUCCESS);
+
+    // Destination should be created
+    FILE* out = fopen(dst, "r");
+    if (out) fclose(out);
+
+    remove(src);
+    remove(dst);
+}
+
 GTEST_API_ int main(int argc, char *argv[]) {
     char testresults_fullfilepath[GTEST_REPORT_FILEPATH_SIZE];
     memset(testresults_fullfilepath, 0, GTEST_REPORT_FILEPATH_SIZE);

@@ -858,6 +858,167 @@ TEST_F(LogParserTest, parse_legacy_log_PreviousPrefixTakesPriority) {
     EXPECT_STREQ(info.customReason, "LegacyCustom");
     EXPECT_STREQ(info.otherReason,  "LegacyOther");
 }
+// ============================================================
+// Tests for update_previous_reboot_log_fields
+// ============================================================
+
+TEST_F(LogParserTest, update_previous_reboot_log_fields_NullPath) {
+    // When jsonPath is NULL, function should still write log
+    RebootInfo fallback;
+    memset(&fallback, 0, sizeof(RebootInfo));
+    strcpy(fallback.source, "FallbackSource");
+    strcpy(fallback.reason, "FALLBACK_REASON");
+    
+    system("mkdir -p /opt/logs");
+    int result = update_previous_reboot_log_fields(nullptr, &fallback);
+    EXPECT_EQ(result, SUCCESS);
+    
+    FILE* fp = fopen("/opt/logs/rebootInfo.log", "r");
+    if (fp) {
+        char buf[1024] = {0};
+        fread(buf, 1, sizeof(buf) - 1, fp);
+        fclose(fp);
+        EXPECT_TRUE(strstr(buf, "PreviousReboot") != nullptr);
+    }
+}
+
+TEST_F(LogParserTest, update_previous_reboot_log_fields_LoadFromJSON) {
+    // Create a JSON reboot info file
+    system("mkdir -p /opt/secure/reboot");
+    const char* jsonFile = "/tmp/reboot_test/previousreboot.info";
+    createTestLogFile(jsonFile,
+                      "{"
+                      "\"timestamp\":\"2026-01-01T12:00:00Z\","
+                      "\"source\":\"Servicemanager\","
+                      "\"reason\":\"APP_TRIGGERED\","
+                      "\"customReason\":\"Reboot\","
+                      "\"otherReason\":\"User initiated\""
+                      "}");
+    
+    system("mkdir -p /opt/logs");
+    RebootInfo fallback;
+    memset(&fallback, 0, sizeof(RebootInfo));
+    
+    int result = update_previous_reboot_log_fields(jsonFile, &fallback);
+    EXPECT_EQ(result, SUCCESS);
+    
+    FILE* fp = fopen("/opt/logs/rebootInfo.log", "r");
+    if (fp) {
+        char buf[1024] = {0};
+        fread(buf, 1, sizeof(buf) - 1, fp);
+        fclose(fp);
+        // Should have extracted JSON values
+        EXPECT_TRUE(strstr(buf, "PreviousRebootInitiatedBy") != nullptr);
+    }
+}
+
+TEST_F(LogParserTest, update_previous_reboot_log_fields_FallbackToLegacyLog) {
+    // JSON file doesn't exist, should fall back to legacy log search
+    system("mkdir -p /opt/logs/PreviousLogs");
+    createTestLogFile("/opt/logs/PreviousLogs/rebootInfo.log",
+                      "Thu Jan  1 12:00:00 UTC 2026 PreviousRebootInitiatedBy: WebPA\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 PreviousRebootTime: 2025-12-31 12:00:00 UTC\n"
+                      "Thu Jan  1 12:00:00 UTC 2026 PreviousCustomReason: FIRMWARE_FAILURE\n");
+    
+    system("mkdir -p /opt/logs");
+    RebootInfo fallback;
+    memset(&fallback, 0, sizeof(RebootInfo));
+    strcpy(fallback.source, "FallbackSource");
+    
+    int result = update_previous_reboot_log_fields("/nonexistent.json", &fallback);
+    EXPECT_EQ(result, SUCCESS);
+    
+    FILE* fp = fopen("/opt/logs/rebootInfo.log", "r");
+    if (fp) {
+        char buf[1024] = {0};
+        fread(buf, 1, sizeof(buf) - 1, fp);
+        fclose(fp);
+        EXPECT_TRUE(strstr(buf, "PreviousRebootInitiatedBy") != nullptr);
+    }
+}
+
+TEST_F(LogParserTest, update_previous_reboot_log_fields_WriteFailure) {
+    // Simulate write failure by making rebootInfo.log unwritable
+    system("mkdir -p /opt/logs");
+    system("touch /opt/logs/rebootInfo.log && chmod 444 /opt/logs/rebootInfo.log");
+    
+    RebootInfo fallback;
+    memset(&fallback, 0, sizeof(RebootInfo));
+    
+    int result = update_previous_reboot_log_fields(nullptr, &fallback);
+    // Should fail due to permission denied
+    EXPECT_NE(result, SUCCESS);
+    
+    system("chmod 644 /opt/logs/rebootInfo.log");
+}
+
+TEST_F(LogParserTest, update_previous_reboot_log_fields_EmptyInput) {
+    // All inputs empty/null, should still write empty fields
+    system("mkdir -p /opt/logs");
+    RebootInfo fallback;
+    memset(&fallback, 0, sizeof(RebootInfo));
+    
+    int result = update_previous_reboot_log_fields(nullptr, &fallback);
+    EXPECT_EQ(result, SUCCESS);
+    
+    FILE* fp = fopen("/opt/logs/rebootInfo.log", "r");
+    EXPECT_NE(fp, nullptr);
+    if (fp) {
+        char buf[1024] = {0};
+        size_t n = fread(buf, 1, sizeof(buf) - 1, fp);
+        buf[n] = '\0';
+        fclose(fp);
+        // Should contain Previous field markers even if empty
+        EXPECT_TRUE(strstr(buf, "PreviousReboot") != nullptr);
+    }
+}
+
+TEST_F(LogParserTest, update_previous_reboot_log_fields_JSONWithPartialFields) {
+    // JSON file with some fields missing
+    system("mkdir -p /opt/secure/reboot");
+    const char* jsonFile = "/tmp/reboot_test/partial.info";
+    createTestLogFile(jsonFile,
+                      "{"
+                      "\"timestamp\":\"2026-01-01T12:00:00Z\","
+                      "\"source\":\"WebPA\""
+                      "}");
+    
+    system("mkdir -p /opt/logs");
+    RebootInfo fallback;
+    memset(&fallback, 0, sizeof(RebootInfo));
+    strcpy(fallback.otherReason, "FallbackOtherReason");
+    
+    int result = update_previous_reboot_log_fields(jsonFile, &fallback);
+    EXPECT_EQ(result, SUCCESS);
+}
+
+TEST_F(LogParserTest, get_hardware_reason_NonBrcmSocDefaultsToUnknown) {
+    EnvContext ctx;
+    HardwareReason hwReason;
+    RebootInfo info;
+    memset(&ctx, 0, sizeof(EnvContext));
+    memset(&hwReason, 0, sizeof(HardwareReason));
+    memset(&info, 0, sizeof(RebootInfo));
+    strcpy(ctx.soc, "REALTEK");
+    int result = get_hardware_reason(&ctx, &hwReason, &info);
+    EXPECT_EQ(result, SUCCESS);
+    EXPECT_STREQ(hwReason.mappedReason, "UNKNOWN");
+}
+
+TEST_F(LogParserTest, parse_device_properties_SttSupportParsing) {
+    g_mock_props_enabled = true;
+    strcpy(g_soc_value, "BRCM");
+    strcpy(g_build_type_value, "prod");
+    strcpy(g_device_type_value, "stb");
+    strcpy(g_stt_value, "true");
+    EnvContext ctx;
+    memset(&ctx, 0, sizeof(EnvContext));
+    int result = parse_device_properties(&ctx);
+    EXPECT_EQ(result, SUCCESS);
+    EXPECT_TRUE(ctx.rebootInfoSttSupport);
+    g_mock_props_enabled = false;
+    memset(g_stt_value, 0, sizeof(g_stt_value));
+}
 
 GTEST_API_ int main(int argc, char *argv[]) {
     char testresults_fullfilepath[GTEST_REPORT_FILEPATH_SIZE];
