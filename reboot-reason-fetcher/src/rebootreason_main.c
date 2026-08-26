@@ -149,15 +149,14 @@ static void get_current_timestamp(char *buffer, size_t size)
 
 static int check_dir_exists(const char *path)
 {
-    struct stat st = {0};
-
-    if (stat(path, &st) == -1) {
-        if (mkdir(path, 0755) != 0) {
-            RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to create directory %s: %s\n", path, strerror(errno));
-            return ERROR_GENERAL;
+    if (mkdir(path, 0755) != 0) {
+        if (errno == EEXIST) {
+            return SUCCESS;
         }
-        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Created directory: %s\n", path);
+        RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to create directory %s: %s\n", path, strerror(errno));
+        return ERROR_GENERAL;
     }
+    RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Created directory: %s\n", path);
     return SUCCESS;
 }
 
@@ -242,20 +241,16 @@ int main(void)
     get_current_timestamp(rebootInfo.timestamp, sizeof(rebootInfo.timestamp));
 
     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Checking for new reboot.info file \n");
-    if (access(REBOOT_INFO_FILE, F_OK) == 0) {
+    if (rename(REBOOT_INFO_FILE, PREVIOUS_REBOOT_INFO_FILE) == 0) {
         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","New %s file found, Creating previous reboot info file...\n",REBOOT_INFO_FILE);
-        log_reason(REBOOT_INFO_FILE);
-        if (rename(REBOOT_INFO_FILE, PREVIOUS_REBOOT_INFO_FILE) != 0) {
-            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Failed to rename reboot.info: %s\n", strerror(errno));
-        } else {
-            has_reboot_info = true;
-        }
+        log_reason(PREVIOUS_REBOOT_INFO_FILE);
+        has_reboot_info = true;
 	if (access(PARODUS_REBOOT_INFO_FILE, F_OK) == 0) {
             RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","New %s file found, updating parodus logfile...\n", PARODUS_REBOOT_INFO_FILE);
             handle_parodus_reboot_file(&rebootInfo, PREVIOUS_PARODUSREBOOT_INFO_FILE);
 	}
     }
-    else {
+    else if (errno == ENOENT) {
         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Deriving reboot reason from legacy sources \n");
        
         /* Soft gate: ensure backup_logs has finished populating PreviousLogs/
@@ -280,6 +275,9 @@ int main(void)
             ret = ERROR_GENERAL;
             goto cleanup;
         }
+    }
+    else {
+        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Failed to rename reboot.info: %s\n", strerror(errno));
     }
     // Updating messages.txt
     update_kernel_log(&ctx, &rebootInfo);
