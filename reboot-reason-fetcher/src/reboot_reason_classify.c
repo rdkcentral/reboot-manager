@@ -95,10 +95,6 @@ static bool search_panic_in_file(const char *filepath, PanicInfo *panicInfo)
 {
     FILE *fp = NULL;
     char line[MAX_BUFFER_SIZE];
-    if (access(filepath, F_OK) != 0) {
-        RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","File does not exist: %s\n", filepath);
-        return false;
-    }
     fp = fopen(filepath, "r");
     if (!fp) {
         RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to open %s: %s\n", filepath, strerror(errno));
@@ -129,9 +125,6 @@ static void copy_pstore_logs_to_opt(void)
 {
     DIR *dir = NULL;
     struct dirent *ent;
-    if (access(PSTORE_DIR, F_OK) != 0) {
-        return;
-    }
     dir = opendir(PSTORE_DIR);
     if (!dir) {
         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Failed to open %s: %s\n", PSTORE_DIR, strerror(errno));
@@ -240,10 +233,6 @@ static bool search_string_in_file(const char *filepath, const char *search_str)
     FILE *fp = NULL;
     char line[MAX_BUFFER_SIZE];
     bool found = false;
-    if (access(filepath, F_OK) != 0) {
-        RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","File does not exist: %s\n", filepath);
-        return false;
-    }
     fp = fopen(filepath, "r");
     if (!fp) {
         RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Failed to open %s: %s\n", filepath, strerror(errno));
