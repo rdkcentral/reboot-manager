@@ -214,7 +214,6 @@ int main(int argc, char **argv)
     int opt;
     int pid_status = 0;
     char ts[64];
-    struct stat st;
     FILE *rebootinfo_json = NULL;
     FILE *prev_rebootinfo_json = NULL;
     int proceed_reboot = 1;

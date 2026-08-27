@@ -105,6 +105,9 @@ int handle_parodus_reboot_file(const RebootInfo *info, const char *destPath)
     }
 
     FILE *in = fopen(PARODUS_REBOOT_INFO_FILE, "r");
+    if (!in && errno != ENOENT) {
+         RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to open %s: %s\n", PARODUS_REBOOT_INFO_FILE, strerror(errno));
+    }
     if (in) {
         char buf[MAX_BUFFER_SIZE];
         size_t n = fread(buf, 1, sizeof(buf) - 1, in);
