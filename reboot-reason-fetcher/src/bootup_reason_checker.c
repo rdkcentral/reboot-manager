@@ -219,6 +219,7 @@ static void resolve_hal_sys_reboot(const char *rebootReasonLine,
     endRest = paren ? paren : (rest + strlen(rest));
     restLen = (size_t)(endRest - rest);
     while (restLen > 0 && (rest[restLen - 1] == ' ' || rest[restLen - 1] == '\t')) restLen--;
+    if (orLen == 0) return;
     if (restLen >= orLen) restLen = orLen - 1;
     memcpy(otherReason, rest, restLen);
     otherReason[restLen] = '\0';
