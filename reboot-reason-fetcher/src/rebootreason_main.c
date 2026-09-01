@@ -151,29 +151,21 @@ static int check_dir_exists(const char *path)
 {
     struct stat st = {0};
 
-    if (stat(path, &st) == 0) {
-        if (S_ISDIR(st.st_mode)) {
+    if (mkdir(path, 0755) == 0) {
+        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Created directory: %s\n", path);
+        return SUCCESS;
+    }
+
+    int mkdir_errno = errno;
+    if (mkdir_errno == EEXIST) {
+        if (stat(path, &st) == 0 && S_ISDIR(st.st_mode)) {
             return SUCCESS;
         }
         RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Path exists but is not a directory: %s\n", path);
         return ERROR_GENERAL;
     }
 
-    if (errno != ENOENT) {
-        RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to inspect directory %s: %s\n", path, strerror(errno));
-        return ERROR_GENERAL;
-    }
-
-    if (mkdir(path, 0755) == 0) {
-        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Created directory: %s\n", path);
-        return SUCCESS;
-    }
-
-    if (errno == EEXIST && stat(path, &st) == 0 && S_ISDIR(st.st_mode)) {
-        return SUCCESS;
-    }
-
-    RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to create directory %s: %s\n", path, strerror(errno));
+    RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to create directory %s: %s\n", path, strerror(mkdir_errno));
     return ERROR_GENERAL;
 }
 
