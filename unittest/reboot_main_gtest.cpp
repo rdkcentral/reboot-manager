@@ -27,6 +27,7 @@ static std::vector<std::string> g_cmds;
 static int g_secure_rc = 0; // return code for v_secure_system
 static bool g_called_systemctl = false;
 static bool g_called_force = false;
+static int g_cleanup_pidfile_calls = 0;
 
 extern "C" {
 /* Reset getopt state between multiple main() invocations in tests */
@@ -53,8 +54,8 @@ extern "C" {
 // Stubs used by main
 int pidfile_write_and_guard(void){ 
     return 0;
-}                                                                                       
-void cleanup_pidfile(void){}                                                                                                         
+}
+void cleanup_pidfile(void){ ++g_cleanup_pidfile_calls; }
 int handle_cyclic_reboot_stub(const char* s, const char* r, const char* c, const char* o){ 
     (void)s;
     (void)r;
@@ -215,6 +216,17 @@ TEST(RebootMain, ManageableNotificationDisabledNoPublish){
     ASSERT_FALSE(g_notif_called);
 }
 
+TEST(RebootMain, ManageableNotificationReadFailureSkipsPublish){
+    g_handle_decision = 1;
+    g_notif_called=false; g_cmds.clear(); g_rfc_get_ok=false;
+    reset_getopt_state();
+    const char* argv[] = { "rebootnow", "-s", "HtmlDiagnostics", "-o", "User requested reboot" };
+    int rc = reboot_main_entry(5, (char**)argv);
+    ASSERT_EQ(rc, 0);
+    ASSERT_FALSE(g_notif_called);
+    g_rfc_get_ok=true;
+}
+
 TEST(RebootMain, CategoryMaintenanceOverride){
     g_handle_decision = 0;
     g_markers.clear();
@@ -291,6 +303,24 @@ TEST(RebootMain, ProceedNonMaintenanceReasonClearsMaintenanceFlag){
     int rc = reboot_main_entry(5, (char**)argv);
     ASSERT_EQ(rc, 0);
     ASSERT_NE(0, access("/opt/secure/reboot/maintenance_reboot", F_OK));
+}
+
+TEST(RebootMain, MaintenanceFlagRejectsEmptyReason)
+{
+    ASSERT_NE(0, update_maintenance_reboot_flag(nullptr));
+    ASSERT_NE(0, update_maintenance_reboot_flag(""));
+}
+
+TEST(RebootMain, MaintenanceFlagCreatesAndClearsFlag)
+{
+    system("mkdir -p /opt/secure/reboot");
+    const char* flag_path = "/opt/secure/reboot/maintenance_reboot";
+    remove(flag_path);
+
+    ASSERT_EQ(0, update_maintenance_reboot_flag("MAINTENANCE_REBOOT"));
+    ASSERT_EQ(0, access(flag_path, F_OK));
+    ASSERT_EQ(0, update_maintenance_reboot_flag("APP_TRIGGERED"));
+    ASSERT_NE(0, access(flag_path, F_OK));
 }
 
 TEST(RebootMain, UnknownSourceCategorization){
@@ -382,8 +412,10 @@ TEST(RebootMain, EmitT2CrashDefaultMapping){
 }
 
 TEST(RebootMain, SignalCleanupHandler){
-    // Directly invoke cleanup handler to exercise its function body
-    ASSERT_NO_THROW({ signal_cleanup_handler(0); });
+    g_cleanup_pidfile_calls = 0;
+    void (*volatile cleanup_handler)(int) = signal_cleanup_handler;
+    cleanup_handler(SIGTERM);
+    ASSERT_EQ(g_cleanup_pidfile_calls, 1);
 }
 
 TEST(RebootMain, MkdirSuccessBranch){

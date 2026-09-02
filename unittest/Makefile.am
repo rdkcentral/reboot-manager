@@ -26,6 +26,7 @@ COMMON_CXXFLAGS = -fprofile-arcs -ftest-coverage -fpermissive -Wno-implicit-func
 reboot_utils_gtest_SOURCES = utils_gtest.cpp $(top_srcdir)/../reboot-helper/src/utils.c mocks/rdk_logger_stub.c mocks/rfcapi_stub.c
 reboot_utils_gtest_CPPFLAGS = $(COMMON_CPPFLAGS)
 reboot_utils_gtest_LDADD = $(COMMON_LDADD)
+reboot_utils_gtest_LDFLAGS = -Wl,--wrap=fput
 reboot_utils_gtest_CXXFLAGS = $(COMMON_CXXFLAGS)
 reboot_utils_gtest_CFLAGS = $(COMMON_CFLAGS)
 
@@ -69,6 +70,7 @@ reboot_main_gtest_CPPFLAGS = $(COMMON_CPPFLAGS)
 reboot_main_gtest_CPPFLAGS += -I$(srcdir)/mocks -I$(top_srcdir)/unittest/mocks
 reboot_main_gtest_CPPFLAGS += -DT2_EVENT_ENABLED
 reboot_main_gtest_LDADD = $(COMMON_LDADD)
+rebootreason_main_gtest_LDFLAGS = -Wl,--wrap=inotify_init1,--wrap=inotify_add_watch,--wrap=clock_gettime,--wrap=access,--wrap=mkdir
 reboot_main_gtest_CXXFLAGS = $(COMMON_CXXFLAGS)
 reboot_main_gtest_CFLAGS = $(COMMON_CFLAGS)
 rebootreason_main_gtest_CPPFLAGS = $(COMMON_CPPFLAGS)
@@ -84,6 +86,7 @@ reboot_log_parser_gtest_CFLAGS = $(COMMON_CFLAGS)
 
 reboot_classify_gtest_CPPFLAGS = $(COMMON_CPPFLAGS)
 reboot_classify_gtest_LDADD = $(COMMON_LDADD)
+reboot_classify_gtest_LDFLAGS = -Wl,--wrap=access,--wrap=fopen,--wrap=opendir
 reboot_classify_gtest_CXXFLAGS = $(COMMON_CXXFLAGS)
 reboot_classify_gtest_CFLAGS = $(COMMON_CFLAGS)
 
