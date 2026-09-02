@@ -125,7 +125,11 @@ static bool search_panic_in_file(const char *filepath, PanicInfo *panicInfo)
     return false;
 }
 
+#ifdef GTEST_ENABLE
+void copy_pstore_logs_to_opt(void)
+#else
 static void copy_pstore_logs_to_opt(void)
+#endif
 {
     DIR *dir = NULL;
     struct dirent *ent;

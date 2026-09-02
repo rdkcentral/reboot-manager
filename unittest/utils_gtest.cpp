@@ -13,6 +13,7 @@ extern "C" {
 
 static int g_t2_d_count = 0;
 static int g_t2_s_count = 0;
+static bool g_fail_fputs = false;
 
 extern "C" void t2_event_d(const char* marker, int val)
 {
@@ -26,6 +27,15 @@ extern "C" void t2_event_s(const char* marker, const char* val)
     (void)marker;
     (void)val;
     g_t2_s_count++;
+}
+
+extern "C" int __real_fputs(const char* line, FILE* stream);
+extern "C" int __wrap_fputs(const char* line, FILE* stream)
+{
+    if (g_fail_fputs) {
+        return EOF;
+    }
+    return __real_fputs(line, stream);
 }
 
 TEST(UtilsTest, TimestampUpdate_Format)
@@ -53,11 +63,63 @@ TEST(UtilsTest, WriteRebootInfoLog_InvalidPath)
     ASSERT_EQ(-1, write_rebootinfo_log("/invalid/path/doesnotexist.log", "x\n"));
 }
 
+TEST(UtilsTest, WriteRebootInfoLog_FputsFailure)
+{
+    const char* path = "./tmp_utils_test.log";
+    remove(path);
+    g_fail_fputs = true;
+
+    EXPECT_EQ(write_rebootinfo_log(path, "x\n"), -1);
+
+    g_fail_fputs = false;
+    remove(path);
+}
+
 TEST(UtilsTest, TimestampUpdate_TinyBuffer)
 {
     char buf[1] = {'x'};
     timestamp_update(buf, sizeof(buf));
     ASSERT_EQ(buf[0], '\0');
+}
+
+TEST(UtilsTest, TelemetryWrappers)
+{
+    g_t2_d_count = 0;
+    g_t2_s_count = 0;
+
+    t2CountNotify("TEST_MARKER", 1);
+    t2ValNotify("TEST_MARKER", "TEST_VALUE");
+
+    ASSERT_EQ(g_t2_d_count, 0);
+    ASSERT_EQ(g_t2_s_count, 0);
+}
+
+TEST(UtilsTest, TelemetryWrappersIgnoreInvalidValues)
+{
+    g_t2_d_count = 0;
+    g_t2_s_count = 0;
+
+    t2CountNotify(nullptr, 1);
+    t2CountNotify("", 1);
+    t2ValNotify(nullptr, "TEST_VALUE");
+    t2ValNotify("", "TEST_VALUE");
+    t2ValNotify("TEST_MARKER", nullptr);
+
+    ASSERT_EQ(g_t2_d_count, 0);
+    ASSERT_EQ(g_t2_s_count, 0);
+}
+
+TEST(UtilsTest, RfcHelpersAreInvoked)
+{
+    char value_buffer[16] = {0};
+    bool bool_value = false;
+    int int_value = 0;
+
+    EXPECT_FALSE(rfc_get_string_param("Device.Test.String", value_buffer, sizeof(value_buffer)));
+    EXPECT_FALSE(rfc_get_bool_param("Device.Test.Bool", &bool_value));
+    EXPECT_FALSE(rfc_get_int_param("Device.Test.Int", &int_value));
+    EXPECT_TRUE(rfc_set_bool_param("Device.Test.Bool", true));
+    EXPECT_TRUE(rfc_set_int_param("Device.Test.Int", 1));
 }
 
 GTEST_API_ int main(int argc, char *argv[]){
