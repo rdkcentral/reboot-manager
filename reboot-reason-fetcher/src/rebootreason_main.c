@@ -254,11 +254,15 @@ int main(void)
         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","New %s file found, Creating previous reboot info file...\n",REBOOT_INFO_FILE);
         log_reason(PREVIOUS_REBOOT_INFO_FILE);
         has_reboot_info = true;
-	if (handle_parodus_reboot_file(&rebootInfo, PREVIOUS_PARODUSREBOOT_INFO_FILE) != SUCCESS) {
-            RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to update previous Parodus reboot information\n");
-            ret = ERROR_GENERAL;
-            goto cleanup;
-        }
+        int parodus_fd = open(PARODUS_REBOOT_INFO_FILE, O_RDONLY);
+        if (parodus_fd >= 0) {
+            close(parodus_fd);
+            if (handle_parodus_reboot_file(&rebootInfo, PREVIOUS_PARODUSREBOOT_INFO_FILE) != SUCCESS) {
+                RDK_LOG(RDK_LOG_WARN,"LOG.RDK.REBOOTINFO","Failed to update previous Parodus reboot information (continuing)\n");
+            }
+        } else if (errno != ENOENT) {
+           RDK_LOG(RDK_LOG_WARN,"LOG.RDK.REBOOTINFO","Parodus reboot info file not readable: %s\n", strerror(errno));
+        }	   
     }
     else if (errno == ENOENT) {
         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Deriving reboot reason from legacy sources \n");
@@ -288,8 +292,6 @@ int main(void)
     }
     else {
         RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Failed to rename reboot.info: %s\n", strerror(errno));
-        ret = ERROR_GENERAL;
-        goto cleanup;
     }
     // Updating messages.txt
     update_kernel_log(&ctx, &rebootInfo);
