@@ -291,7 +291,9 @@ int main(void)
         }
     }
     else {
-        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Failed to rename reboot.info: %s\n", strerror(errno));
+        RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to rename %s -> %s: %s\n", REBOOT_INFO_FILE, PREVIOUS_REBOOT_INFO_FILE, strerror(errno));
+        ret = ERROR_GENERAL;
+        goto cleanup;
     }
     // Updating messages.txt
     update_kernel_log(&ctx, &rebootInfo);

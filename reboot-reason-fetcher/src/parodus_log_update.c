@@ -108,6 +108,7 @@ int handle_parodus_reboot_file(const RebootInfo *info, const char *destPath)
     if (!in) {
         if (errno != ENOENT) {
            RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to open %s: %s\n", PARODUS_REBOOT_INFO_FILE, strerror(errno));
+           return ERROR_GENERAL;
         }
     }
     if (in) {
