@@ -127,7 +127,7 @@ static void copy_pstore_logs_to_opt(void)
     struct dirent *ent;
     dir = opendir(PSTORE_DIR);
     if (!dir) {
-        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Failed to open %s: %s\n", PSTORE_DIR, strerror(errno));
+        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Failed to open %s: %s\n", PSTORE_DIR, strerror(errno));
         return;
     }
     while ((ent = readdir(dir)) != NULL) {

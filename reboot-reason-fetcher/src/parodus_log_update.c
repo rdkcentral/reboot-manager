@@ -156,8 +156,6 @@ int handle_parodus_reboot_file(const RebootInfo *info, const char *destPath)
             info->source);
     fflush(out);
     fclose(out);
-    (void)unlink(PARODUS_REBOOT_INFO_FILE);
-
     return SUCCESS;
 }
 
