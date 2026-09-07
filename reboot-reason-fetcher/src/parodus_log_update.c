@@ -179,7 +179,7 @@ int copy_keypress_info(const char *srcPath, const char *destPath)
             return SUCCESS;
         }
         RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to open source file %s: %s\n", srcPath, strerror(errno));
-        return SUCCESS;
+        return ERROR_GENERAL;
     }
     dest_fd = open(destPath, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (dest_fd < 0) {
