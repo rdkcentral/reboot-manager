@@ -214,7 +214,6 @@ int main(int argc, char **argv)
     int opt;
     int pid_status = 0;
     char ts[64];
-    struct stat st;
     FILE *rebootinfo_json = NULL;
     FILE *prev_rebootinfo_json = NULL;
     int proceed_reboot = 1;
@@ -349,12 +348,12 @@ int main(int argc, char **argv)
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Categorized reboot as %s (source=%s, custom=%s, other=%s)\n",
             reboot_reason, source, custom_reason, other_reason);
    
-    if (stat(REBOOT_INFO_DIR, &st) != 0) {
-        if (mkdir(REBOOT_INFO_DIR, 0755) != 0) {
+    if (mkdir(REBOOT_INFO_DIR, 0755) != 0) {
+        if (errno != EEXIST) {
             RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Failed to create %s (errno=%d)\n", REBOOT_INFO_DIR, errno);
-        } else {
-            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Creating %s folder\n", REBOOT_INFO_DIR);
         }
+    } else {
+        RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Creating %s folder\n", REBOOT_INFO_DIR);
     }
 
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Invoke setPreviousRebootInfo to save reboot information under %s folder\n", REBOOT_INFO_DIR);
@@ -451,4 +450,3 @@ int main(int argc, char **argv)
     v_secure_system("reboot -f");
     return 0;
 }
-

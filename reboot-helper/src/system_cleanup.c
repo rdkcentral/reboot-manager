@@ -101,7 +101,7 @@ static int remove_dir(const char *path)
 {
     char child[1024];
     int wn;
-    struct stat cst, st;
+    struct stat st;
     struct dirent *de;
 
     if (!path) {
@@ -124,13 +124,8 @@ static int remove_dir(const char *path)
                 RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","remove_tree: path truncated for %s/%s\n", path, de->d_name);
                 continue;
             }
-            if (lstat(child, &cst) != 0) {
-                continue;
-            }
-            if (S_ISDIR(cst.st_mode)) {
+            if (unlink(child) != 0 && (errno == EISDIR || errno == EPERM)) {
                 (void)remove_dir(child);
-            } else {
-                (void)unlink(child);
             }
         }
         closedir(d);
@@ -432,4 +427,3 @@ void cleanup_pidfile(void)
 {
     unlink(PID_FILE);
 }
-
