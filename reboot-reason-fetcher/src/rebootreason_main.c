@@ -254,14 +254,8 @@ int main(void)
 
         log_reason(PREVIOUS_REBOOT_INFO_FILE);
         has_reboot_info = true;
-        int parodus_fd = open(PARODUS_REBOOT_INFO_FILE, O_RDONLY);
-        if (parodus_fd >= 0) {
-            close(parodus_fd);
-            if (handle_parodus_reboot_file(&rebootInfo, PREVIOUS_PARODUSREBOOT_INFO_FILE) != SUCCESS) {
-                RDK_LOG(RDK_LOG_WARN,"LOG.RDK.REBOOTINFO","Failed to update previous Parodus reboot information (continuing)\n");
-            }
-        } else if (errno != ENOENT) {
-            RDK_LOG(RDK_LOG_WARN,"LOG.RDK.REBOOTINFO","Parodus reboot info file not readable: %s\n", strerror(errno));
+        if (handle_parodus_reboot_file(&rebootInfo, PREVIOUS_PARODUSREBOOT_INFO_FILE) != SUCCESS) {
+            RDK_LOG(RDK_LOG_WARN,"LOG.RDK.REBOOTINFO","Failed to update previous Parodus reboot information (continuing)\n");
         }
     }
     else if (errno == ENOENT) {

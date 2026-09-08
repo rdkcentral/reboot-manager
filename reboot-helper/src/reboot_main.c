@@ -347,8 +347,13 @@ int main(int argc, char **argv)
 
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Categorized reboot as %s (source=%s, custom=%s, other=%s)\n",
             reboot_reason, source, custom_reason, other_reason);
-    if (mkdir(REBOOT_INFO_DIR, 0755) != 0) { 
-        if (errno != EEXIST) {
+    if (mkdir(REBOOT_INFO_DIR, 0755) != 0) {
+        if (errno == EEXIST) {
+            struct stat dir_st;
+            if (stat(REBOOT_INFO_DIR, &dir_st) != 0 || !S_ISDIR(dir_st.st_mode)) {
+                RDK_LOG(RDK_LOG_ERROR, "LOG.RDK.REBOOTINFO", "%s exists but is not a directory\n", REBOOT_INFO_DIR);
+            }
+        } else {
             RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Failed to create %s (errno=%d)\n", REBOOT_INFO_DIR, errno);
         }
     } else {
