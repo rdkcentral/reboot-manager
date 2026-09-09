@@ -59,6 +59,7 @@ extern "C" {
        return __real_opendir(redirect_pstore(name, buf, sizeof(buf)));
    }
 
+}
 
 static void enable_pstore_redirect(const char *dir)
 {
