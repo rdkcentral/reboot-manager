@@ -60,18 +60,18 @@ extern "C" {
    }
 
 
-tatic void enable_pstore_redirect(const char *dir)
-
+static void enable_pstore_redirect(const char *dir)
+{
    snprintf(g_pstore_redirect, sizeof(g_pstore_redirect), "%s", dir);
+}
 
-
-tatic void disable_pstore_redirect(void)
-
+static void disable_pstore_redirect(void)
+{
    g_pstore_redirect[0] = '\0';
+}
 
-
-tatic std::string read_whole_file(const char *path)
-
+static std::string read_whole_file(const char *path)
+{
    std::string contents;
    FILE *fp = __real_fopen(path, "r");
    if (!fp) {
