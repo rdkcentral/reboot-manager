@@ -350,4 +350,18 @@ void (*get_wait_for_backup_logs_done(void))(void)
 {
     return &wait_for_backup_logs_done;
 }
+void (*get_current_timestamp_for_test(void))(char *, size_t)
+{
+    return &get_current_timestamp;
+}
+
+int (*get_check_dir_exists_for_test(void))(const char *)
+{
+    return &check_dir_exists;
+}
+
+void (*get_log_reason_for_test(void))(const char *)
+{
+    return &log_reason;
+}
 #endif
