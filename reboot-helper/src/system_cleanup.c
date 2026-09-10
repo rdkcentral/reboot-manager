@@ -158,7 +158,12 @@ static void sync_logs_from_temp(const char *temp_path, const char *log_path)
     int wn_src;
     int wn_dst;
  
-    if (log_path && temp_path && strcmp(temp_path, log_path) == 0) {
+
+    if (!temp_path || !log_path) {
+        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","sync_logs: temp_path or log_path is NULL\n");
+        return;
+    }
+    if (strcmp(temp_path, log_path) == 0) {
         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","sync_logs: Sync Not needed, Same log folder\n");
         return;
     }
