@@ -93,21 +93,12 @@ static int send_signalcleanup(const char *name, int sig)
     return count;
 }
 
-static int remove_dir(const char *path)
+static int remove_dir_at(int parent_fd, const char *name)
 {
-    char child[1024];
-    int wn;
-    struct dirent *de;
-
-    if (!path) {
-        return -1;
-    }
-    /* Open (rather than lstat-then-unlink) so the directory check and the
-     * removal act on the same resolved path/fd, avoiding a TOCTOU race. */
-    int fd = open(path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+    int fd = openat(parent_fd, name, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
     if (fd < 0) {
         if (errno == ENOTDIR || errno == ELOOP) {
-            return unlink(path);
+            return unlinkat(parent_fd, name, 0);
         }
         return -1;
     }
@@ -116,29 +107,27 @@ static int remove_dir(const char *path)
         close(fd);
         return -1;
     }
+    int rc = 0;
+    struct dirent *de;
     while ((de = readdir(d)) != NULL) {
         if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0) {
             continue;
         }
-        wn = snprintf(child, sizeof(child), "%s/%s", path, de->d_name);
-        if (wn < 0 || (size_t)wn >= sizeof(child)) {
-            RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","remove_tree: path truncated for %s/%s\n", path, de->d_name);
-            continue;
-        }
-        if (unlink(child) != 0 && (errno == EISDIR || errno == EPERM)) {
-            (void)remove_dir(child);
+        if (remove_dir_at(dirfd(d), de->d_name) != 0) {
+            rc = -1;
         }
     }
-    closedir(d);
-    return rmdir(path);
+    closedir(d); /* also closes fd */
+    if (unlinkat(parent_fd, name, AT_REMOVEDIR) != 0) {
+        rc = -1;
+    }
+    return rc;
 }
 
 static int clear_subdirectory(const char *root)
 {
     struct dirent *de;
     int rc = 0;
-    char child[1024];
-    int wn; 
 
     if (!root) {
         return -1;
@@ -149,12 +138,9 @@ static int clear_subdirectory(const char *root)
     }
     while ((de = readdir(d)) != NULL) {
         if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0) continue;
-        wn = snprintf(child, sizeof(child), "%s/%s", root, de->d_name);
-        if (wn < 0 || (size_t)wn >= sizeof(child)) {
-            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","clear_dir_children: path truncated for %s/%s\n", root, de->d_name);
-            continue;
-        }
-        if (remove_dir(child) != 0) {
+        /* Remove relative to dirfd(d) so a rename/swap of `root` after opendir()
+         * cannot redirect the removal elsewhere (see remove_dir_at()). */
+        if (remove_dir_at(dirfd(d), de->d_name) != 0) {
             rc = -1;
         }
     }
