@@ -95,10 +95,7 @@ static bool search_panic_in_file(const char *filepath, PanicInfo *panicInfo)
 {
     FILE *fp = NULL;
     char line[MAX_BUFFER_SIZE];
-    if (access(filepath, F_OK) != 0) {
-        RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","File does not exist: %s\n", filepath);
-        return false;
-    }
+    
     fp = fopen(filepath, "r");
     if (!fp) {
         RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to open %s: %s\n", filepath, strerror(errno));
@@ -125,16 +122,18 @@ static bool search_panic_in_file(const char *filepath, PanicInfo *panicInfo)
     return false;
 }
 
+#ifdef GTEST_ENABLE
+void copy_pstore_logs_to_opt(void)
+#else
 static void copy_pstore_logs_to_opt(void)
+#endif
 {
     DIR *dir = NULL;
     struct dirent *ent;
-    if (access(PSTORE_DIR, F_OK) != 0) {
-        return;
-    }
+    
     dir = opendir(PSTORE_DIR);
     if (!dir) {
-        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Failed to open %s: %s\n", PSTORE_DIR, strerror(errno));
+        RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Failed to open %s: %s\n", PSTORE_DIR, strerror(errno));
         return;
     }
     while ((ent = readdir(dir)) != NULL) {
@@ -240,10 +239,7 @@ static bool search_string_in_file(const char *filepath, const char *search_str)
     FILE *fp = NULL;
     char line[MAX_BUFFER_SIZE];
     bool found = false;
-    if (access(filepath, F_OK) != 0) {
-        RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","File does not exist: %s\n", filepath);
-        return false;
-    }
+    
     fp = fopen(filepath, "r");
     if (!fp) {
         RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Failed to open %s: %s\n", filepath, strerror(errno));
@@ -521,7 +517,10 @@ int classify_reboot_reason(RebootInfo *info, const EnvContext *ctx, const Hardwa
         if (ctx && (strcmp(ctx->soc, "BRCM") == 0 || strcmp(ctx->soc, "BROADCOM") == 0)) {
             if (hwReason->rawReason[0] != '\0') {
                 char upbuf[MAX_BUFFER_SIZE];
-                size_t n = strlen(hwReason->rawReason);
+                size_t n = 0;
+                while (n < sizeof(hwReason->rawReason) && hwReason->rawReason[n] != '\0') {
+                    n++;
+                }
                 if (n >= sizeof(upbuf)) n = sizeof(upbuf) - 1;
                 memcpy(upbuf, hwReason->rawReason, n);
                 upbuf[n] = '\0';

@@ -104,43 +104,44 @@ int handle_parodus_reboot_file(const RebootInfo *info, const char *destPath)
         return ERROR_GENERAL;
     }
 
-    if (access(PARODUS_REBOOT_INFO_FILE, R_OK) == 0) {
-        FILE *in = fopen(PARODUS_REBOOT_INFO_FILE, "r");
-        if (!in) {
-            RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to open %s: %s\n", PARODUS_REBOOT_INFO_FILE, strerror(errno));
-        } else {
-            char buf[MAX_BUFFER_SIZE];
-            size_t n = fread(buf, 1, sizeof(buf) - 1, in);
-            buf[n] = '\0';
-            fclose(in);
-
-            FILE *out = fopen(destPath, "w");
-            if (!out) {
-                RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to open %s: %s\n", destPath, strerror(errno));
-                return ERROR_GENERAL;
-            }
-            fputs(buf, out);
-            if (buf[0] != '\0' && buf[strlen(buf) - 1] != '\n') {
-                fputc('\n', out);
-            }
-            fflush(out);
-            fclose(out);
-
-            char ts[MAX_TIMESTAMP_LENGTH];
-            get_timestamp_string(ts, sizeof(ts));
-            FILE *logfp = fopen(PARODUS_LOG, "a");
-            if (logfp) {
-                fprintf(logfp, "%s %s: Updating previous reboot info to Parodus\n", ts, "update_previous_reboot_info");
-                fprintf(logfp, "%s %s: %s\n", ts, "update_previous_reboot_info", buf);
-                fflush(logfp);
-                fclose(logfp);
-            } else {
-                RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to open Parodus log %s: %s\n", PARODUS_LOG, strerror(errno));
-            }
-
-            (void)unlink(PARODUS_REBOOT_INFO_FILE);
-            return SUCCESS;
+    FILE *in = fopen(PARODUS_REBOOT_INFO_FILE, "r");
+    if (!in) {
+        if (errno != ENOENT) {
+           RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to open %s: %s\n", PARODUS_REBOOT_INFO_FILE, strerror(errno));
+           return ERROR_GENERAL;
         }
+    } 
+    if (in) { 
+        char buf[MAX_BUFFER_SIZE];
+        size_t n = fread(buf, 1, sizeof(buf) - 1, in);
+        buf[n] = '\0';
+        fclose(in);
+
+        FILE *out = fopen(destPath, "w");
+        if (!out) {
+            RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to open %s: %s\n", destPath, strerror(errno));
+            return ERROR_GENERAL;
+        }
+        fputs(buf, out);
+        if (buf[0] != '\0' && buf[strlen(buf) - 1] != '\n') {
+            fputc('\n', out);
+        }
+        fflush(out);
+        fclose(out);
+	char ts[MAX_TIMESTAMP_LENGTH];
+        get_timestamp_string(ts, sizeof(ts));
+        FILE *logfp = fopen(PARODUS_LOG, "a");
+        if (logfp) {
+            fprintf(logfp, "%s %s: Updating previous reboot info to Parodus\n", ts, "update_previous_reboot_info");
+            fprintf(logfp, "%s %s: %s\n", ts, "update_previous_reboot_info", buf);
+            fflush(logfp);
+            fclose(logfp);
+        } else {
+            RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to open Parodus log %s: %s\n", PARODUS_LOG, strerror(errno));
+        }
+
+        (void)unlink(PARODUS_REBOOT_INFO_FILE);
+        return SUCCESS;
     }
     FILE *out = fopen(destPath, "w");
     if (!out) {
@@ -154,7 +155,6 @@ int handle_parodus_reboot_file(const RebootInfo *info, const char *destPath)
             info->source);
     fflush(out);
     fclose(out);
-    (void)unlink(PARODUS_REBOOT_INFO_FILE);
 
     return SUCCESS;
 }
@@ -170,14 +170,14 @@ int copy_keypress_info(const char *srcPath, const char *destPath)
         return ERROR_GENERAL;
     }
     RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","Copying keypress info from %s to %s\n", srcPath, destPath);
-    if (access(srcPath, F_OK) != 0) {
-        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Source keypress file does not exist: %s (not an error)\n", srcPath);
-        return SUCCESS;
-    }
     src_fd = open(srcPath, O_RDONLY);
     if (src_fd < 0) {
+        if (errno == ENOENT) {
+            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Source keypress file does not exist: %s (not an error)\n", srcPath);
+            return SUCCESS;
+        }
         RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to open source file %s: %s\n", srcPath, strerror(errno));
-        return SUCCESS;
+	return ERROR_GENERAL;
     }
     dest_fd = open(destPath, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (dest_fd < 0) {

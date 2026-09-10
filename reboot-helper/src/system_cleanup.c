@@ -19,6 +19,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#define _DEFAULT_SOURCE
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,12 +40,6 @@ static int file_exists(const char *path)
 {
     struct stat st;
     return (path && stat(path, &st) == 0 && S_ISREG(st.st_mode));
-}
-
-static int dir_exists(const char *path)
-{
-    struct stat st;
-    return (path && stat(path, &st) == 0 && S_ISDIR(st.st_mode));
 }
 
 static int is_supported_log_file(const char *s, const char *suffix)
@@ -96,57 +93,41 @@ static int send_signalcleanup(const char *name, int sig)
     return count;
 }
 
-/* Recursively remove a directory tree */
-static int remove_dir(const char *path)
+static int remove_dir_at(int parent_fd, const char *name)
 {
-    char child[1024];
-    int wn;
-    struct stat cst, st;
+    int fd = openat(parent_fd, name, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+    if (fd < 0) {
+        if (errno == ENOTDIR || errno == ELOOP) {
+            return unlinkat(parent_fd, name, 0);
+        }
+        return -1;
+    }
+    DIR *d = fdopendir(fd);
+    if (!d) {
+        close(fd);
+        return -1;
+    }
+    int rc = 0;
     struct dirent *de;
-
-    if (!path) {
-        return -1;
-    }
-    if (lstat(path, &st) != 0) {
-        return -1;
-    }
-    if (S_ISDIR(st.st_mode)) {
-        DIR *d = opendir(path);
-        if (!d) {
-            return -1;
+    while ((de = readdir(d)) != NULL) {
+        if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0) {
+            continue;
         }
-        while ((de = readdir(d)) != NULL) {
-            if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0) {
-                continue;
-            }
-            wn = snprintf(child, sizeof(child), "%s/%s", path, de->d_name);
-            if (wn < 0 || (size_t)wn >= sizeof(child)) {
-                RDK_LOG(RDK_LOG_DEBUG,"LOG.RDK.REBOOTINFO","remove_tree: path truncated for %s/%s\n", path, de->d_name);
-                continue;
-            }
-            if (lstat(child, &cst) != 0) {
-                continue;
-            }
-            if (S_ISDIR(cst.st_mode)) {
-                (void)remove_dir(child);
-            } else {
-                (void)unlink(child);
-            }
+        if (remove_dir_at(dirfd(d), de->d_name) != 0) {
+            rc = -1;
         }
-        closedir(d);
-        return rmdir(path);
-    } else {
-        return unlink(path);
     }
+    closedir(d); /* also closes fd */
+    if (unlinkat(parent_fd, name, AT_REMOVEDIR) != 0) {
+        rc = -1;
+    }
+    return rc;
 }
 
 static int clear_subdirectory(const char *root)
 {
     struct dirent *de;
     int rc = 0;
-    char child[1024];
-    struct stat st;
-    int wn; 
 
     if (!root) {
         return -1;
@@ -157,18 +138,10 @@ static int clear_subdirectory(const char *root)
     }
     while ((de = readdir(d)) != NULL) {
         if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0) continue;
-        wn = snprintf(child, sizeof(child), "%s/%s", root, de->d_name);
-        if (wn < 0 || (size_t)wn >= sizeof(child)) {
-            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","clear_dir_children: path truncated for %s/%s\n", root, de->d_name);
-            continue;
-        }
-        if (lstat(child, &st) != 0) {
-            continue;
-        }
-        if (S_ISDIR(st.st_mode)) {
-            if (remove_dir(child) != 0) {
-                rc = -1;
-            }
+        /* Remove relative to dirfd(d) so a rename/swap of `root` after opendir()
+         * cannot redirect the removal elsewhere (see remove_dir_at()). */
+        if (remove_dir_at(dirfd(d), de->d_name) != 0) {
+            rc = -1;
         }
     }
     closedir(d);
@@ -185,11 +158,12 @@ static void sync_logs_from_temp(const char *temp_path, const char *log_path)
     int wn_src;
     int wn_dst;
  
-    if (!dir_exists(temp_path)) {
-        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","sync_logs: %s not found!!!\n", temp_path ? temp_path : "<null>");
+
+    if (!temp_path || !log_path) {
+        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","sync_logs: temp_path or log_path is NULL\n");
         return;
     }
-    if (log_path && temp_path && strcmp(temp_path, log_path) == 0) {
+    if (strcmp(temp_path, log_path) == 0) {
         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","sync_logs: Sync Not needed, Same log folder\n");
         return;
     }
@@ -199,14 +173,14 @@ static void sync_logs_from_temp(const char *temp_path, const char *log_path)
         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","sync_logs: failed to open %s\n", temp_path);
         return;
     }
-    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Find and move the logs from %s to %s\n", temp_path, log_path ? log_path : "<null>");
+    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Find and move the logs from %s to %s\n", temp_path, log_path);
     while ((de = readdir(d)) != NULL) {
         const char *name = de->d_name;
         if (!(is_supported_log_file(name, ".txt") || is_supported_log_file(name, ".log"))) continue;
         wn_src = snprintf(src, sizeof(src), "%s/%s", temp_path, name);
         wn_dst = snprintf(dst, sizeof(dst), "%s/%s", log_path, name);
         if (wn_src < 0 || (size_t)wn_src >= sizeof(src) || wn_dst < 0 || (size_t)wn_dst >= sizeof(dst)) {
-            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","sync_logs: path truncated for %s or %s\n", name, log_path ? log_path : "<null>");
+            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","sync_logs: path truncated for %s or %s\n", name, log_path);
             continue;
         }
         copy_ok = 1;
@@ -257,16 +231,14 @@ void cleanup_services(void)
         if (read_file_to_buf("/opt/cdl_flashed_file_name", cdl, sizeof(cdl)) == 0 &&
             read_file_to_buf("/tmp/currently_running_image_name", prev, sizeof(prev)) == 0) {
             if (strstr(cdl, prev) == NULL) {
-                if (dir_exists("/media/apps")) {
-                    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Removing the RDM Apps content from Secondary Storage before Reboot (After Image Upgrade)\n");
-                    if (clear_subdirectory("/media/apps") != 0) {
-                        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Failed to remove some entries under /media/apps\n");
-                    }
+                RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Removing the RDM Apps content from Secondary Storage before Reboot (After Image Upgrade)\n");
+                if (clear_subdirectory("/media/apps") != 0) {
+                    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Failed to remove some entries under /media/apps\n");
                 }
-            }
+             }
         }
     }
-
+    
     /* Device-specific maintenance scripts */
     const char *device_name = getenv("DEVICE_NAME");
     if (device_name && (
@@ -432,4 +404,3 @@ void cleanup_pidfile(void)
 {
     unlink(PID_FILE);
 }
-
