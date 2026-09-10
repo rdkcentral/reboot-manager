@@ -173,14 +173,14 @@ static void sync_logs_from_temp(const char *temp_path, const char *log_path)
         RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","sync_logs: failed to open %s\n", temp_path);
         return;
     }
-    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Find and move the logs from %s to %s\n", temp_path, log_path ? log_path : "<null>");
+    RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","Find and move the logs from %s to %s\n", temp_path, log_path);
     while ((de = readdir(d)) != NULL) {
         const char *name = de->d_name;
         if (!(is_supported_log_file(name, ".txt") || is_supported_log_file(name, ".log"))) continue;
         wn_src = snprintf(src, sizeof(src), "%s/%s", temp_path, name);
         wn_dst = snprintf(dst, sizeof(dst), "%s/%s", log_path, name);
         if (wn_src < 0 || (size_t)wn_src >= sizeof(src) || wn_dst < 0 || (size_t)wn_dst >= sizeof(dst)) {
-            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","sync_logs: path truncated for %s or %s\n", name, log_path ? log_path : "<null>");
+            RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","sync_logs: path truncated for %s or %s\n", name, log_path);
             continue;
         }
         copy_ok = 1;
