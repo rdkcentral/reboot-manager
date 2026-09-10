@@ -101,11 +101,16 @@ static int remove_dir(const char *path)
     }
     /* Open (rather than lstat-then-unlink) so the directory check and the
      * removal act on the same resolved path/fd, avoiding a TOCTOU race. */
-    DIR *d = opendir(path);
-    if (!d) {
-        if (errno == ENOTDIR) {
+    int fd = open(path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+    if (fd < 0) {
+        if (errno == ENOTDIR || errno == ELOOP) {
             return unlink(path);
         }
+        return -1;
+    }
+    DIR *d = fdopendir(fd);
+    if (!d) {
+        close(fd);
         return -1;
     }
     while ((de = readdir(d)) != NULL) {
