@@ -143,6 +143,10 @@ int handle_parodus_reboot_file(const RebootInfo *info, const char *destPath)
         (void)unlink(PARODUS_REBOOT_INFO_FILE);
         return SUCCESS;
     }
+    if (info->reason[0] == '\0' && info->customReason[0] == '\0' && info->source[0] == '\0') {
+        RDK_LOG(RDK_LOG_INFO,"LOG.RDK.REBOOTINFO","No Parodus reboot info available");
+        return SUCCESS;
+    }
     FILE *out = fopen(destPath, "w");
     if (!out) {
         RDK_LOG(RDK_LOG_ERROR,"LOG.RDK.REBOOTINFO","Failed to open %s: %s\n", destPath, strerror(errno));
