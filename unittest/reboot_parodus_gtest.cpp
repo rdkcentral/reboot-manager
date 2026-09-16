@@ -58,6 +58,7 @@ TEST(ParodusSmokeTest, handle_parodus_reboot_file_EmptyFallbackDoesNotWriteDest)
     memset(&info, 0, sizeof(info));
     strncpy(info.timestamp, "2026-03-10T12:00:00Z", sizeof(info.timestamp) - 1);
 
+    remove(PARODUS_REBOOT_INFO_FILE);
     const char* destPath = "/tmp/reboot_test_parodus_empty.out";
     remove(destPath);
     EXPECT_EQ(handle_parodus_reboot_file(&info, destPath), SUCCESS);

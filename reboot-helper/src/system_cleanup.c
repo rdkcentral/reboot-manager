@@ -128,18 +128,24 @@ static int clear_subdirectory(const char *root)
 {
     struct dirent *de;
     int rc = 0;
+    int fd;
+    DIR *d;
 
     if (!root) {
         return -1;
     }
-    DIR *d = opendir(root);
+
+    fd = open(root, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+    if (fd < 0) {
+        return -1;
+    }
+    d = fdopendir(fd);
     if (!d) {
+        close(fd);
         return -1;
     }
     while ((de = readdir(d)) != NULL) {
         if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0) continue;
-        /* Remove relative to dirfd(d) so a rename/swap of `root` after opendir()
-         * cannot redirect the removal elsewhere (see remove_dir_at()). */
         if (remove_dir_at(dirfd(d), de->d_name) != 0) {
             rc = -1;
         }
