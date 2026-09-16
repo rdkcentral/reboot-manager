@@ -146,7 +146,10 @@ static int clear_subdirectory(const char *root)
     }
     while ((de = readdir(d)) != NULL) {
         if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0) continue;
-        if (remove_dir_at(dirfd(d), de->d_name) != 0) {
+        struct stat st;
+        if (fstatat(dirfd(d), de->d_name, &st, AT_SYMLINK_NOFOLLOW) == 0 &&
+            S_ISDIR(st.st_mode) &&
+            remove_dir_at(dirfd(d), de->d_name) != 0) {
             rc = -1;
         }
     }
