@@ -778,6 +778,136 @@ TEST_F(LogParserTest, find_previous_reboot_log_Bak2WhenBak1Missing) {
 }
 
 // ============================================================
+// Tests for update_previous_reboot_log_fields
+// ============================================================
+
+TEST_F(LogParserTest, update_previous_reboot_log_fields_UsesJsonValues) {
+    const char* jsonPath = "/tmp/reboot_test/previous_reboot.json";
+    const char* outputPath = "/tmp/reboot_test/rebootInfo.log";
+    createTestLogFile(jsonPath,
+                      "{\"timestamp\":\"2026-08-01T01:02:03Z\","
+                      "\"source\":\"WebPA\",\"reason\":\"USER_INITIATED\","
+                      "\"customReason\":\"Reset\",\"otherReason\":\"Requested\"}");
+    system("mkdir -p /tmp/reboot_test/logs/PreviousLogs");
+    createTestLogFile("/tmp/reboot_test/logs/PreviousLogs/rebootInfo.log",
+                      "2026-08-01T01:02:03Z RebootReason: Previous user reboot\n");
+    setupMockFile(REBOOT_INFO_LOG_FILE, outputPath, "");
+    g_mock_fs_enabled = true;
+    setenv("LOG_PATH", "/tmp/reboot_test/logs", 1);
+
+    EXPECT_EQ(update_previous_reboot_log_fields(jsonPath, nullptr), SUCCESS);
+
+    std::ifstream output(outputPath);
+    std::string contents((std::istreambuf_iterator<char>(output)), std::istreambuf_iterator<char>());
+    EXPECT_NE(contents.find("PreviousRebootReason: RebootReason: Previous user reboot"), std::string::npos);
+    EXPECT_NE(contents.find("PreviousRebootInitiatedBy: WebPA"), std::string::npos);
+    EXPECT_NE(contents.find("PreviousRebootTime: 2026-08-01T01:02:03Z"), std::string::npos);
+    EXPECT_NE(contents.find("PreviousCustomReason: Reset"), std::string::npos);
+    EXPECT_NE(contents.find("PreviousOtherReason: Requested"), std::string::npos);
+    unsetenv("LOG_PATH");
+}
+
+TEST_F(LogParserTest, update_previous_reboot_log_fields_FallsBackToLegacyLog) {
+    const char* outputPath = "/tmp/reboot_test/rebootInfo.log";
+    system("mkdir -p /tmp/reboot_test/logs/PreviousLogs");
+    createTestLogFile("/tmp/reboot_test/logs/PreviousLogs/rebootInfo.log",
+                      "2026-07-31T20:00:00Z RebootReason: Legacy reboot reason\n"
+                      "2026-07-31T20:00:00Z RebootInitiatedBy: SystemService\n"
+                      "2026-07-31T20:00:00Z RebootTime: 2026-07-31T20:00:00Z\n"
+                      "2026-07-31T20:00:00Z CustomReason: Maintenance\n"
+                      "2026-07-31T20:00:00Z OtherReason: Scheduled update\n");
+    setupMockFile(REBOOT_INFO_LOG_FILE, outputPath, "");
+    g_mock_fs_enabled = true;
+    setenv("LOG_PATH", "/tmp/reboot_test/logs", 1);
+
+    EXPECT_EQ(update_previous_reboot_log_fields("/tmp/reboot_test/missing.json", nullptr), SUCCESS);
+
+    std::ifstream output(outputPath);
+    std::string contents((std::istreambuf_iterator<char>(output)), std::istreambuf_iterator<char>());
+    EXPECT_NE(contents.find("PreviousRebootReason: RebootReason: Legacy reboot reason"), std::string::npos);
+    EXPECT_NE(contents.find("PreviousRebootInitiatedBy: SystemService"), std::string::npos);
+    EXPECT_NE(contents.find("PreviousRebootTime: 2026-07-31T20:00:00Z"), std::string::npos);
+    EXPECT_NE(contents.find("PreviousCustomReason: Maintenance"), std::string::npos);
+    EXPECT_NE(contents.find("PreviousOtherReason: Scheduled update"), std::string::npos);
+    unsetenv("LOG_PATH");
+}
+
+TEST_F(LogParserTest, update_previous_reboot_log_fields_NullJsonWritesEmptyFields) {
+    const char* outputPath = "/tmp/reboot_test/rebootInfo.log";
+    setupMockFile(REBOOT_INFO_LOG_FILE, outputPath, "");
+    g_mock_fs_enabled = true;
+
+    EXPECT_EQ(update_previous_reboot_log_fields(nullptr, nullptr), SUCCESS);
+
+    std::ifstream output(outputPath);
+    std::string contents((std::istreambuf_iterator<char>(output)), std::istreambuf_iterator<char>());
+    EXPECT_NE(contents.find("PreviousRebootReason: \n"), std::string::npos);
+    EXPECT_NE(contents.find("PreviousRebootInitiatedBy: \n"), std::string::npos);
+    EXPECT_NE(contents.find("PreviousRebootTime: \n"), std::string::npos);
+    EXPECT_NE(contents.find("PreviousCustomReason: \n"), std::string::npos);
+    EXPECT_NE(contents.find("PreviousOtherReason: \n"), std::string::npos);
+}
+
+TEST_F(LogParserTest, update_previous_reboot_log_fields_MissingJsonAndLogWritesEmptyFields) {
+    const char* outputPath = "/tmp/reboot_test/rebootInfo.log";
+    setupMockFile(REBOOT_INFO_LOG_FILE, outputPath, "");
+    g_mock_fs_enabled = true;
+    setenv("LOG_PATH", "/tmp/reboot_test/no_previous_logs", 1);
+
+    EXPECT_EQ(update_previous_reboot_log_fields("/tmp/reboot_test/missing.json", nullptr), SUCCESS);
+
+    std::ifstream output(outputPath);
+    std::string contents((std::istreambuf_iterator<char>(output)), std::istreambuf_iterator<char>());
+    EXPECT_NE(contents.find("PreviousRebootReason: \n"), std::string::npos);
+    EXPECT_NE(contents.find("PreviousRebootInitiatedBy: \n"), std::string::npos);
+    unsetenv("LOG_PATH");
+}
+
+TEST_F(LogParserTest, update_previous_reboot_log_fields_InvalidLegacyLogWritesEmptyFields) {
+    const char* outputPath = "/tmp/reboot_test/rebootInfo.log";
+    system("mkdir -p /tmp/reboot_test/logs/PreviousLogs");
+    createTestLogFile("/tmp/reboot_test/logs/PreviousLogs/rebootInfo.log", "unrelated entry\n");
+    setupMockFile(REBOOT_INFO_LOG_FILE, outputPath, "");
+    g_mock_fs_enabled = true;
+    setenv("LOG_PATH", "/tmp/reboot_test/logs", 1);
+
+    EXPECT_EQ(update_previous_reboot_log_fields("/tmp/reboot_test/missing.json", nullptr), SUCCESS);
+
+    std::ifstream output(outputPath);
+    std::string contents((std::istreambuf_iterator<char>(output)), std::istreambuf_iterator<char>());
+    EXPECT_NE(contents.find("PreviousRebootReason: \n"), std::string::npos);
+    EXPECT_NE(contents.find("PreviousRebootInitiatedBy: \n"), std::string::npos);
+    unsetenv("LOG_PATH");
+}
+
+TEST_F(LogParserTest, update_previous_reboot_log_fields_JsonOpenFailureFallsBackToLegacyLog) {
+    const char* outputPath = "/tmp/reboot_test/rebootInfo.log";
+    system("mkdir -p /tmp/reboot_test/logs/PreviousLogs");
+    createTestLogFile("/tmp/reboot_test/logs/PreviousLogs/rebootInfo.log",
+                      "2026-07-31T20:00:00Z RebootReason: Fallback reason\n"
+                      "2026-07-31T20:00:00Z RebootInitiatedBy: SystemService\n");
+    g_mock_path_map["/tmp/reboot_test/unreadable.json"] = "/tmp/reboot_test/no_such_json";
+    setupMockFile(REBOOT_INFO_LOG_FILE, outputPath, "");
+    g_mock_fs_enabled = true;
+    setenv("LOG_PATH", "/tmp/reboot_test/logs", 1);
+
+    EXPECT_EQ(update_previous_reboot_log_fields("/tmp/reboot_test/unreadable.json", nullptr), SUCCESS);
+
+    std::ifstream output(outputPath);
+    std::string contents((std::istreambuf_iterator<char>(output)), std::istreambuf_iterator<char>());
+    EXPECT_NE(contents.find("PreviousRebootReason: RebootReason: Fallback reason"), std::string::npos);
+    EXPECT_NE(contents.find("PreviousRebootInitiatedBy: SystemService"), std::string::npos);
+    unsetenv("LOG_PATH");
+}
+
+TEST_F(LogParserTest, update_previous_reboot_log_fields_OutputOpenFailureReturnsError) {
+    g_mock_path_map[REBOOT_INFO_LOG_FILE] = "/tmp/reboot_test/missing/rebootInfo.log";
+    g_mock_fs_enabled = true;
+
+    EXPECT_EQ(update_previous_reboot_log_fields(nullptr, nullptr), ERROR_GENERAL);
+}
+
+// ============================================================
 // Tests for parse_legacy_log — raw-field (non-Previous-prefixed) parsing
 // ============================================================
 
