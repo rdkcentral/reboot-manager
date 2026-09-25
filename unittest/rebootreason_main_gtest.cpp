@@ -10,6 +10,11 @@
 extern "C" {
     #include "update-reboot-info.h"
     void (*get_wait_for_backup_logs_done(void))(void);
+    void (*get_current_timestamp_for_test(void))(char *buffer, size_t size);
+    int (*get_check_dir_exists_for_test(void))(const char *path);
+    void (*get_log_reason_for_test(void))(const char *path);
+    void t2CountNotify(char *marker, int val);
+    void t2ValNotify(char *marker, char *val);
 }
 
 #define GTEST_DEFAULT_RESULT_FILEPATH "/tmp/Gtest_Report/"
@@ -25,6 +30,7 @@ extern "C" {
 static bool g_fail_inotify_init1      = false;
 static bool g_fail_inotify_add_watch  = false;
 static bool g_fail_clock_gettime      = false;
+static bool g_fail_mkdir              = false;
 /* Number of times __wrap_access returns -1 for the sentinel path before
  * falling through to the real implementation. */
 static int  g_access_sentinel_fail_count = 0;
@@ -76,6 +82,16 @@ int __wrap_access(const char *pathname, int mode)
     return __real_access(pathname, mode);
 }
 
+int __real_mkdir(const char *pathname, mode_t mode);
+int __wrap_mkdir(const char *pathname, mode_t mode)
+{
+    if (g_fail_mkdir) {
+        errno = EACCES;
+        return -1;
+    }
+    return __real_mkdir(pathname, mode);
+}
+
 } /* extern "C" */
 
 /*===========================================================================
@@ -87,6 +103,7 @@ protected:
         g_fail_inotify_init1      = false;
         g_fail_inotify_add_watch  = false;
         g_fail_clock_gettime      = false;
+        g_fail_mkdir              = false;
         g_access_sentinel_fail_count = 0;
         unlink(TEST_SENTINEL_PATH);
     }
@@ -184,6 +201,72 @@ TEST_F(WaitForBackupLogsDoneTest, TimeoutExpires_SentinelNeverCreated)
 TEST(MainSmokeTest, acquire_release_lock_InvalidParams) {
     EXPECT_EQ(acquire_lock(nullptr), ERROR_GENERAL);
     EXPECT_EQ(release_lock(nullptr), ERROR_GENERAL);
+}
+
+TEST(MainHelperTest, get_current_timestamp_WritesUtcTimestamp)
+{
+    char timestamp[64] = {0};
+
+    get_current_timestamp_for_test()(timestamp, sizeof(timestamp));
+
+    EXPECT_NE(timestamp[0], '\0');
+    EXPECT_NE(strstr(timestamp, "UTC"), nullptr);
+}
+
+TEST(MainHelperTest, check_dir_exists_CreatesMissingDirectory)
+{
+    const char* directory = "/tmp/rebootreason_main_gtest_directory";
+    rmdir(directory);
+
+    EXPECT_EQ(get_check_dir_exists_for_test()(directory), SUCCESS);
+
+    struct stat status = {0};
+    EXPECT_EQ(stat(directory, &status), 0);
+    EXPECT_TRUE(S_ISDIR(status.st_mode));
+    rmdir(directory);
+}
+
+TEST(MainHelperTest, check_dir_exists_AcceptsExistingDirectory)
+{
+    EXPECT_EQ(get_check_dir_exists_for_test()("/tmp"), SUCCESS);
+}
+
+TEST(MainHelperTest, check_dir_exists_ReturnsErrorWhenCreateFails)
+{
+    g_fail_mkdir = true;
+
+    EXPECT_EQ(get_check_dir_exists_for_test()("/tmp/rebootreason_main_gtest_denied"), ERROR_GENERAL);
+    g_fail_mkdir = false;
+}
+
+TEST(MainHelperTest, telemetryNotificationsAcceptValues)
+{
+    char marker[] = "TEST_MARKER";
+    char value[] = "TEST_VALUE";
+
+    t2CountNotify(marker, 1);
+    t2ValNotify(marker, value);
+    SUCCEED();
+}
+
+TEST(MainHelperTest, log_reasonReadsExistingFile)
+{
+    const char* path = "/tmp/rebootreason_main_gtest_reason";
+    int file_descriptor = open(path, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    ASSERT_GE(file_descriptor, 0);
+    const char reason[] = "test reboot reason\n";
+    ASSERT_EQ(write(file_descriptor, reason, sizeof(reason) - 1), sizeof(reason) - 1);
+    close(file_descriptor);
+
+    get_log_reason_for_test()(path);
+
+    unlink(path);
+}
+
+TEST(MainHelperTest, log_reasonHandlesMissingFile)
+{
+    get_log_reason_for_test()("/tmp/rebootreason_main_gtest_missing_reason");
+    SUCCEED();
 }
 
 GTEST_API_ int main(int argc, char *argv[]) {

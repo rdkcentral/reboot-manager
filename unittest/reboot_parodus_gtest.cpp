@@ -53,6 +53,18 @@ TEST(ParodusSmokeTest, handle_parodus_reboot_file_FallbackWritesDest) {
     remove(destPath);
 }
 
+TEST(ParodusSmokeTest, handle_parodus_reboot_file_EmptyFallbackDoesNotWriteDest) {
+    RebootInfo info;
+    memset(&info, 0, sizeof(info));
+    strncpy(info.timestamp, "2026-03-10T12:00:00Z", sizeof(info.timestamp) - 1);
+
+    remove(PARODUS_REBOOT_INFO_FILE);
+    const char* destPath = "/tmp/reboot_test_parodus_empty.out";
+    remove(destPath);
+    EXPECT_EQ(handle_parodus_reboot_file(&info, destPath), SUCCESS);
+    EXPECT_EQ(access(destPath, F_OK), -1);
+}
+
 TEST(ParodusSmokeTest, copy_keypress_info_SourceMissingReturnsSuccess) {
     EXPECT_EQ(copy_keypress_info("/tmp/nonexistent_keypress.info", "/tmp/unused_dest.info"), SUCCESS);
 }
