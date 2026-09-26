@@ -511,7 +511,7 @@ TEST_F(LogParserTest, get_hardware_reason_DispatchBrcmPath) {
     memset(&info, 0, sizeof(info));
     set_hal_test_soc(&ctx, HalTestSoc::Brcm);
 
-    int rc = get_hardware_reason(&ctx, &hw, &info);
+    int rc = get_hardware_reason(&ctx, &hw);
     EXPECT_EQ(rc, SUCCESS);
     EXPECT_NE(hw.mappedReason[0], '\0');
 }
@@ -525,7 +525,7 @@ TEST_F(LogParserTest, get_hardware_reason_DispatchAmlogicPath) {
     memset(&info, 0, sizeof(info));
     set_hal_test_soc(&ctx, HalTestSoc::Amlogic);
 
-    int rc = get_hardware_reason(&ctx, &hw, &info);
+    int rc = get_hardware_reason(&ctx, &hw);
     EXPECT_EQ(rc, SUCCESS);
     EXPECT_STREQ(hw.mappedReason, "UNKNOWN");
 }
@@ -539,7 +539,7 @@ TEST_F(LogParserTest, get_hardware_reason_UnknownSocFallsBackToUnknown) {
     memset(&info, 0, sizeof(info));
     set_hal_test_soc(&ctx, HalTestSoc::Unknown);
 
-    int rc = get_hardware_reason(&ctx, &hw, &info);
+    int rc = get_hardware_reason(&ctx, &hw);
     EXPECT_EQ(rc, SUCCESS);
     EXPECT_NE(hw.mappedReason[0], '\0');
 }
@@ -565,7 +565,7 @@ TEST_F(LogParserTest, get_hardware_reason_DispatchRtkAliasPath) {
     memset(&info, 0, sizeof(info));
     set_hal_test_soc(&ctx, HalTestSoc::Realtek);
 
-    int rc = get_hardware_reason(&ctx, &hw, &info);
+    int rc = get_hardware_reason(&ctx, &hw);
     EXPECT_EQ(rc, SUCCESS);
     EXPECT_STREQ(hw.mappedReason, "UNKNOWN");
 }
@@ -579,7 +579,7 @@ TEST_F(LogParserTest, get_hardware_reason_DispatchMtkPath) {
     memset(&info, 0, sizeof(info));
     set_hal_test_soc(&ctx, HalTestSoc::Mtk);
 
-    int rc = get_hardware_reason(&ctx, &hw, &info);
+    int rc = get_hardware_reason(&ctx, &hw);
     EXPECT_TRUE(rc == SUCCESS || rc == FAILURE || rc == ERROR_GENERAL);
 }
 
@@ -592,7 +592,7 @@ TEST_F(LogParserTest, get_hardware_reason_DispatchBroadcomAliasPath) {
     memset(&info, 0, sizeof(info));
     set_hal_test_soc(&ctx, HalTestSoc::Broadcom);
 
-    int rc = get_hardware_reason(&ctx, &hw, &info);
+    int rc = get_hardware_reason(&ctx, &hw);
     EXPECT_EQ(rc, SUCCESS);
     EXPECT_STREQ(hw.mappedReason, "UNKNOWN");
 }
@@ -606,7 +606,7 @@ TEST_F(LogParserTest, get_hardware_reason_DispatchMediatekAliasPath) {
     memset(&info, 0, sizeof(info));
     set_hal_test_soc(&ctx, HalTestSoc::Mediatek);
 
-    int rc = get_hardware_reason(&ctx, &hw, &info);
+    int rc = get_hardware_reason(&ctx, &hw);
     EXPECT_TRUE(rc == SUCCESS || rc == FAILURE || rc == ERROR_GENERAL);
 }
 
@@ -618,7 +618,7 @@ TEST_F(LogParserTest, get_hardware_reason_EmptySocFallbackPath) {
     memset(&hw, 0, sizeof(hw));
     memset(&info, 0, sizeof(info));
 
-    int rc = get_hardware_reason(&ctx, &hw, &info);
+    int rc = get_hardware_reason(&ctx, &hw);
     EXPECT_EQ(rc, SUCCESS);
     EXPECT_NE(hw.mappedReason[0], '\0');
 }
@@ -650,7 +650,7 @@ TEST_F(LogParserTest, get_hardware_reason_DispatchAmlogicUsesReadPath) {
     memset(&info, 0, sizeof(info));
     set_hal_test_soc(&ctx, HalTestSoc::Amlogic);
 
-    EXPECT_EQ(get_hardware_reason(&ctx, &hw, &info), SUCCESS);
+    EXPECT_EQ(get_hardware_reason(&ctx, &hw), SUCCESS);
     EXPECT_STREQ(hw.mappedReason, "UNKNOWN");
     EXPECT_EQ(info.reason[0], '\0');
 }
@@ -668,7 +668,7 @@ TEST_F(LogParserTest, get_hardware_reason_DispatchMtkUsesReadPath) {
     set_hal_test_soc(&ctx, HalTestSoc::Mediatek);
     strncpy(info.timestamp, "2026-03-10T11:22:33Z", sizeof(info.timestamp) - 1);
 
-    EXPECT_EQ(get_hardware_reason(&ctx, &hw, &info), SUCCESS);
+    EXPECT_EQ(get_hardware_reason(&ctx, &hw), SUCCESS);
     EXPECT_STREQ(hw.mappedReason, "UNKNOWN");
     EXPECT_EQ(info.reason[0], '\0');
     EXPECT_STREQ(info.timestamp, "2026-03-10T11:22:33Z");

@@ -114,11 +114,11 @@ int update_reboot_info(const EnvContext *ctx)
     return 1;
 }
 
-int get_hardware_reason(const EnvContext *ctx, HardwareReason *hwReason, RebootInfo *info)
+int get_hardware_reason(const EnvContext *ctx, HardwareReason *hwReason)
 {
-    if (ctx == NULL || hwReason == NULL || info == NULL) {
-        RDK_LOG(RDK_LOG_ERROR, "LOG.RDK.REBOOTINFO", "get_hardware_reason: invalid argument(s): ctx=%p, hwReason=%p, info=%p",
-            (const void *)ctx, (void *)hwReason, (void *)info);
+    if (ctx == NULL || hwReason == NULL) {
+        RDK_LOG(RDK_LOG_ERROR, "LOG.RDK.REBOOTINFO", "get_hardware_reason: invalid argument(s): ctx=%p, hwReason=%p",
+            (const void *)ctx, (void *)hwReason);
         return ERROR_GENERAL;
     }
 
