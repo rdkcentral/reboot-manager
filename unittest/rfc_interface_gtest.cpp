@@ -90,12 +90,60 @@ TEST_F(RfcInterfaceTest, GetBoolTrue)
     EXPECT_TRUE(v);
 }
 
+TEST_F(RfcInterfaceTest, GetBoolFalseAndZero)
+{
+    bool value = true;
+    g_rfc_store["Device.X.Foo.Bool"] = "false";
+    ASSERT_TRUE(rfc_get_bool_param("Device.X.Foo.Bool", &value));
+    EXPECT_FALSE(value);
+
+    g_rfc_store["Device.X.Foo.Bool"] = "0";
+    ASSERT_TRUE(rfc_get_bool_param("Device.X.Foo.Bool", &value));
+    EXPECT_FALSE(value);
+}
+
 TEST_F(RfcInterfaceTest, GetIntSuccess)
 {
     g_rfc_store["Device.X.Foo.Int"] = "42";
     int v = 0;
     ASSERT_TRUE(rfc_get_int_param("Device.X.Foo.Int", &v));
     EXPECT_EQ(v, 42);
+}
+
+TEST_F(RfcInterfaceTest, GetIntNegativeAndRejectsInvalidValue)
+{
+    int value = 0;
+    g_rfc_store["Device.X.Foo.Int"] = "-99";
+    ASSERT_TRUE(rfc_get_int_param("Device.X.Foo.Int", &value));
+    EXPECT_EQ(value, -99);
+
+    g_rfc_store["Device.X.Foo.Int"] = "not-a-number";
+    EXPECT_FALSE(rfc_get_int_param("Device.X.Foo.Int", &value));
+}
+
+TEST_F(RfcInterfaceTest, GetStringUnquotesAndTruncatesValue)
+{
+    char value[5] = {0};
+    g_rfc_store["Device.X.Foo.String"] = "\"quoted value\"";
+
+    ASSERT_TRUE(rfc_get_string_param("Device.X.Foo.String", value, sizeof(value)));
+    EXPECT_STREQ(value, "quot");
+}
+
+TEST_F(RfcInterfaceTest, GetStringRejectsEmptyValue)
+{
+    char value[16] = {0};
+    g_rfc_store["Device.X.Foo.String"] = "";
+
+    EXPECT_FALSE(rfc_get_string_param("Device.X.Foo.String", value, sizeof(value)));
+}
+
+TEST_F(RfcInterfaceTest, SetBoolFalseAndReadBack)
+{
+    ASSERT_TRUE(rfc_set_bool_param("Device.X.Foo.SetBool", false));
+    bool value = true;
+    ASSERT_TRUE(rfc_get_bool_param("Device.X.Foo.SetBool", &value));
+    EXPECT_FALSE(value);
 }
 
 TEST_F(RfcInterfaceTest, SetBoolAndReadBack)

@@ -214,7 +214,6 @@ int main(int argc, char **argv)
     int opt;
     int pid_status = 0;
     char ts[64];
-    struct stat st;
     FILE *rebootinfo_json = NULL;
     FILE *prev_rebootinfo_json = NULL;
     int proceed_reboot = 1;
@@ -348,13 +347,17 @@ int main(int argc, char **argv)
 
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Categorized reboot as %s (source=%s, custom=%s, other=%s)\n",
             reboot_reason, source, custom_reason, other_reason);
-   
-    if (stat(REBOOT_INFO_DIR, &st) != 0) {
-        if (mkdir(REBOOT_INFO_DIR, 0755) != 0) {
-            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Failed to create %s (errno=%d)\n", REBOOT_INFO_DIR, errno);
+    if (mkdir(REBOOT_INFO_DIR, 0755) != 0) {
+        if (errno == EEXIST) {
+            struct stat dir_st;
+            if (stat(REBOOT_INFO_DIR, &dir_st) != 0 || !S_ISDIR(dir_st.st_mode)) {
+                RDK_LOG(RDK_LOG_ERROR, "LOG.RDK.REBOOTINFO", "%s exists but is not a directory\n", REBOOT_INFO_DIR);
+            }
         } else {
-            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Creating %s folder\n", REBOOT_INFO_DIR);
+            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO", "Failed to create %s (errno=%d)\n", REBOOT_INFO_DIR, errno);
         }
+    } else {
+            RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Creating %s folder\n", REBOOT_INFO_DIR);
     }
 
     RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Invoke setPreviousRebootInfo to save reboot information under %s folder\n", REBOOT_INFO_DIR);
@@ -363,10 +366,10 @@ int main(int argc, char **argv)
     if (rebootinfo_json) {
         fprintf(rebootinfo_json, "{\n");
         fprintf(rebootinfo_json, "\"timestamp\":\"%s\",\n", ts);
-        fprintf(rebootinfo_json, "\"source\":\"%s\",\n", source ? source : "");
+        fprintf(rebootinfo_json, "\"source\":\"%s\",\n", source);
         fprintf(rebootinfo_json, "\"reason\":\"%s\",\n", reboot_reason);
         fprintf(rebootinfo_json, "\"customReason\":\"%s\",\n", custom_reason);
-        fprintf(rebootinfo_json, "\"otherReason\":\"%s\"\n", other_reason ? other_reason : "");
+        fprintf(rebootinfo_json, "\"otherReason\":\"%s\"\n", other_reason);
         fprintf(rebootinfo_json, "}\n");
         fclose(rebootinfo_json);
         RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Saving reboot info in %s file\n", REBOOT_INFO_FILE);
@@ -374,7 +377,7 @@ int main(int argc, char **argv)
         RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Failed to open %s for writing (errno=%d)\n", REBOOT_INFO_FILE, errno);
     }
 
-    snprintf(reason_str, sizeof(reason_str), "PreviousRebootInfo:%s,%s,%s,%s\n", ts, custom_reason, source ? source : "", reboot_reason);
+    snprintf(reason_str, sizeof(reason_str), "PreviousRebootInfo:%s,%s,%s,%s\n", ts, custom_reason, source, reboot_reason);
     FILE *parodus_fp = fopen(PARODUS_REBOOT_INFO_FILE, "w");
     if (parodus_fp) {
         fputs(reason_str, parodus_fp);
@@ -390,10 +393,10 @@ int main(int argc, char **argv)
     if (prev_rebootinfo_json) {
         fprintf(prev_rebootinfo_json, "{\n");
         fprintf(prev_rebootinfo_json, "\"timestamp\":\"%s\",\n", ts);
-        fprintf(prev_rebootinfo_json, "\"source\":\"%s\",\n", source ? source : "");
+        fprintf(prev_rebootinfo_json, "\"source\":\"%s\",\n", source);
         fprintf(prev_rebootinfo_json, "\"reason\":\"%s\",\n", reboot_reason);
         fprintf(prev_rebootinfo_json, "\"customReason\":\"%s\",\n", custom_reason);
-        fprintf(prev_rebootinfo_json, "\"otherReason\":\"%s\"\n", other_reason ? other_reason : "");
+        fprintf(prev_rebootinfo_json, "\"otherReason\":\"%s\"\n", other_reason);
         fprintf(prev_rebootinfo_json, "}\n");
         fclose(prev_rebootinfo_json);
         RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Saving reboot info in %s file (for cyclic handler)\n", PREVIOUS_REBOOT_INFO_FILE);
@@ -451,4 +454,3 @@ int main(int argc, char **argv)
     v_secure_system("reboot -f");
     return 0;
 }
-
