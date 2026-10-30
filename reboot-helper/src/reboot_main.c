@@ -377,7 +377,7 @@ int main(int argc, char **argv)
         RDK_LOG(RDK_LOG_INFO, "LOG.RDK.REBOOTINFO","Failed to open %s for writing (errno=%d)\n", REBOOT_INFO_FILE, errno);
     }
 
-    snprintf(reason_str, sizeof(reason_str), "PreviousRebootInfo:%s,%s,%s,%s\n", ts, custom_reason, source, reboot_reason);
+    snprintf(reason_str, sizeof(reason_str), "PreviousRebootInfo:%s,%s,%s,%s\n", ts, reboot_reason, custom_reason, source);
     FILE *parodus_fp = fopen(PARODUS_REBOOT_INFO_FILE, "w");
     if (parodus_fp) {
         fputs(reason_str, parodus_fp);
