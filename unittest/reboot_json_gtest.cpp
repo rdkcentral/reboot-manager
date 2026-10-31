@@ -65,6 +65,63 @@ TEST(JsonSmokeTest, write_hardpower_Success) {
     remove(outFile);
 }
 
+TEST(JsonSmokeTest, write_reboot_info_FileWriteError) {
+    // Try to write to a directory path (should fail)
+    EXPECT_NE(write_reboot_info("/tmp/nonexistent_dir/subdir/file.json", nullptr), SUCCESS);
+}
+
+TEST(JsonSmokeTest, acquire_lock_FileCreation) {
+    const char* lockFile = "/tmp/reboot_json_lock_test.lock";
+    remove(lockFile);
+
+    int result = acquire_lock(lockFile);
+    // Should succeed in creating the lock
+    EXPECT_EQ(result, SUCCESS);
+
+    // Lock file should exist
+    FILE* fp = fopen(lockFile, "r");
+    EXPECT_NE(fp, nullptr);
+    if (fp) fclose(fp);
+
+    release_lock(lockFile);
+    remove(lockFile);
+}
+
+TEST(JsonSmokeTest, write_hardpower_NullTimestamp) {
+    // NULL timestamp should be treated as invalid
+    EXPECT_EQ(write_hardpower("/tmp/test.json", nullptr), ERROR_GENERAL);
+}
+
+TEST(JsonSmokeTest, write_reboot_info_AllFieldsPopulated) {
+    const char* outFile = "/tmp/reboot_json_full_test.json";
+    RebootInfo info;
+    memset(&info, 0, sizeof(info));
+
+    strncpy(info.timestamp, "2026-06-17T14:30:00Z", sizeof(info.timestamp) - 1);
+    strncpy(info.source, "WebPA", sizeof(info.source) - 1);
+    strncpy(info.reason, "FIRMWARE_FAILURE", sizeof(info.reason) - 1);
+    strncpy(info.customReason, "ImageUpgrade_userInitiatedFWDnld", sizeof(info.customReason) - 1);
+    strncpy(info.otherReason, "Firmware update in progress", sizeof(info.otherReason) - 1);
+
+    EXPECT_EQ(write_reboot_info(outFile, &info), SUCCESS);
+
+    FILE* fp = fopen(outFile, "r");
+    ASSERT_NE(fp, nullptr);
+    char content[2048] = {0};
+    size_t n = fread(content, 1, sizeof(content) - 1, fp);
+    content[n] = '\0';
+    fclose(fp);
+
+    // Verify all fields are in the JSON
+    EXPECT_NE(strstr(content, "\"timestamp\":"), nullptr);
+    EXPECT_NE(strstr(content, "\"source\":"), nullptr);
+    EXPECT_NE(strstr(content, "\"reason\":"), nullptr);
+    EXPECT_NE(strstr(content, "\"customReason\":"), nullptr);
+    EXPECT_NE(strstr(content, "\"otherReason\":"), nullptr);
+
+    remove(outFile);
+}
+
 GTEST_API_ int main(int argc, char *argv[]) {
     char testresults_fullfilepath[GTEST_REPORT_FILEPATH_SIZE];
     memset(testresults_fullfilepath, 0, GTEST_REPORT_FILEPATH_SIZE);
